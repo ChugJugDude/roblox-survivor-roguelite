@@ -3,17 +3,22 @@
 	Server-side enemies. They're plain data with no Parts and no Humanoids: the server owns their
 	position, HP, and damage, and clients draw them from snapshots (see EnemyReplicator).
 
-	Each frame Simulation calls move (chase the nearest player, push apart from neighbors, stay
-	inside the walls) and then attack (contact damage). Weapons find enemies with queryRadius.
+	Each frame Simulation calls move (chase the nearest player, or keep a distance band for ranged
+	enemies; push apart from neighbors; stay inside the walls) and then attack (contact damage).
+	Weapons find enemies with queryRadius; EnemyShooter fires for ranged enemies.
+
+	A living boss is published on the Arena as BossName and BossHealth (0 to 1) for the boss bar.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
+local NetBatch = require(script.Parent.NetBatch)
 local SpatialHash = require(script.Parent.SpatialHash)
 local Config = require(ReplicatedStorage.Shared.Config.Enemies)
 local EnemySnapshot = require(ReplicatedStorage.Shared.EnemySnapshot)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 type Target = Characters.Target
 
@@ -28,6 +33,7 @@ export type Enemy = {
 	contactDamage: number, -- after stage scaling
 	xp: number, -- after stage scaling
 	attackReadyAt: number,
+	shotReadyAt: number, -- ranged enemies
 	hitReadyAt: { [any]: number }, -- per attacker, when they can hit this enemy again
 }
 
@@ -53,6 +59,8 @@ local spawned: { EnemySnapshot.SpawnInfo } = {}
 local despawned: { number } = {}
 local candidates: { number } = {} -- reused for every hash query
 local killedListeners: { (Enemy) -> () } = {}
+local flashed: { [Enemy]: boolean } = {} -- enemies already sent a hit flash this frame
+local boss: Enemy? = nil
 
 local maxRadius = 0
 for _, def in Config.TYPES do
@@ -71,6 +79,12 @@ local function updateCounters()
 	model:SetAttribute("Kills", kills)
 end
 
+local function publishBoss()
+	local model = getArena().model
+	model:SetAttribute("BossName", if boss then boss.def.displayName or boss.kind else "")
+	model:SetAttribute("BossHealth", if boss then math.max(0, boss.health / boss.maxHealth) else 0)
+end
+
 local function remove(enemy: Enemy)
 	if enemies[enemy.id] ~= enemy then
 		return
@@ -78,6 +92,10 @@ local function remove(enemy: Enemy)
 	enemies[enemy.id] = nil
 	aliveCount -= 1
 	table.insert(despawned, enemy.id)
+	if enemy == boss then
+		boss = nil
+		publishBoss()
+	end
 end
 
 local function nearestTarget(targets: { Target }, x: number, z: number): (Target?, number)
@@ -95,6 +113,8 @@ end
 
 function EnemyService.init(newArena: Arena.Arena)
 	arena = newArena
+	NetBatch.register(Remotes.EnemiesHit)
+	publishBoss()
 end
 
 -- Calls `listener(enemy)` whenever an enemy is killed (not when the field is cleared).
@@ -124,12 +144,17 @@ function EnemyService.spawn(kind: string, x: number, z: number, scaling: Scaling
 		contactDamage = def.contactDamage * scale.damage,
 		xp = def.xp * scale.xp,
 		attackReadyAt = 0,
+		shotReadyAt = 0,
 		hitReadyAt = {},
 	}
 	enemies[enemy.id] = enemy
 	aliveCount += 1
 	table.insert(spawned, { id = enemy.id, kind = kind, x = x, z = z })
 	updateCounters()
+	if def.isBoss then
+		boss = enemy
+		publishBoss()
+	end
 	return enemy
 end
 
@@ -139,6 +164,13 @@ function EnemyService.damage(enemy: Enemy, amount: number): boolean
 		return false
 	end
 	enemy.health -= amount
+	if not flashed[enemy] then
+		flashed[enemy] = true
+		NetBatch.push(Remotes.EnemiesHit, enemy.id)
+	end
+	if enemy == boss then
+		publishBoss()
+	end
 	if enemy.health > 0 then
 		return false
 	end
@@ -233,20 +265,31 @@ end
 function EnemyService.move(dt: number, targets: { Target })
 	local currentArena = getArena()
 	local separation = math.min(0.5, Config.SEPARATION_STIFFNESS * dt)
+	-- A new frame: enemies can flash again.
+	table.clear(flashed)
 
 	for _, enemy in enemies do
 		local def = enemy.def
 
-		-- Chase the nearest living player, stopping when touching them.
 		local moveX, moveZ = 0, 0
 		local target, distSq = nearestTarget(targets, enemy.x, enemy.z)
 		if target then
 			local dist = math.sqrt(distSq)
-			local stopAt = def.radius + Config.PLAYER_RADIUS
-			if dist > stopAt then
-				local step = math.min(def.speed * dt, dist - stopAt)
+			local ranged = def.ranged
+			if def.behavior == "ranged" and ranged and dist > 1e-3 then
+				-- Keep within the preferred distance band: close in when far, back off when near.
+				local direction = if dist > ranged.preferredMax then 1 elseif dist < ranged.preferredMin then -1 else 0
+				local step = def.speed * dt * direction
 				moveX = (target.x - enemy.x) / dist * step
 				moveZ = (target.z - enemy.z) / dist * step
+			else
+				-- Chase, stopping when touching.
+				local stopAt = def.radius + Config.PLAYER_RADIUS
+				if dist > stopAt then
+					local step = math.min(def.speed * dt, dist - stopAt)
+					moveX = (target.x - enemy.x) / dist * step
+					moveZ = (target.z - enemy.z) / dist * step
+				end
 			end
 		end
 

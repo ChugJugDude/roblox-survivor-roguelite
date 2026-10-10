@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
+local Chests = require(script.Parent.Chests)
 local EnemyService = require(script.Parent.EnemyService)
 local Portal = require(script.Parent.Portal)
 local Progression = require(script.Parent.Progression)
@@ -64,6 +65,7 @@ local function startRun(now: number)
 	Progression.reset()
 	Upgrades.reset()
 	ProjectileService.clear()
+	Chests.clear()
 	Portal.close()
 	stage = 1
 	runStartedAt = now + Config.COUNTDOWN

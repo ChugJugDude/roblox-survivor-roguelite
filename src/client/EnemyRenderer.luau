@@ -26,6 +26,8 @@ type Entry = {
 	visual: EnemyModels.Visual,
 	samples: { Sample }, -- oldest first
 	yaw: number,
+	flashUntil: number, -- os.clock time
+	flashing: boolean,
 }
 
 local MAX_SAMPLES = 10
@@ -77,7 +79,19 @@ local function onSpawned(list: any)
 			-- snapshots arrive.
 			samples = { { t = 0, x = info.x, z = info.z } },
 			yaw = 0,
+			flashUntil = 0,
+			flashing = false,
 		}
+	end
+end
+
+local FLASH_COLOR = Color3.new(1, 1, 1)
+
+local function setFlash(entry: Entry, on: boolean)
+	entry.flashing = on
+	local visual = entry.visual
+	for i, part in visual.parts do
+		part.Color = if on then FLASH_COLOR else visual.colors[i]
 	end
 end
 
@@ -89,7 +103,23 @@ local function onDespawned(ids: any)
 		local entry = entries[id]
 		if entry then
 			entries[id] = nil
+			if entry.flashing then
+				setFlash(entry, false) -- pooled models must go back in their normal colors
+			end
 			release(entry.kind, entry.visual)
+		end
+	end
+end
+
+local function onHit(ids: any)
+	if typeof(ids) ~= "table" then
+		return
+	end
+	local flashUntil = os.clock() + Config.HIT_FLASH_TIME
+	for _, id in ids do
+		local entry = entries[id]
+		if entry then
+			entry.flashUntil = flashUntil
 		end
 	end
 end
@@ -141,7 +171,12 @@ local function render()
 	table.clear(moveParts)
 	table.clear(moveCFrames)
 
+	local clock = os.clock()
 	for _, entry in entries do
+		local shouldFlash = clock < entry.flashUntil
+		if shouldFlash ~= entry.flashing then
+			setFlash(entry, shouldFlash)
+		end
 		local x, z, dirX, dirZ = samplePosition(entry, renderTime)
 		if dirX * dirX + dirZ * dirZ > 1e-4 then
 			-- Face the direction of travel. A yaw of 0 faces -Z.
@@ -172,6 +207,7 @@ function EnemyRenderer.start()
 	Remotes.EnemySpawned.OnClientEvent:Connect(onSpawned)
 	Remotes.EnemyDespawned.OnClientEvent:Connect(onDespawned)
 	Remotes.EnemySnapshot.OnClientEvent:Connect(onSnapshot)
+	Remotes.EnemiesHit.OnClientEvent:Connect(onHit)
 	RunService.RenderStepped:Connect(render)
 end
 

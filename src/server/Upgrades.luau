@@ -305,6 +305,13 @@ function Upgrades.getBuild(player: Player): BuildStats.Build?
 	return if state then state.build else nil
 end
 
+-- An extra pick for one player (from a chest), during a run.
+function Upgrades.grantBonusPick(player: Player)
+	if active then
+		grantPick(player)
+	end
+end
+
 -- Studio dev command: set a weapon or passive to `level` (0 removes it). Returns false for an
 -- unknown id.
 function Upgrades.devSet(player: Player, id: string, level: number): boolean

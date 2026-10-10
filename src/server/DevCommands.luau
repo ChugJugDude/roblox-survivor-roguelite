@@ -10,6 +10,7 @@
 		killall     kill every enemy (counts as kills)
 		god         toggle invulnerability for every player
 		xp <n>      add n XP to the party
+		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 
 	Only the server can set attributes on server-owned instances, so clients can't trigger these.
@@ -19,6 +20,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Arena = require(script.Parent.Arena)
+local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Progression = require(script.Parent.Progression)
 local Run = require(script.Parent.Run)
@@ -47,6 +49,17 @@ local function execute(command: string)
 				warn(`[Dev] Unknown upgrade "{argument}"`)
 				return
 			end
+		end
+	elseif name == "spawn" and argument ~= "" then
+		local target = Characters.getTargets()[1]
+		if not target then
+			warn("[Dev] No living player to spawn near")
+			return
+		end
+		local ok, err = pcall(EnemyService.spawn, argument, target.x + 25, target.z)
+		if not ok then
+			warn(`[Dev] {err}`)
+			return
 		end
 	elseif name == "god" then
 		for _, player in Players:GetPlayers() do

@@ -16,6 +16,10 @@ local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
 local OVERTIME_COLOR = Color3.fromRGB(255, 90, 90)
 local PORTAL_COLOR = Color3.fromRGB(190, 120, 255)
 local XP_COLOR = Color3.fromRGB(90, 180, 255)
+local BOSS_COLOR = Color3.fromRGB(235, 70, 60)
+-- Portal and boss bars stack from here down, just under the stage/timer/kills block.
+local BARS_TOP = 98
+local BAR_SPACING = 42
 local FONT = Enum.Font.GothamBold
 
 local Hud = {}
@@ -97,7 +101,7 @@ function Hud.start(arena: Instance)
 	local portal = Create("Frame", {
 		Name = "Portal",
 		Size = UDim2.fromOffset(260, 44),
-		Position = UDim2.new(0.5, 0, 0, 116),
+		Position = UDim2.new(0.5, 0, 0, BARS_TOP),
 		AnchorPoint = Vector2.new(0.5, 0),
 		BackgroundTransparency = 1,
 		Visible = false,
@@ -122,6 +126,36 @@ function Hud.start(arena: Instance)
 		Parent = barBack,
 	})
 	Create("UICorner", { CornerRadius = UDim.new(0, 7), Parent = barFill })
+
+	-- Boss health. Placed each frame with the portal bar (see below).
+	local boss = Create("Frame", {
+		Name = "Boss",
+		Size = UDim2.fromOffset(360, 40),
+		Position = UDim2.new(0.5, 0, 0, BARS_TOP),
+		AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = gui,
+	})
+	local bossLabel = label(boss, "Name", UDim2.new(1, 0, 0, 18), UDim2.fromScale(0.5, 0), 16)
+	bossLabel.TextColor3 = BOSS_COLOR
+	local bossBack = Create("Frame", {
+		Name = "Bar",
+		Size = UDim2.new(1, 0, 0, 14),
+		Position = UDim2.fromOffset(0, 22),
+		BackgroundColor3 = Color3.fromRGB(45, 20, 20),
+		BorderSizePixel = 0,
+		Parent = boss,
+	})
+	Create("UICorner", { CornerRadius = UDim.new(0, 7), Parent = bossBack })
+	local bossFill = Create("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = BOSS_COLOR,
+		BorderSizePixel = 0,
+		Parent = bossBack,
+	})
+	Create("UICorner", { CornerRadius = UDim.new(0, 7), Parent = bossFill })
 
 	local banner = label(gui, "Banner", UDim2.new(1, 0, 0, 80), UDim2.fromScale(0.5, 0.3), 64)
 
@@ -186,11 +220,28 @@ function Hud.start(arena: Instance)
 			set(timerLabel, "Text", "")
 		end
 
+		local bossName = arena:GetAttribute("BossName") or ""
+		set(boss, "Visible", inRun and bossName ~= "")
+		if bossName ~= "" then
+			set(bossLabel, "Text", string.upper(bossName))
+			set(bossFill, "Size", UDim2.fromScale(math.clamp(arena:GetAttribute("BossHealth") or 0, 0, 1), 1))
+		end
+
 		set(portal, "Visible", phase == "Overtime")
 		if phase == "Overtime" then
 			local charge = arena:GetAttribute("PortalCharge") or 0
 			set(portalLabel, "Text", `CHARGE THE PORTAL  {math.floor(charge * 100)}%`)
 			set(barFill, "Size", UDim2.fromScale(math.clamp(charge, 0, 1), 1))
+		end
+
+		-- Stack whichever bars are showing right under the timer, so they stay near the top on
+		-- short screens instead of covering the player.
+		local barY = BARS_TOP
+		for _, bar in { portal, boss } do
+			if bar.Visible then
+				set(bar, "Position", UDim2.new(0.5, 0, 0, barY))
+				barY += BAR_SPACING
+			end
 		end
 
 		if phase == "Countdown" then

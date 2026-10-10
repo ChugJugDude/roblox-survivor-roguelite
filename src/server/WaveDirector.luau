@@ -1,6 +1,6 @@
 --!strict
 -- Spawns enemies during stages and overtime, following the current stage's timeline in
--- Config.Waves, with Config.Run's overtime ramp on top.
+-- Config.Waves, with Config.Run's overtime ramp on top, plus each stage's mini-boss.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,12 +8,14 @@ local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Run = require(script.Parent.Run)
+local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local Config = require(ReplicatedStorage.Shared.Config.Waves)
 local RunConfig = require(ReplicatedStorage.Shared.Config.Run)
 
 local random = Random.new()
 local arena: Arena.Arena? = nil
 local nextSpawnAt = 0
+local miniBossSpawned = false
 
 local WaveDirector = {}
 
@@ -81,18 +83,41 @@ function WaveDirector.step(now: number, targets: { Characters.Target })
 	end
 	maxAlive = math.min(maxAlive, Config.HARD_CAP)
 
+	local scaling: EnemyService.Scaling = {
+		health = stageDef.healthMultiplier,
+		damage = stageDef.damageMultiplier,
+		xp = stageDef.xpMultiplier,
+	}
+
+	-- The mini-boss arrives once per stage. Before its time comes around (including after a stage
+	-- restarts), it's due again.
+	local miniBossAt = stageDef.miniBossAt
+	if stageDef.miniBoss and miniBossAt then
+		if Run.stageElapsed(now) < miniBossAt then
+			miniBossSpawned = false
+		elseif not miniBossSpawned then
+			miniBossSpawned = true
+			local target = targets[random:NextInteger(1, #targets)]
+			local x, z = pickSpawnPoint(currentArena, target)
+			EnemyService.spawn(stageDef.miniBoss, x, z, scaling)
+		end
+	end
+
 	if now < nextSpawnAt or EnemyService.count() >= maxAlive then
 		return
 	end
 	nextSpawnAt = now + interval
 
+	local kind = pickKind(segment.mix)
 	local target = targets[random:NextInteger(1, #targets)]
 	local x, z = pickSpawnPoint(currentArena, target)
-	EnemyService.spawn(pickKind(segment.mix), x, z, {
-		health = stageDef.healthMultiplier,
-		damage = stageDef.damageMultiplier,
-		xp = stageDef.xpMultiplier,
-	})
+	local groupSize = EnemyConfig.TYPES[kind].groupSize or 1
+	for _ = 1, groupSize do
+		local scatterX = if groupSize > 1 then random:NextNumber(-1, 1) * Config.GROUP_SCATTER else 0
+		local scatterZ = if groupSize > 1 then random:NextNumber(-1, 1) * Config.GROUP_SCATTER else 0
+		local spawnX, spawnZ = Arena.clamp(currentArena, x + scatterX, z + scatterZ, Config.ARENA_MARGIN)
+		EnemyService.spawn(kind, spawnX, spawnZ, scaling)
+	end
 end
 
 return WaveDirector

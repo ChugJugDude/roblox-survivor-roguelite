@@ -8,6 +8,22 @@ export type EnemyDef = {
 	contactDamage: number,
 	attackCooldown: number, -- seconds between contact hits from one enemy
 	xp: number, -- XP in the gem it drops
+	-- "chase" walks straight at the nearest player; "ranged" keeps a distance band and shoots.
+	behavior: "chase" | "ranged",
+	groupSize: number?, -- spawns this many together (bats)
+	ranged: RangedDef?,
+	isBoss: boolean?, -- shown on the boss health bar
+	dropsChest: boolean?,
+	displayName: string?, -- for the boss bar
+}
+
+export type RangedDef = {
+	preferredMin: number, -- backs away when closer than this
+	preferredMax: number, -- walks closer when farther than this
+	shotRange: number,
+	shotCooldown: number,
+	shotSpeed: number,
+	shotDamage: number,
 }
 
 local Enemies = {
@@ -19,6 +35,49 @@ local Enemies = {
 			contactDamage = 8,
 			attackCooldown = 1,
 			xp = 1,
+			behavior = "chase",
+		}),
+		-- Fast and fragile, in packs. Pressures the player to keep moving.
+		Bat = table.freeze({
+			maxHealth = 12,
+			speed = 15,
+			radius = 1,
+			contactDamage = 5,
+			attackCooldown = 0.8,
+			xp = 1,
+			behavior = "chase",
+			groupSize = 5,
+		}),
+		-- Hangs back and fires slow arrows the player has to dodge.
+		SkeletonArcher = table.freeze({
+			maxHealth = 25,
+			speed = 8,
+			radius = 1.4,
+			contactDamage = 6,
+			attackCooldown = 1,
+			xp = 2,
+			behavior = "ranged",
+			ranged = table.freeze({
+				preferredMin = 18,
+				preferredMax = 26,
+				shotRange = 34,
+				shotCooldown = 2.5,
+				shotSpeed = 22,
+				shotDamage = 10,
+			}),
+		}),
+		-- Mid-stage mini-boss. Slow, tanky, hits hard, drops a chest.
+		GoblinGiant = table.freeze({
+			maxHealth = 600,
+			speed = 6,
+			radius = 3.5,
+			contactDamage = 20,
+			attackCooldown = 1.2,
+			xp = 25,
+			behavior = "chase",
+			isBoss = true,
+			dropsChest = true,
+			displayName = "Goblin Giant",
 		}),
 	}) :: { [string]: EnemyDef },
 
@@ -36,6 +95,8 @@ local Enemies = {
 	-- Clients draw enemies this many seconds in the past so they always have two snapshots to
 	-- blend between. Keep it above 1 / SNAPSHOT_RATE.
 	INTERPOLATION_DELAY = 0.1,
+	-- How long an enemy flashes white when hit.
+	HIT_FLASH_TIME = 0.1,
 }
 
 return table.freeze(Enemies)
