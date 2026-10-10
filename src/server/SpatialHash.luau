@@ -35,6 +35,23 @@ function SpatialHash.insert(hash: SpatialHash, id: number, x: number, z: number)
 	end
 end
 
+-- Removes an id that was inserted at (x, z). For grids that aren't rebuilt every frame.
+function SpatialHash.remove(hash: SpatialHash, id: number, x: number, z: number)
+	local key = cellKey(math.floor(x / hash.cellSize), math.floor(z / hash.cellSize))
+	local cell = hash.cells[key]
+	if not cell then
+		return
+	end
+	local index = table.find(cell, id)
+	if index then
+		cell[index] = cell[#cell]
+		cell[#cell] = nil
+	end
+	if #cell == 0 then
+		hash.cells[key] = nil
+	end
+end
+
 -- Appends to `out` the ids in every cell touching the square around (x, z). The results can
 -- include ids farther away than `radius`, so check the real distance.
 function SpatialHash.query(hash: SpatialHash, x: number, z: number, radius: number, out: { number })

@@ -88,7 +88,11 @@ function WaveDirector.step(now: number, targets: { Characters.Target })
 
 	local target = targets[random:NextInteger(1, #targets)]
 	local x, z = pickSpawnPoint(currentArena, target)
-	EnemyService.spawn(pickKind(segment.mix), x, z, stageDef.healthMultiplier, stageDef.damageMultiplier)
+	EnemyService.spawn(pickKind(segment.mix), x, z, {
+		health = stageDef.healthMultiplier,
+		damage = stageDef.damageMultiplier,
+		xp = stageDef.xpMultiplier,
+	})
 end
 
 return WaveDirector

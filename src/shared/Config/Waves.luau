@@ -13,6 +13,7 @@ export type Segment = {
 export type Stage = {
 	healthMultiplier: number,
 	damageMultiplier: number,
+	xpMultiplier: number,
 	segments: { Segment },
 }
 
@@ -21,6 +22,7 @@ return table.freeze({
 		{
 			healthMultiplier = 1,
 			damageMultiplier = 1,
+			xpMultiplier = 1,
 			segments = {
 				{ at = 0, interval = 0.8, maxAlive = 25, mix = { Goblin = 1 } },
 				{ at = 60, interval = 0.55, maxAlive = 40, mix = { Goblin = 1 } },
@@ -30,6 +32,7 @@ return table.freeze({
 		{
 			healthMultiplier = 1.8,
 			damageMultiplier = 1.25,
+			xpMultiplier = 2,
 			segments = {
 				{ at = 0, interval = 0.6, maxAlive = 40, mix = { Goblin = 1 } },
 				{ at = 60, interval = 0.45, maxAlive = 60, mix = { Goblin = 1 } },
@@ -39,6 +42,7 @@ return table.freeze({
 		{
 			healthMultiplier = 3,
 			damageMultiplier = 1.5,
+			xpMultiplier = 3,
 			segments = {
 				{ at = 0, interval = 0.45, maxAlive = 60, mix = { Goblin = 1 } },
 				{ at = 60, interval = 0.35, maxAlive = 80, mix = { Goblin = 1 } },

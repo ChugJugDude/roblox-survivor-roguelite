@@ -4,12 +4,14 @@
 local BladeRenderer = require(script.BladeRenderer)
 local CameraController = require(script.CameraController)
 local EnemyRenderer = require(script.EnemyRenderer)
+local GemRenderer = require(script.GemRenderer)
 local Hud = require(script.UI.Hud)
 local PortalPointer = require(script.UI.PortalPointer)
 local Results = require(script.UI.Results)
 
 CameraController.start()
 EnemyRenderer.start()
+GemRenderer.start()
 BladeRenderer.start()
 
 local arena = workspace:WaitForChild("Arena")

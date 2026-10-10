@@ -7,6 +7,7 @@ export type EnemyDef = {
 	radius: number, -- body size for crowding, contact, and weapon hits
 	contactDamage: number,
 	attackCooldown: number, -- seconds between contact hits from one enemy
+	xp: number, -- XP in the gem it drops
 }
 
 local Enemies = {
@@ -17,6 +18,7 @@ local Enemies = {
 			radius = 1.5,
 			contactDamage = 8,
 			attackCooldown = 1,
+			xp = 1,
 		}),
 	}) :: { [string]: EnemyDef },
 

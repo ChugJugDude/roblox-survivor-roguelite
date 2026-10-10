@@ -64,6 +64,14 @@ return table.freeze({
 	-- dropped or arrive out of order.
 	EnemySnapshot = remote("UnreliableRemoteEvent", "EnemySnapshot") :: UnreliableRemoteEvent,
 
+	-- Server -> client. Payload: { { id: number, x: number, z: number, value: number } }, batched per
+	-- frame. A client can get the same id twice (when it joins mid-run); ignore the repeat.
+	GemsSpawned = remote("RemoteEvent", "GemsSpawned") :: RemoteEvent,
+
+	-- Server -> client. Payload: { { id: number, userId: number } }, batched per frame. userId is the
+	-- player who picked the gem up (so it can fly to them), or 0 if it was just removed.
+	GemsCollected = remote("RemoteEvent", "GemsCollected") :: RemoteEvent,
+
 	-- Client -> server. No arguments. Asks to start a new run from the results screen. Ignored
 	-- unless the run has ended; rate-limited per player.
 	RequestRestart = remote("RemoteEvent", "RequestRestart") :: RemoteEvent,

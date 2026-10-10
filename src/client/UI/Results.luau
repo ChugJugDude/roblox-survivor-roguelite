@@ -37,7 +37,7 @@ function Results.start(arena: Instance)
 	})
 	local panel = Create("Frame", {
 		Name = "Panel",
-		Size = UDim2.fromOffset(320, 300),
+		Size = UDim2.fromOffset(320, 330),
 		Position = UDim2.fromScale(0.5, 0.5),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundColor3 = Color3.fromRGB(35, 32, 45),
@@ -57,7 +57,7 @@ function Results.start(arena: Instance)
 	})
 	local stats = Create("TextLabel", {
 		Name = "Stats",
-		Size = UDim2.new(1, -40, 0, 110),
+		Size = UDim2.new(1, -40, 0, 140),
 		Position = UDim2.fromOffset(20, 80),
 		BackgroundTransparency = 1,
 		Font = FONT,
@@ -100,10 +100,11 @@ function Results.start(arena: Instance)
 		title.Text = if victory then "VICTORY!" else "DEFEATED"
 		title.TextColor3 = if victory then VICTORY_COLOR else DEFEAT_COLOR
 		stats.Text = string.format(
-			"Time  %s\nStage  %d / %d\nKills  %d",
+			"Time  %s\nStage  %d / %d\nLevel  %d\nKills  %d",
 			TimeFormat.minutesSeconds(arena:GetAttribute("ResultTime") or 0),
 			arena:GetAttribute("ResultStage") or 0,
 			Config.STAGE_COUNT,
+			arena:GetAttribute("ResultLevel") or 1,
 			arena:GetAttribute("ResultKills") or 0
 		)
 		if UserInputService.GamepadEnabled then

@@ -9,7 +9,7 @@
 		Phase        "Waiting" | "Countdown" | "Stage" | "Overtime" | "Transition" | "Victory" | "Defeat"
 		Stage        current stage number
 		PhaseEndsAt  server time the timed phases end (0 when not timed)
-		ResultTime, ResultStage, ResultKills   set when the run ends
+		ResultTime, ResultStage, ResultKills, ResultLevel   set when the run ends
 ]]
 
 local Players = game:GetService("Players")
@@ -19,6 +19,7 @@ local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Portal = require(script.Parent.Portal)
+local Progression = require(script.Parent.Progression)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -58,6 +59,7 @@ end
 local function startRun(now: number)
 	EnemyService.clear()
 	EnemyService.resetKills()
+	Progression.reset()
 	Portal.close()
 	stage = 1
 	runStartedAt = now + Config.COUNTDOWN
@@ -74,6 +76,7 @@ local function endRun(result: Phase, now: number)
 	model:SetAttribute("ResultTime", math.max(0, now - runStartedAt))
 	model:SetAttribute("ResultStage", stage)
 	model:SetAttribute("ResultKills", EnemyService.getKills())
+	model:SetAttribute("ResultLevel", Progression.getLevel())
 	setPhase(result, now)
 end
 
@@ -130,6 +133,8 @@ function Run.step(now: number, dt: number, targets: { Characters.Target })
 			end
 		elseif Portal.step(dt, targets) then
 			Portal.close()
+			-- Stage cleared: every gem on the floor flies to its nearest player.
+			Progression.vacuum(targets)
 			if stage >= Config.STAGE_COUNT then
 				endRun("Victory", now)
 			else

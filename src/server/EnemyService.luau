@@ -26,9 +26,19 @@ export type Enemy = {
 	health: number,
 	maxHealth: number, -- after stage scaling
 	contactDamage: number, -- after stage scaling
+	xp: number, -- after stage scaling
 	attackReadyAt: number,
 	hitReadyAt: { [any]: number }, -- per attacker, when they can hit this enemy again
 }
+
+-- Multipliers on an enemy kind's base stats, e.g. for later stages.
+export type Scaling = {
+	health: number,
+	damage: number,
+	xp: number,
+}
+
+local NO_SCALING: Scaling = table.freeze({ health = 1, damage = 1, xp = 1 })
 
 -- Ids go over the network as u16.
 local MAX_ID = 65535
@@ -42,6 +52,7 @@ local hash = SpatialHash.new(Config.SPATIAL_CELL_SIZE)
 local spawned: { EnemySnapshot.SpawnInfo } = {}
 local despawned: { number } = {}
 local candidates: { number } = {} -- reused for every hash query
+local killedListeners: { (Enemy) -> () } = {}
 
 local maxRadius = 0
 for _, def in Config.TYPES do
@@ -86,16 +97,15 @@ function EnemyService.init(newArena: Arena.Arena)
 	arena = newArena
 end
 
--- `healthMultiplier` and `damageMultiplier` scale the kind's base stats (for later stages).
-function EnemyService.spawn(
-	kind: string,
-	x: number,
-	z: number,
-	healthMultiplier: number?,
-	damageMultiplier: number?
-): Enemy
+-- Calls `listener(enemy)` whenever an enemy is killed (not when the field is cleared).
+function EnemyService.onKilled(listener: (Enemy) -> ())
+	table.insert(killedListeners, listener)
+end
+
+function EnemyService.spawn(kind: string, x: number, z: number, scaling: Scaling?): Enemy
 	local def = Config.TYPES[kind]
 	assert(def, `Unknown enemy kind "{kind}"`)
+	local scale = scaling or NO_SCALING
 
 	-- Wrap around instead of reusing freed ids right away, so a client never confuses a new enemy
 	-- with one that just died.
@@ -109,9 +119,10 @@ function EnemyService.spawn(
 		def = def,
 		x = x,
 		z = z,
-		health = def.maxHealth * (healthMultiplier or 1),
-		maxHealth = def.maxHealth * (healthMultiplier or 1),
-		contactDamage = def.contactDamage * (damageMultiplier or 1),
+		health = def.maxHealth * scale.health,
+		maxHealth = def.maxHealth * scale.health,
+		contactDamage = def.contactDamage * scale.damage,
+		xp = def.xp * scale.xp,
 		attackReadyAt = 0,
 		hitReadyAt = {},
 	}
@@ -134,6 +145,9 @@ function EnemyService.damage(enemy: Enemy, amount: number): boolean
 	remove(enemy)
 	kills += 1
 	updateCounters()
+	for _, listener in killedListeners do
+		listener(enemy)
+	end
 	return true
 end
 

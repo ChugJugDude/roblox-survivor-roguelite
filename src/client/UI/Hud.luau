@@ -14,6 +14,7 @@ local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
 local OVERTIME_COLOR = Color3.fromRGB(255, 90, 90)
 local PORTAL_COLOR = Color3.fromRGB(190, 120, 255)
+local XP_COLOR = Color3.fromRGB(90, 180, 255)
 local FONT = Enum.Font.GothamBold
 
 local Hud = {}
@@ -48,10 +49,42 @@ function Hud.start(arena: Instance)
 		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
 	})
 
+	-- Party XP across the top of the screen, with the level at its left end.
+	local xpBack = Create("Frame", {
+		Name = "XP",
+		Size = UDim2.new(1, -16, 0, 12),
+		Position = UDim2.new(0.5, 0, 0, 2),
+		AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundColor3 = Color3.fromRGB(20, 30, 45),
+		BorderSizePixel = 0,
+		Parent = gui,
+	})
+	Create("UICorner", { CornerRadius = UDim.new(0, 6), Parent = xpBack })
+	local xpFill = Create("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = XP_COLOR,
+		BorderSizePixel = 0,
+		Parent = xpBack,
+	})
+	Create("UICorner", { CornerRadius = UDim.new(0, 6), Parent = xpFill })
+	local levelLabel = Create("TextLabel", {
+		Name = "Level",
+		Size = UDim2.fromOffset(80, 22),
+		Position = UDim2.fromOffset(4, 14),
+		BackgroundTransparency = 1,
+		Font = FONT,
+		TextSize = 18,
+		TextColor3 = XP_COLOR,
+		TextStrokeTransparency = 0.4,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = xpBack,
+	})
+
 	local top = Create("Frame", {
 		Name = "Top",
 		Size = UDim2.fromOffset(300, 96),
-		Position = UDim2.new(0.5, 0, 0, 4),
+		Position = UDim2.new(0.5, 0, 0, 16),
 		AnchorPoint = Vector2.new(0.5, 0),
 		BackgroundTransparency = 1,
 		Parent = gui,
@@ -63,7 +96,7 @@ function Hud.start(arena: Instance)
 	local portal = Create("Frame", {
 		Name = "Portal",
 		Size = UDim2.fromOffset(260, 44),
-		Position = UDim2.new(0.5, 0, 0, 104),
+		Position = UDim2.new(0.5, 0, 0, 116),
 		AnchorPoint = Vector2.new(0.5, 0),
 		BackgroundTransparency = 1,
 		Visible = false,
@@ -99,6 +132,10 @@ function Hud.start(arena: Instance)
 		local inRun = phase == "Countdown" or phase == "Stage" or phase == "Overtime" or phase == "Transition"
 
 		set(top, "Visible", inRun)
+		set(xpBack, "Visible", inRun)
+		local toNext = arena:GetAttribute("XPToNext") or 1
+		set(xpFill, "Size", UDim2.fromScale(math.clamp((arena:GetAttribute("PartyXP") or 0) / toNext, 0, 1), 1))
+		set(levelLabel, "Text", `LV {arena:GetAttribute("PartyLevel") or 1}`)
 		set(stageLabel, "Text", `STAGE {stage} / {Config.STAGE_COUNT}`)
 		set(killsLabel, "Text", `Kills {arena:GetAttribute("Kills") or 0}`)
 		if phase == "Overtime" then

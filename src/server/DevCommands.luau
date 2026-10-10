@@ -9,6 +9,7 @@
 		stage <n>   jump to the start of stage n
 		killall     kill every enemy (counts as kills)
 		god         toggle invulnerability for every player
+		xp <n>      add n XP to the party
 
 	Only the server can set attributes on server-owned instances, so clients can't trigger these.
 ]]
@@ -18,6 +19,7 @@ local RunService = game:GetService("RunService")
 
 local Arena = require(script.Parent.Arena)
 local EnemyService = require(script.Parent.EnemyService)
+local Progression = require(script.Parent.Progression)
 local Run = require(script.Parent.Run)
 
 local ATTRIBUTE = "Dev_Command"
@@ -35,6 +37,8 @@ local function execute(command: string)
 		for _, enemy in EnemyService.getAll() do
 			EnemyService.damage(enemy, math.huge)
 		end
+	elseif name == "xp" and tonumber(argument) then
+		Progression.addXP(tonumber(argument) :: number)
 	elseif name == "god" then
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("Dev_God", not player:GetAttribute("Dev_God"))
