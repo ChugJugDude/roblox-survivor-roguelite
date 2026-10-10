@@ -305,6 +305,23 @@ function Upgrades.getBuild(player: Player): BuildStats.Build?
 	return if state then state.build else nil
 end
 
+-- Studio dev command: set a weapon or passive to `level` (0 removes it). Returns false for an
+-- unknown id.
+function Upgrades.devSet(player: Player, id: string, level: number): boolean
+	local state = getState(player)
+	local slot = if Config.WEAPONS[id]
+		then state.build.weapons
+		elseif Config.PASSIVES[id] then state.build.passives
+		else nil
+	if not slot then
+		return false
+	end
+	slot[id] = if level > 0 then math.clamp(math.floor(level), 1, Config.MAX_LEVEL) else nil
+	publishBuild(player, state)
+	applyStats(player)
+	return true
+end
+
 -- Fresh starting builds for everyone, for a new run. Call before characters spawn.
 function Upgrades.reset()
 	for _, player in Players:GetPlayers() do

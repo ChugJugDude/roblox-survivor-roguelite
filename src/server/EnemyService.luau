@@ -212,6 +212,24 @@ function EnemyService.queryRadius(x: number, z: number, radius: number, out: { E
 	return out
 end
 
+local nearestBuffer: { Enemy } = {}
+
+-- The closest living enemy within `range` of (x, z), or nil.
+function EnemyService.nearest(x: number, z: number, range: number): Enemy?
+	table.clear(nearestBuffer)
+	EnemyService.queryRadius(x, z, range, nearestBuffer)
+	local best: Enemy? = nil
+	local bestDistSq = math.huge
+	for _, enemy in nearestBuffer do
+		local dx, dz = enemy.x - x, enemy.z - z
+		local distSq = dx * dx + dz * dz
+		if distSq < bestDistSq then
+			best, bestDistSq = enemy, distSq
+		end
+	end
+	return best
+end
+
 function EnemyService.move(dt: number, targets: { Target })
 	local currentArena = getArena()
 	local separation = math.min(0.5, Config.SEPARATION_STIFFNESS * dt)

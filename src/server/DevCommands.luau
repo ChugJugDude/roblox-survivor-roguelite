@@ -10,6 +10,7 @@
 		killall     kill every enemy (counts as kills)
 		god         toggle invulnerability for every player
 		xp <n>      add n XP to the party
+		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 
 	Only the server can set attributes on server-owned instances, so clients can't trigger these.
 ]]
@@ -21,6 +22,7 @@ local Arena = require(script.Parent.Arena)
 local EnemyService = require(script.Parent.EnemyService)
 local Progression = require(script.Parent.Progression)
 local Run = require(script.Parent.Run)
+local Upgrades = require(script.Parent.Upgrades)
 
 local ATTRIBUTE = "Dev_Command"
 
@@ -28,7 +30,7 @@ local DevCommands = {}
 
 local function execute(command: string)
 	local now = workspace:GetServerTimeNow()
-	local name, argument = string.match(command, "^%s*(%S+)%s*(%S*)")
+	local name, argument, extra = string.match(command, "^%s*(%S+)%s*(%S*)%s*(%S*)")
 	if name == "skip" then
 		Run.devSkip(now)
 	elseif name == "stage" and tonumber(argument) then
@@ -39,6 +41,13 @@ local function execute(command: string)
 		end
 	elseif name == "xp" and tonumber(argument) then
 		Progression.addXP(tonumber(argument) :: number)
+	elseif name == "give" and tonumber(extra) then
+		for _, player in Players:GetPlayers() do
+			if not Upgrades.devSet(player, argument, tonumber(extra) :: number) then
+				warn(`[Dev] Unknown upgrade "{argument}"`)
+				return
+			end
+		end
 	elseif name == "god" then
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("Dev_God", not player:GetAttribute("Dev_God"))

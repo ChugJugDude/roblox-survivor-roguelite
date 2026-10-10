@@ -61,6 +61,45 @@ function BuildStats.spinningBlade(build: Build): Config.SpinningBladeStats?
 	}
 end
 
+-- The player's Volley Arrows after passives, or nil if they don't have it.
+function BuildStats.volleyArrows(build: Build): Config.VolleyArrowsStats?
+	local level = build.weapons.VolleyArrows
+	if not level then
+		return nil
+	end
+	local base: Config.VolleyArrowsStats = Config.WEAPONS.VolleyArrows.levels[level]
+	local modifiers = BuildStats.modifiers(build)
+	return {
+		cooldown = base.cooldown * modifiers.cooldown,
+		arrowCount = base.arrowCount,
+		spread = base.spread,
+		speed = base.speed,
+		damage = base.damage * modifiers.damage,
+		pierce = base.pierce,
+		range = base.range,
+		radius = base.radius,
+	}
+end
+
+-- The player's Fireball after passives, or nil if they don't have it.
+function BuildStats.fireball(build: Build): Config.FireballStats?
+	local level = build.weapons.Fireball
+	if not level then
+		return nil
+	end
+	local base: Config.FireballStats = Config.WEAPONS.Fireball.levels[level]
+	local modifiers = BuildStats.modifiers(build)
+	return {
+		cooldown = base.cooldown * modifiers.cooldown,
+		count = base.count,
+		speed = base.speed,
+		damage = base.damage * modifiers.damage,
+		blastRadius = base.blastRadius * modifiers.area,
+		range = base.range,
+		radius = base.radius,
+	}
+end
+
 -- Reads a build from a Player's W_<weapon> / P_<passive> attributes (published by server/Upgrades).
 function BuildStats.fromAttributes(player: Player): Build
 	local build: Build = { weapons = {}, passives = {} }

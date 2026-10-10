@@ -20,6 +20,7 @@ local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Portal = require(script.Parent.Portal)
 local Progression = require(script.Parent.Progression)
+local ProjectileService = require(script.Parent.ProjectileService)
 local Upgrades = require(script.Parent.Upgrades)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -62,6 +63,7 @@ local function startRun(now: number)
 	EnemyService.resetKills()
 	Progression.reset()
 	Upgrades.reset()
+	ProjectileService.clear()
 	Portal.close()
 	stage = 1
 	runStartedAt = now + Config.COUNTDOWN
@@ -74,6 +76,7 @@ end
 local function endRun(result: Phase, now: number)
 	Upgrades.stop()
 	EnemyService.clear()
+	ProjectileService.clear()
 	Portal.close()
 	local model = getArena().model
 	model:SetAttribute("ResultTime", math.max(0, now - runStartedAt))
@@ -142,6 +145,7 @@ function Run.step(now: number, dt: number, targets: { Characters.Target })
 				endRun("Victory", now)
 			else
 				EnemyService.clear()
+				ProjectileService.clear()
 				stage += 1
 				setPhase("Transition", now, Config.STAGE_TRANSITION)
 			end

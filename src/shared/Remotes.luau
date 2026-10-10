@@ -72,6 +72,17 @@ return table.freeze({
 	-- player who picked the gem up (so it can fly to them), or 0 if it was just removed.
 	GemsCollected = remote("RemoteEvent", "GemsCollected") :: RemoteEvent,
 
+	-- Server -> client. Payload: { EntityNet.ProjectileInfo }, batched per frame. Projectiles fly in
+	-- straight lines, so clients work out positions themselves from this.
+	ProjectilesSpawned = remote("RemoteEvent", "ProjectilesSpawned") :: RemoteEvent,
+
+	-- Server -> client. Payload: { number } of projectile ids that stopped early (hit something).
+	-- Projectiles that reach their max distance just expire on the client.
+	ProjectilesRemoved = remote("RemoteEvent", "ProjectilesRemoved") :: RemoteEvent,
+
+	-- Server -> client. Payload: { EntityNet.ExplosionInfo }, batched per frame. Visual only.
+	Explosions = remote("RemoteEvent", "Explosions") :: RemoteEvent,
+
 	-- Server -> client. Payload: the player's open level-up choice, or nil to close it:
 	-- { options: { Upgrades.Option }, pending: number (picks queued, including this one),
 	--   rerolls: number }. Re-sent with the same options when more picks queue up.

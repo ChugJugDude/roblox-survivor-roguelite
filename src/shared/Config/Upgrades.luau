@@ -14,6 +14,27 @@ export type SpinningBladeStats = {
 	hitCooldown: number, -- seconds before one player's blades can hit the same enemy again
 }
 
+export type VolleyArrowsStats = {
+	cooldown: number, -- seconds between volleys
+	arrowCount: number,
+	spread: number, -- total fan angle in radians across all arrows
+	speed: number, -- studs per second
+	damage: number,
+	pierce: number, -- enemies one arrow can hit before it stops
+	range: number, -- only fires at enemies this close; arrows fly this far
+	radius: number, -- hit radius
+}
+
+export type FireballStats = {
+	cooldown: number,
+	count: number, -- fireballs per cast, each at a different enemy
+	speed: number,
+	damage: number, -- dealt to every enemy in the blast
+	blastRadius: number,
+	range: number,
+	radius: number, -- hit radius of the fireball itself
+}
+
 export type WeaponDef = {
 	name: string,
 	descriptions: { string }, -- what each level adds, shown on the card
@@ -36,6 +57,26 @@ local SPINNING_BLADE_LEVELS: { SpinningBladeStats } = {
 	{ bladeCount = 3, innerRadius = 2.5, outerRadius = 9, width = 1.3, spinSpeed = 4, damage = 14, hitCooldown = 0.4 },
 	{ bladeCount = 4, innerRadius = 2.5, outerRadius = 9, width = 1.3, spinSpeed = 4, damage = 14, hitCooldown = 0.4 },
 	{ bladeCount = 5, innerRadius = 2.5, outerRadius = 10, width = 1.4, spinSpeed = 4.5, damage = 18, hitCooldown = 0.4 },
+}
+
+-- Same one-row-per-level layout.
+-- stylua: ignore
+local VOLLEY_ARROWS_LEVELS: { VolleyArrowsStats } = {
+	{ cooldown = 1.4, arrowCount = 1, spread = 0, speed = 70, damage = 12, pierce = 1, range = 55, radius = 0.6 },
+	{ cooldown = 1.4, arrowCount = 2, spread = 0.25, speed = 70, damage = 12, pierce = 1, range = 55, radius = 0.6 },
+	{ cooldown = 1.4, arrowCount = 2, spread = 0.25, speed = 70, damage = 16, pierce = 2, range = 55, radius = 0.6 },
+	{ cooldown = 1.15, arrowCount = 3, spread = 0.35, speed = 70, damage = 16, pierce = 2, range = 55, radius = 0.6 },
+	{ cooldown = 1.15, arrowCount = 4, spread = 0.45, speed = 70, damage = 20, pierce = 3, range = 55, radius = 0.6 },
+}
+
+-- Same one-row-per-level layout.
+-- stylua: ignore
+local FIREBALL_LEVELS: { FireballStats } = {
+	{ cooldown = 2.2, count = 1, speed = 40, damage = 20, blastRadius = 5, range = 45, radius = 1 },
+	{ cooldown = 2.2, count = 1, speed = 40, damage = 26, blastRadius = 6, range = 45, radius = 1 },
+	{ cooldown = 2.2, count = 2, speed = 40, damage = 26, blastRadius = 6, range = 45, radius = 1 },
+	{ cooldown = 2.2, count = 2, speed = 40, damage = 34, blastRadius = 7, range = 45, radius = 1 },
+	{ cooldown = 1.8, count = 3, speed = 40, damage = 34, blastRadius = 7, range = 45, radius = 1 },
 }
 
 return table.freeze({
@@ -69,6 +110,28 @@ return table.freeze({
 				"+1 blade. +30% damage. Longer blades.",
 			},
 			levels = SPINNING_BLADE_LEVELS,
+		}),
+		VolleyArrows = table.freeze({
+			name = "Volley Arrows",
+			descriptions = {
+				"Fires arrows at the nearest enemy.",
+				"+1 arrow.",
+				"+33% damage. Arrows pierce 1 more enemy.",
+				"+1 arrow. Fires faster.",
+				"+1 arrow. +25% damage. Pierces 1 more.",
+			},
+			levels = VOLLEY_ARROWS_LEVELS,
+		}),
+		Fireball = table.freeze({
+			name = "Fireball",
+			descriptions = {
+				"Hurls a fireball that explodes on impact.",
+				"+30% damage. Bigger blast.",
+				"+1 fireball.",
+				"+30% damage. Bigger blast.",
+				"+1 fireball. Casts faster.",
+			},
+			levels = FIREBALL_LEVELS,
 		}),
 	}) :: { [string]: WeaponDef },
 
