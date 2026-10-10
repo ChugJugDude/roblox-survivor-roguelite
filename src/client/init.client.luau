@@ -17,13 +17,13 @@ local UpgradePicker = require(script.UI.UpgradePicker)
 -- picker uses.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-CameraController.start()
-EnemyRenderer.start()
-GemRenderer.start()
-ProjectileRenderer.start()
-BladeRenderer.start()
-
 local arena = workspace:WaitForChild("Arena")
+
+CameraController.start()
+EnemyRenderer.start(arena)
+GemRenderer.start()
+ProjectileRenderer.start(arena)
+BladeRenderer.start(arena)
 Hud.start(arena)
 PortalPointer.start(arena)
 Results.start(arena)

@@ -8,7 +8,7 @@
 	State is published as attributes on the Arena model for the HUD (and playtest tooling):
 		Phase        "Waiting" | "Countdown" | "Stage" | "Overtime" | "Transition" | "Victory" | "Defeat"
 		Stage        current stage number
-		PhaseEndsAt  server time the timed phases end (0 when not timed)
+		PhaseEndsAt  game time (shared/GameClock) the timed phases end (0 when not timed)
 		ResultTime, ResultStage, ResultKills, ResultLevel   set when the run ends
 ]]
 
@@ -19,6 +19,7 @@ local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
 local Chests = require(script.Parent.Chests)
 local EnemyService = require(script.Parent.EnemyService)
+local Pause = require(script.Parent.Pause)
 local Portal = require(script.Parent.Portal)
 local Progression = require(script.Parent.Progression)
 local ProjectileService = require(script.Parent.ProjectileService)
@@ -96,7 +97,7 @@ function Run.start(newArena: Arena.Arena)
 	assert(not started, "Run.start() was called twice")
 	started = true
 	arena = newArena
-	setPhase("Waiting", workspace:GetServerTimeNow())
+	setPhase("Waiting", Pause.now())
 
 	-- Players who join mid-run play from where the run is. Joining after it ended, they see the
 	-- results like everyone else.
@@ -117,7 +118,7 @@ function Run.start(newArena: Arena.Arena)
 		end
 		lastRestartRequest[player] = clock
 		if phase == "Victory" or phase == "Defeat" then
-			startRun(workspace:GetServerTimeNow())
+			startRun(Pause.now())
 		end
 	end)
 end

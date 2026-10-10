@@ -22,6 +22,7 @@ local RunService = game:GetService("RunService")
 local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
+local Pause = require(script.Parent.Pause)
 local Progression = require(script.Parent.Progression)
 local Run = require(script.Parent.Run)
 local Upgrades = require(script.Parent.Upgrades)
@@ -31,7 +32,7 @@ local ATTRIBUTE = "Dev_Command"
 local DevCommands = {}
 
 local function execute(command: string)
-	local now = workspace:GetServerTimeNow()
+	local now = Pause.now()
 	local name, argument, extra = string.match(command, "^%s*(%S+)%s*(%S*)%s*(%S*)")
 	if name == "skip" then
 		Run.devSkip(now)

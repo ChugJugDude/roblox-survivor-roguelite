@@ -13,6 +13,7 @@ local EnemyModels = require(script.Parent.EnemyModels)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Enemies)
 local EnemySnapshot = require(ReplicatedStorage.Shared.EnemySnapshot)
+local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 type Sample = {
@@ -36,6 +37,7 @@ local GROUND_Y = ArenaConfig.ORIGIN.Y
 local entries: { [number]: Entry } = {}
 local pools: { [string]: { EnemyModels.Visual } } = {}
 local folder: Folder? = nil
+local arena: Instance? = nil
 local started = false
 
 -- Reused every frame for BulkMoveTo.
@@ -167,7 +169,11 @@ local function samplePosition(entry: Entry, renderTime: number): (number, number
 end
 
 local function render()
-	local renderTime = workspace:GetServerTimeNow() - Config.INTERPOLATION_DELAY
+	local currentArena = arena
+	if not currentArena then
+		return
+	end
+	local renderTime = GameClock.read(currentArena) - Config.INTERPOLATION_DELAY
 	table.clear(moveParts)
 	table.clear(moveCFrames)
 
@@ -195,9 +201,10 @@ local function render()
 	end
 end
 
-function EnemyRenderer.start()
+function EnemyRenderer.start(newArena: Instance)
 	assert(not started, "EnemyRenderer.start() was called twice")
 	started = true
+	arena = newArena
 
 	local newFolder = Instance.new("Folder")
 	newFolder.Name = "EnemyVisuals"

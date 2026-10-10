@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local NetBatch = require(script.Parent.NetBatch)
+local Pause = require(script.Parent.Pause)
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local EntityNet = require(ReplicatedStorage.Shared.EntityNet)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -125,7 +126,7 @@ function ProjectileService.spawn(spec: Spec)
 		dirZ = spec.dirZ,
 		speed = spec.speed,
 		maxDistance = spec.maxDistance,
-		startedAt = workspace:GetServerTimeNow(),
+		startedAt = Pause.now(),
 	}
 	NetBatch.push(Remotes.ProjectilesSpawned, info)
 end

@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local EntityNet = require(ReplicatedStorage.Shared.EntityNet)
+local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 type Look = {
@@ -57,6 +58,7 @@ type Active = {
 local active: { [number]: Active } = {}
 local pools: { [string]: { BasePart } } = {}
 local folder: Folder? = nil
+local arena: Instance? = nil
 local started = false
 
 -- Reused every frame for BulkMoveTo.
@@ -163,7 +165,11 @@ local function onExplosions(list: any)
 end
 
 local function render()
-	local now = workspace:GetServerTimeNow()
+	local currentArena = arena
+	if not currentArena then
+		return
+	end
+	local now = GameClock.read(currentArena)
 	table.clear(moveParts)
 	table.clear(moveCFrames)
 
@@ -186,9 +192,10 @@ local function render()
 	end
 end
 
-function ProjectileRenderer.start()
+function ProjectileRenderer.start(newArena: Instance)
 	assert(not started, "ProjectileRenderer.start() was called twice")
 	started = true
+	arena = newArena
 
 	local newFolder = Instance.new("Folder")
 	newFolder.Name = "ProjectileVisuals"

@@ -13,7 +13,7 @@ export type ProjectileInfo = {
 	dirZ: number,
 	speed: number, -- studs per second
 	maxDistance: number,
-	startedAt: number, -- server time it was fired
+	startedAt: number, -- game time (shared/GameClock) it was fired
 }
 
 export type ExplosionInfo = {

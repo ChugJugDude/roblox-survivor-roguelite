@@ -94,7 +94,8 @@ A **wave director** controls spawns over time: which enemy types are allowed, sp
 
 - Parties of 1–4. Solo is the same mode with a party of 1.
 - **XP is shared** across the party, but each player gets their own level-up choice.
-- **The game does not pause on level-up** (it can't, with other players). The player picking gets ~2 seconds of invulnerability and the choice UI stays on screen until they pick; their weapons keep firing meanwhile.
+- **Level-ups pause the whole party.** XP is shared, so everyone levels at the same moment: the game pauses and every player picks at once, resuming when all have chosen (with 2+ players, a 15-second limit picks at random for anyone idle). After a pause, the next one waits at least 5 seconds of play; level-ups in between come up together in that next pause. Everyone gets a brief invulnerability grace on resume.
+- **Chest picks don't pause** (they belong to one player): the choice opens right away with ~2 seconds of invulnerability.
 - **Downed, not dead:** at 0 HP a player is downed. A teammate standing next to them for 3 seconds revives them at 50% HP. If the whole party is down, the run ends.
 - **Scaling with party size:** enemy HP and spawn rate scale up with players; per-player Shard rewards stay the same, so co-op is never punished.
 - Each player's build is their own; synergies between players (e.g., one slows, one does AoE) are a stretch goal, not v1.

@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 local Create = require(script.Parent.Create)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
+local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
 local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
 local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
@@ -197,8 +198,12 @@ function Hud.start(arena: Instance)
 	localPlayer.AttributeChanged:Connect(refreshBuild)
 	refreshBuild()
 
+	local picker: ScreenGui? = nil
 	RunService.RenderStepped:Connect(function()
-		local now = workspace:GetServerTimeNow()
+		if not picker then
+			picker = localPlayer.PlayerGui:FindFirstChild("UpgradePicker") :: ScreenGui?
+		end
+		local now = GameClock.read(arena)
 		local phase = arena:GetAttribute("Phase")
 		local stage = arena:GetAttribute("Stage") or 0
 		local endsAt = arena:GetAttribute("PhaseEndsAt") or 0
@@ -250,6 +255,9 @@ function Hud.start(arena: Instance)
 			set(banner, "Text", tostring(math.max(1, math.ceil(endsAt - now))))
 		elseif phase == "Transition" then
 			set(banner, "Text", `STAGE {stage}`)
+		elseif GameClock.isPaused(arena) and not (picker and picker.Enabled) then
+			-- Paused for level-ups, and this player has already chosen.
+			set(banner, "Text", "WAITING FOR OTHERS")
 		else
 			set(banner, "Text", "")
 		end

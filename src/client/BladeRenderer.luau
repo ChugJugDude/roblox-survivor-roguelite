@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local BladeOrbit = require(ReplicatedStorage.Shared.BladeOrbit)
+local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
 
 -- How far below the character's root part the blades spin (roughly waist height).
@@ -22,6 +23,7 @@ type Blades = {
 
 local bladesByCharacter: { [Model]: Blades } = {}
 local folder: Folder? = nil
+local arena: Instance? = nil
 local started = false
 
 -- Reused every frame.
@@ -57,7 +59,11 @@ local function createBlades(count: number, size: Vector3, color: Color3, shape: 
 end
 
 local function render()
-	local now = workspace:GetServerTimeNow()
+	local currentArena = arena
+	if not currentArena then
+		return
+	end
+	local now = GameClock.read(currentArena)
 	table.clear(seen)
 	table.clear(moveParts)
 	table.clear(moveCFrames)
@@ -117,9 +123,10 @@ local function render()
 	end
 end
 
-function BladeRenderer.start()
+function BladeRenderer.start(newArena: Instance)
 	assert(not started, "BladeRenderer.start() was called twice")
 	started = true
+	arena = newArena
 
 	local newFolder = Instance.new("Folder")
 	newFolder.Name = "BladeVisuals"

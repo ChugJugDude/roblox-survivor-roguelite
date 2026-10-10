@@ -2,9 +2,14 @@
 --[[
 	Each player's build (weapons and passives, with levels) and their level-up choice.
 
-	Every party level-up gives each player a pick. Picks queue up; one offer is open at a time, and
-	opening one gives a couple of seconds of invulnerability (the game never pauses). The server
-	generates the options and only accepts an index into the open offer.
+	Every party level-up gives each player a pick. Level-up picks wait for a pause: when anyone is
+	owed one (and at least PAUSE_COOLDOWN seconds of play have passed since the last pause), the
+	whole game pauses and every player chooses at once. It resumes when everyone is done; with 2+
+	players, PAUSE_TIMEOUT stops one idle player from holding up the party. Chest picks are one
+	player's, so they open right away without pausing, with a moment of invulnerability instead.
+
+	One offer is open per player at a time. The server generates the options and only accepts an
+	index into the open offer.
 
 	Builds replicate as Player attributes, W_<weapon> and P_<passive> = level, so the client can
 	use shared/BuildStats too (e.g. to draw the right number of blades).
@@ -14,6 +19,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Characters = require(script.Parent.Characters)
+local Pause = require(script.Parent.Pause)
 local Progression = require(script.Parent.Progression)
 local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
 local Config = require(ReplicatedStorage.Shared.Config.Upgrades)
@@ -32,7 +38,8 @@ export type Option = {
 
 type State = {
 	build: BuildStats.Build,
-	pending: number, -- picks owed, including the open one
+	levelPicks: number, -- owed from party level-ups; shown during a pause
+	chestPicks: number, -- owed from chests; shown right away
 	offer: { Option }?,
 	rerolls: number,
 	lastRequest: number,
@@ -44,6 +51,8 @@ local REQUEST_COOLDOWN = 0.1
 local states: { [Player]: State } = {}
 local active = false
 local started = false
+local pauseStartedAt = 0 -- os.clock() when the current pause began
+local lastResumedAt = -math.huge -- game time of the last resume
 local random = Random.new()
 
 local Upgrades = {}
@@ -54,6 +63,10 @@ local function count(levels: { [string]: number }): number
 		total += 1
 	end
 	return total
+end
+
+local function picksOwed(state: State): number
+	return state.levelPicks + state.chestPicks
 end
 
 local function publishBuild(player: Player, state: State)
@@ -68,7 +81,8 @@ end
 local function newState(): State
 	return {
 		build = { weapons = { [Config.STARTING_WEAPON] = 1 }, passives = {} },
-		pending = 0,
+		levelPicks = 0,
+		chestPicks = 0,
 		offer = nil,
 		rerolls = Config.REROLLS_PER_RUN,
 		lastRequest = 0,
@@ -226,7 +240,7 @@ local function sendOffer(player: Player, state: State)
 	if offer then
 		Remotes.UpgradeOffered:FireClient(player, {
 			options = offer,
-			pending = state.pending,
+			pending = picksOwed(state),
 			rerolls = state.rerolls,
 		})
 	else
@@ -234,21 +248,44 @@ local function sendOffer(player: Player, state: State)
 	end
 end
 
-local function openOffer(player: Player, state: State)
-	state.offer = generateOptions(state)
-
-	-- Brief invulnerability while they choose. The ForceField is the visible cue.
-	player:SetAttribute("InvulnerableUntil", workspace:GetServerTimeNow() + Config.INVULNERABILITY)
+-- Makes the player invulnerable for `seconds` of game time. The ForceField is the visible cue.
+local function grantInvulnerability(player: Player, seconds: number)
+	player:SetAttribute("InvulnerableUntil", Pause.now() + seconds)
 	local character = player.Character
 	if character then
 		local shield = Instance.new("ForceField")
 		shield.Parent = character
-		task.delay(Config.INVULNERABILITY, function()
+		task.delay(seconds, function()
 			shield:Destroy()
 		end)
 	end
+end
 
+local function openOffer(player: Player, state: State)
+	state.offer = generateOptions(state)
+	-- Nothing can hurt them during a pause. Outside one (a chest pick), give a moment of safety.
+	if not Pause.isPaused() then
+		grantInvulnerability(player, Config.INVULNERABILITY)
+	end
 	sendOffer(player, state)
+end
+
+-- Opens the player's next offer if one can be shown now; otherwise closes their picker.
+local function showNext(player: Player, state: State)
+	if state.chestPicks > 0 or (Pause.isPaused() and state.levelPicks > 0) then
+		openOffer(player, state)
+	else
+		state.offer = nil
+		sendOffer(player, state)
+	end
+end
+
+local function consumePick(state: State)
+	if state.chestPicks > 0 then
+		state.chestPicks -= 1
+	else
+		state.levelPicks = math.max(0, state.levelPicks - 1)
+	end
 end
 
 local function apply(player: Player, state: State, option: Option)
@@ -267,13 +304,43 @@ local function apply(player: Player, state: State, option: Option)
 	applyStats(player)
 end
 
-local function grantPick(player: Player)
+local function grantLevelPick(player: Player)
 	local state = getState(player)
-	state.pending += 1
+	state.levelPicks += 1
 	if state.offer then
 		sendOffer(player, state) -- just updates the "+N more" count
-	else
+	elseif Pause.isPaused() then
 		openOffer(player, state)
+	end
+	-- Otherwise Upgrades.step pauses the game for it once the cooldown allows.
+end
+
+-- Resolves all of a player's owed picks at random (for a player holding up the party).
+local function autoPick(player: Player, state: State)
+	while picksOwed(state) > 0 do
+		local options = state.offer or generateOptions(state)
+		state.offer = nil
+		consumePick(state)
+		apply(player, state, options[random:NextInteger(1, #options)])
+	end
+	sendOffer(player, state)
+end
+
+local function pauseForPicks()
+	Pause.pause()
+	pauseStartedAt = os.clock()
+	for player, state in states do
+		if not state.offer and picksOwed(state) > 0 then
+			openOffer(player, state)
+		end
+	end
+end
+
+local function resume()
+	Pause.resume()
+	lastResumedAt = Pause.now()
+	for _, player in Players:GetPlayers() do
+		grantInvulnerability(player, Config.RESUME_GRACE)
 	end
 end
 
@@ -303,13 +370,9 @@ local function onChoose(player: Player, index: unknown)
 
 	local option = offer[index]
 	state.offer = nil
-	state.pending -= 1
+	consumePick(state)
 	apply(player, state, option)
-	if state.pending > 0 then
-		openOffer(player, state)
-	else
-		sendOffer(player, state)
-	end
+	showNext(player, state)
 end
 
 local function onReroll(player: Player)
@@ -330,14 +393,52 @@ end
 
 -- An extra pick for one player (from a chest), during a run.
 function Upgrades.grantBonusPick(player: Player)
-	if active then
-		grantPick(player)
+	if not active then
+		return
+	end
+	local state = getState(player)
+	state.chestPicks += 1
+	if state.offer then
+		sendOffer(player, state)
+	else
+		openOffer(player, state)
+	end
+end
+
+-- Pauses for owed level-up picks and resumes when they're done. Call every frame, paused or not.
+function Upgrades.step()
+	if not active then
+		return
+	end
+	if Pause.isPaused() then
+		local waiting = false
+		for _, state in states do
+			if picksOwed(state) > 0 then
+				waiting = true
+				break
+			end
+		end
+		if not waiting then
+			resume()
+		elseif #Players:GetPlayers() > 1 and os.clock() - pauseStartedAt >= Config.PAUSE_TIMEOUT then
+			-- Don't let one idle player hold up the party: choose for whoever is still picking.
+			for player, state in states do
+				autoPick(player, state)
+			end
+			resume()
+		end
+	elseif Pause.now() - lastResumedAt >= Config.PAUSE_COOLDOWN then
+		for _, state in states do
+			if state.levelPicks > 0 then
+				pauseForPicks()
+				break
+			end
+		end
 	end
 end
 
 -- Studio dev command: set a weapon or passive to `level` (0 removes it; MAX_LEVEL + 1 evolves a
--- weapon). Returns false for an
--- unknown id.
+-- weapon). Returns false for an unknown id.
 function Upgrades.devSet(player: Player, id: string, level: number): boolean
 	local state = getState(player)
 	local slot = if Config.WEAPONS[id]
@@ -357,6 +458,8 @@ end
 
 -- Fresh starting builds for everyone, for a new run. Call before characters spawn.
 function Upgrades.reset()
+	Pause.resume()
+	lastResumedAt = -math.huge
 	for _, player in Players:GetPlayers() do
 		local state = newState()
 		states[player] = state
@@ -369,9 +472,11 @@ end
 -- Closes every open choice when the run ends. Builds stay as they were.
 function Upgrades.stop()
 	active = false
+	Pause.resume()
 	for player, state in states do
 		state.offer = nil
-		state.pending = 0
+		state.levelPicks = 0
+		state.chestPicks = 0
 		sendOffer(player, state)
 	end
 end
@@ -389,7 +494,7 @@ function Upgrades.start()
 			return
 		end
 		for _, player in Players:GetPlayers() do
-			grantPick(player)
+			grantLevelPick(player)
 		end
 	end)
 

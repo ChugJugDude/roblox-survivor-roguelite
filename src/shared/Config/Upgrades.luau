@@ -95,8 +95,16 @@ return table.freeze({
 	MAX_PASSIVES = 4,
 	OPTION_COUNT = 3,
 	REROLLS_PER_RUN = 1,
-	-- Seconds of invulnerability when a level-up choice opens (the game doesn't pause).
+	-- Seconds of invulnerability when a chest's choice opens (chest picks don't pause the game).
 	INVULNERABILITY = 2,
+	-- Level-up picks pause the whole game. After a pause ends, the next one waits at least this many
+	-- seconds of play; picks earned meanwhile come up together in that next pause.
+	PAUSE_COOLDOWN = 5,
+	-- With 2+ players, a pause lasts at most this many seconds; anyone still choosing gets random
+	-- picks. Solo has no limit.
+	PAUSE_TIMEOUT = 15,
+	-- Seconds of invulnerability for everyone when the game resumes, to get their bearings.
+	RESUME_GRACE = 1.5,
 	-- The filler option when there aren't enough upgrades left: heal this fraction of max health.
 	HEAL_FRACTION = 0.3,
 	STARTING_WEAPON = "SpinningBlade",

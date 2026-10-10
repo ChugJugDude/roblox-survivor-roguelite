@@ -10,9 +10,11 @@ local EnemyReplicator = require(script.Parent.EnemyReplicator)
 local EnemyService = require(script.Parent.EnemyService)
 local EnemyShooter = require(script.Parent.EnemyShooter)
 local NetBatch = require(script.Parent.NetBatch)
+local Pause = require(script.Parent.Pause)
 local Progression = require(script.Parent.Progression)
 local ProjectileService = require(script.Parent.ProjectileService)
 local Run = require(script.Parent.Run)
+local Upgrades = require(script.Parent.Upgrades)
 local WaveDirector = require(script.Parent.WaveDirector)
 local WeaponService = require(script.Parent.Weapons.WeaponService)
 
@@ -28,7 +30,14 @@ function Simulation.start()
 	started = true
 
 	RunService.Heartbeat:Connect(function(dt)
-		local now = workspace:GetServerTimeNow()
+		-- Level-up picks can pause the game; while paused, nothing else moves.
+		Upgrades.step()
+		if Pause.isPaused() then
+			NetBatch.flush()
+			return
+		end
+
+		local now = Pause.now()
 		local step = math.min(dt, MAX_STEP)
 		local targets = Characters.getTargets()
 
