@@ -62,11 +62,11 @@ export type PassiveDef = {
 -- One level per row so levels can be compared at a glance; StyLua would wrap the longer rows.
 -- stylua: ignore
 local SPINNING_BLADE_LEVELS: { SpinningBladeStats } = {
-	{ bladeCount = 2, innerRadius = 2.5, outerRadius = 8, width = 1.2, spinSpeed = 3.5, damage = 10, hitCooldown = 0.4 },
-	{ bladeCount = 3, innerRadius = 2.5, outerRadius = 8, width = 1.2, spinSpeed = 3.5, damage = 10, hitCooldown = 0.4 },
-	{ bladeCount = 3, innerRadius = 2.5, outerRadius = 9, width = 1.3, spinSpeed = 4, damage = 14, hitCooldown = 0.4 },
-	{ bladeCount = 4, innerRadius = 2.5, outerRadius = 9, width = 1.3, spinSpeed = 4, damage = 14, hitCooldown = 0.4 },
-	{ bladeCount = 5, innerRadius = 2.5, outerRadius = 10, width = 1.4, spinSpeed = 4.5, damage = 18, hitCooldown = 0.4 },
+	{ bladeCount = 3, innerRadius = 2.5, outerRadius = 10, width = 1.3, spinSpeed = 4, damage = 15, hitCooldown = 0.4 },
+	{ bladeCount = 4, innerRadius = 2.5, outerRadius = 10, width = 1.3, spinSpeed = 4, damage = 15, hitCooldown = 0.4 },
+	{ bladeCount = 4, innerRadius = 2.5, outerRadius = 11, width = 1.4, spinSpeed = 4.5, damage = 20, hitCooldown = 0.4 },
+	{ bladeCount = 5, innerRadius = 2.5, outerRadius = 11, width = 1.4, spinSpeed = 4.5, damage = 20, hitCooldown = 0.4 },
+	{ bladeCount = 6, innerRadius = 2.5, outerRadius = 12, width = 1.5, spinSpeed = 5, damage = 25, hitCooldown = 0.4 },
 }
 
 -- Same one-row-per-level layout.
@@ -115,22 +115,22 @@ return table.freeze({
 			descriptions = {
 				"Blades orbit you, cutting through enemies.",
 				"+1 blade.",
-				"+40% damage. Longer, faster blades.",
+				"+33% damage. Longer, faster blades.",
 				"+1 blade.",
-				"+1 blade. +30% damage. Longer blades.",
+				"+1 blade. +25% damage. Longer, faster blades.",
 			},
 			levels = SPINNING_BLADE_LEVELS,
 			evolution = table.freeze({
 				name = "Bladestorm",
 				passive = "Might",
-				description = "Six huge blades that shred everything around you.",
+				description = "Eight huge blades that shred everything around you.",
 				stats = table.freeze({
-					bladeCount = 6,
+					bladeCount = 8,
 					innerRadius = 2,
-					outerRadius = 12,
-					width = 1.8,
-					spinSpeed = 5.5,
-					damage = 28,
+					outerRadius = 14,
+					width = 2,
+					spinSpeed = 6,
+					damage = 34,
 					hitCooldown = 0.3,
 				}) :: SpinningBladeStats,
 			}),
