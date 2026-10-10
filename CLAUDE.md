@@ -1,0 +1,90 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## Project
+
+<!-- Fill this in once the concept is settled. Keep it to a few lines. -->
+- **Game:** TODO — one-sentence pitch
+- **Genre / core loop:** TODO — what the player does every 30 seconds, every 10 minutes, every session
+- **Target players:** TODO — age range, platform focus (mobile-first is the Roblox default)
+- **Monetization:** TODO — game passes, developer products, Premium payouts, private servers
+
+## How this project is set up
+
+- Roblox experience built in **Luau**, with code living on disk and synced into Roblox Studio by **Rojo**.
+- Toolchain is pinned in `rokit.toml` (Rojo, StyLua, Selene, and Wally if added). Do not install tools globally.
+- `default.project.json` defines how `src/` maps onto the Roblox DataModel. Read it before creating new top-level folders.
+- The `.rbxl` place file (if present) holds the map, models, and UI built in Studio. It is not the source of truth for code.
+
+### Layout
+
+```
+src/
+  server/   -> ServerScriptService.Server       (server-only logic, never seen by clients)
+  client/   -> StarterPlayer.StarterPlayerScripts.Client
+  shared/   -> ReplicatedStorage.Shared         (modules used by both sides, config, types)
+```
+
+File naming (Rojo conventions):
+- `*.server.luau` → Script, `*.client.luau` → LocalScript, `*.luau` → ModuleScript
+- `init.luau` / `init.server.luau` turns a folder into that script, with siblings as its children
+
+## Rules for editing
+
+1. **Code changes go in `src/` only.** Never edit script source through the Studio MCP tools (`multi_edit` etc.) — Rojo will overwrite it on the next sync and the change will be lost. If a script exists only in Studio, move it into `src/` first.
+2. Every Luau file starts with `--!strict`. Fix type errors rather than downgrading to `--!nonstrict`.
+3. Before finishing a task, run:
+   - `stylua src` (format)
+   - `selene src` (lint) — resolve warnings, don't suppress them without a comment explaining why
+4. Keep modules small and single-purpose. Prefer a ModuleScript in `shared/` or `server/` over a large script.
+5. Don't add a dependency (Wally package) without asking first.
+6. Make small, reviewable changes and commit at logical points with clear messages. Never commit secrets, API keys, or Open Cloud tokens.
+
+## Architecture rules
+
+- **The server is authoritative.** Assume every client is an exploiter.
+  - Never trust values sent from the client (damage, currency, positions, purchase results, cooldowns).
+  - Every `RemoteEvent` / `RemoteFunction` handler on the server validates argument types, ranges, and rate-limits the caller.
+  - Avoid `RemoteFunction` calls from server to client.
+- Define all remotes in one place (e.g. `shared/Remotes.luau`) rather than creating them ad hoc.
+- Game tuning values (prices, cooldowns, drop rates) live in `shared/Config/` modules, not scattered as magic numbers.
+- Clean up connections and instances when players leave or objects are destroyed; avoid memory leaks from lingering `:Connect` handlers.
+- Prefer `task.wait` / `task.spawn` / `task.defer` over the deprecated `wait` / `spawn` / `delay`.
+
+## Data and monetization
+
+- Player data is saved through a single data module on the server (session locking, retries, autosave, save on `PlayerRemoving` and `game:BindToClose`). Never call DataStore APIs directly from gameplay code.
+- `MarketplaceService.ProcessReceipt` must be idempotent: record each `PurchaseId` as granted and only return `PurchaseGranted` after the grant has been saved.
+- Game pass ownership is checked on the server, not the client.
+- Follow Roblox Community Standards and monetization policies (no paid random items without disclosed odds, no misleading purchase prompts).
+
+## Studio MCP server
+
+Studio exposes an MCP server (`Roblox_Studio`). Use it to:
+- Inspect the live DataModel (`search_game_tree`, `inspect_instance`) — especially things built in Studio rather than in `src/`.
+- Playtest: `start_stop_play`, then `get_console_output` and `screen_capture` to verify a change actually works.
+- Run one-off Luau in Edit mode (`execute_luau`) for inspection or building non-script content (parts, folders, attributes).
+- Look up current Engine API docs with `http_get` when unsure whether an API is current or deprecated.
+
+Do not use it to edit scripts (see rule 1). Ask before running Luau that deletes or bulk-modifies instances in the place.
+
+## Verifying work
+
+A task isn't done until:
+- StyLua and Selene pass,
+- Rojo is syncing without errors,
+- and, for gameplay changes, a playtest via the Studio MCP server shows the expected behavior with no new errors in the output log.
+
+If something can't be verified (e.g. MCP not connected), say so explicitly instead of assuming it works.
+
+## Commands
+
+```
+rokit install          # install pinned tools
+rojo serve             # start syncing src/ into Studio (then click Connect in the Rojo plugin)
+rojo build -o build.rbxl   # build a place file from the project
+stylua src             # format
+selene src             # lint
+wally install          # install packages (only if Wally is in use)
+```
