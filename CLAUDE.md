@@ -6,10 +6,37 @@ Guidance for Claude Code when working in this repository.
 
 - **Game:** Fantasy survivor-like roguelite, solo + co-op (1–4 players), low-poly stylized
 - **Design:** Full design is in `docs/design.md`. Read it before starting gameplay work, and check which milestone we're on.
-- **Current milestone:** M1 (plan: 6 steps — run loop, XP, upgrades, projectiles, enemies, evolutions)
-- **Genre / core loop:** TODO — what the player does every 30 seconds, every 10 minutes, every session
-- **Target players:** TODO — age range, platform focus (mobile-first is the Roblox default)
-- **Monetization:** TODO — game passes, developer products, Premium payouts, private servers
+- **Current milestone:** M1 (solo run loop) is built and committed; waiting on the design doc's playtest gate ("is a solo run fun for 10 minutes?"). Next is **M2 (co-op)**. See "Status" below.
+- **Genre / core loop:** move to dodge and collect XP gems while weapons auto-fire (seconds); level up and pick 1 of 3 upgrades, survive 3 short stages and charge the portal at each stage end (one ~10 min run); spend Shards on permanent upgrades between runs (session, M3). Details in `docs/design.md` §3.
+- **Target players:** TODO — age range. Platform: mobile-first (one-thumb movement is a design pillar).
+- **Monetization:** principles only so far (no pay-to-win; cosmetics and convenience) — `docs/design.md` §12. Not until the core loop is fun.
+
+## Status (last updated 2026-10-09)
+
+- **M0** done. **M1** done in 6 steps (commits `707138e`..`6f2d3cb`), then two playtest-driven changes: a stronger starting Spinning Blade (`837740b`) and pausing the game for level-up picks (`d1c0c08`).
+- **Playtest feedback so far:** runs are hard (couldn't win in 3 tries; fine, M3 meta progression will help). Archer shots are dodgeable, Giant HP and portal charge feel right, stage-1 level-up pacing is good. The new blade and the pause haven't been playtested yet.
+- **Not yet verified:** a full natural run without dev commands; low-end phone performance (Studio device emulator at the 200-enemy cap); co-op pause behavior (all players picking, 15s idle limit, "WAITING FOR OTHERS") — needs 2 players, test in M2.
+- **Known follow-ups:** M2 must turn the run-level server modules (Run, EnemyService, Progression, WaveDirector, Portal, Chests, ProjectileService, Pause) from module-level singletons into per-arena objects; builds in Upgrades are already per player. Boss/portal bars sit close to the player on short screens (M4 UI pass). Level-up picks can pile up with no cap.
+- **Working style:** for multi-step milestones, the user wants to discuss the plan first — remind them to switch to plan mode (Shift+Tab) before planning. Commit after each verified step.
+
+## Architecture (gameplay)
+
+- **Server is the simulation; clients only draw.** One fixed-order Heartbeat tick in `server/Simulation.luau`: Upgrades.step (pause control) → Run → WaveDirector → enemy movement → weapons → projectiles → contact damage → enemy shooting → gem pickup → chests → replication → `NetBatch.flush()`.
+- **Enemies, gems, and projectiles are plain server data, not Parts or Humanoids.** Enemies replicate as binary position snapshots (`shared/EnemySnapshot.luau`, UnreliableRemoteEvent, ~20 Hz) plus reliable spawn/despawn events; clients pool primitive models and interpolate 100 ms behind. Gems only send spawn/collected events; projectiles only send a spawn event (clients compute the straight line) and a removal if they stop early. Hits use spatial hashes (`server/SpatialHash.luau`), never `.Touched`.
+- **Game clock** (`shared/GameClock.luau`, owned by `server/Pause.luau`): server time minus time spent paused. All gameplay timing (stage timers, cooldowns, projectiles, blade angles, snapshots) uses it, so pausing freezes everything. Don't use `workspace:GetServerTimeNow()` for gameplay; use `Pause.now()` on the server and `GameClock.read(arena)` on clients.
+- **Shared stat math:** `shared/BuildStats.luau` turns a build (weapon/passive levels, replicated as `W_<id>` / `P_<id>` Player attributes; weapon level 6 = evolved) into stats; both server hits and client visuals use it. `shared/BladeOrbit.luau` does the same for blade angles.
+- **Run state lives in Arena model attributes** (`Phase`, `Stage`, `PhaseEndsAt`, `PortalCharge`, `PartyLevel`, `PartyXP`, `XPToNext`, `Kills`, `EnemiesAlive`, `BossName`, `BossHealth`, `ClockOffset`, `PausedAt`, `Result*`). The HUD reads them, and so can MCP tests.
+- **UI is built in code** (`client/UI/`, helper `client/UI/Create.luau`). Placeholder look; polish is M4.
+- **Arena and enemy art are built in code** (`server/Arena.luau`, `client/EnemyModels.luau`), because the place file is gitignored. Characters spawn via `Characters.spawn` (CharacterAutoLoads is off).
+
+## Testing in Studio via MCP
+
+- Keep Studio's window in front, or screenshots come back blank and the client throttles to ~15 fps.
+- `execute_luau` runs in the plugin's own Lua VM: `require` gives a fresh, unstarted copy of a module, so you can't reach live module state. Read instance attributes instead, or drive the game with dev commands.
+- **Dev commands** (Studio only, `server/DevCommands.luau`): `workspace.Arena:SetAttribute("Dev_Command", "<cmd>")` with `skip`, `stage <n>`, `killall`, `god`, `xp <n>`, `give <id> <level>` (0 removes, 6 evolves a weapon), `spawn <kind>`.
+- Studio's virtual input can't send the "1" key (use numpad 1 or click). Clicks work with `instance_path`, e.g. `LocalPlayer.PlayerGui.UpgradePicker.Container.Cards.Card1`.
+- The DataStore warnings at startup are expected while "Enable Studio Access to API Services" is off; PlayerData falls back to unsaved defaults.
+- When editing files with scripts, write bytes (or LF) explicitly; the repo enforces LF via `.gitattributes` and StyLua won't fix line endings inside `-- stylua: ignore` blocks.
 
 ## How this project is set up
 
