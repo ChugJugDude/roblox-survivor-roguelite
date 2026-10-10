@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 local Create = require(script.Parent.Create)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
+local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
 local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 
 local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
@@ -124,6 +125,42 @@ function Hud.start(arena: Instance)
 
 	local banner = label(gui, "Banner", UDim2.new(1, 0, 0, 80), UDim2.fromScale(0.5, 0.3), 64)
 
+	-- The local player's upgrades, bottom-left. Placeholder for icons in M4.
+	local buildLabel = Create("TextLabel", {
+		Name = "Build",
+		Size = UDim2.fromOffset(220, 160),
+		Position = UDim2.new(0, 12, 1, -12),
+		AnchorPoint = Vector2.new(0, 1),
+		BackgroundTransparency = 1,
+		Font = FONT,
+		TextSize = 15,
+		TextColor3 = TEXT_COLOR,
+		TextStrokeTransparency = 0.4,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Bottom,
+		Text = "",
+		Parent = gui,
+	})
+	local localPlayer = Players.LocalPlayer
+	local function refreshBuild()
+		local lines = {}
+		for id, def in UpgradesConfig.WEAPONS do
+			local level = localPlayer:GetAttribute("W_" .. id)
+			if typeof(level) == "number" then
+				table.insert(lines, `{def.name}  {level}`)
+			end
+		end
+		for id, def in UpgradesConfig.PASSIVES do
+			local level = localPlayer:GetAttribute("P_" .. id)
+			if typeof(level) == "number" then
+				table.insert(lines, `{def.name}  {level}`)
+			end
+		end
+		buildLabel.Text = table.concat(lines, "\n")
+	end
+	localPlayer.AttributeChanged:Connect(refreshBuild)
+	refreshBuild()
+
 	RunService.RenderStepped:Connect(function()
 		local now = workspace:GetServerTimeNow()
 		local phase = arena:GetAttribute("Phase")
@@ -132,6 +169,7 @@ function Hud.start(arena: Instance)
 		local inRun = phase == "Countdown" or phase == "Stage" or phase == "Overtime" or phase == "Transition"
 
 		set(top, "Visible", inRun)
+		set(buildLabel, "Visible", inRun)
 		set(xpBack, "Visible", inRun)
 		local toNext = arena:GetAttribute("XPToNext") or 1
 		set(xpFill, "Size", UDim2.fromScale(math.clamp((arena:GetAttribute("PartyXP") or 0) / toNext, 0, 1), 1))

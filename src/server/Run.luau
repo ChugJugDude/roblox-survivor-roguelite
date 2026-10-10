@@ -20,6 +20,7 @@ local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Portal = require(script.Parent.Portal)
 local Progression = require(script.Parent.Progression)
+local Upgrades = require(script.Parent.Upgrades)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -60,6 +61,7 @@ local function startRun(now: number)
 	EnemyService.clear()
 	EnemyService.resetKills()
 	Progression.reset()
+	Upgrades.reset()
 	Portal.close()
 	stage = 1
 	runStartedAt = now + Config.COUNTDOWN
@@ -70,6 +72,7 @@ local function startRun(now: number)
 end
 
 local function endRun(result: Phase, now: number)
+	Upgrades.stop()
 	EnemyService.clear()
 	Portal.close()
 	local model = getArena().model

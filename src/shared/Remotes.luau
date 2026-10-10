@@ -72,6 +72,19 @@ return table.freeze({
 	-- player who picked the gem up (so it can fly to them), or 0 if it was just removed.
 	GemsCollected = remote("RemoteEvent", "GemsCollected") :: RemoteEvent,
 
+	-- Server -> client. Payload: the player's open level-up choice, or nil to close it:
+	-- { options: { Upgrades.Option }, pending: number (picks queued, including this one),
+	--   rerolls: number }. Re-sent with the same options when more picks queue up.
+	UpgradeOffered = remote("RemoteEvent", "UpgradeOffered") :: RemoteEvent,
+
+	-- Client -> server. Payload: (index: number), 1-based into the open offer's options. Ignored
+	-- unless it's a whole number in range for an open offer; rate-limited.
+	ChooseUpgrade = remote("RemoteEvent", "ChooseUpgrade") :: RemoteEvent,
+
+	-- Client -> server. No arguments. Swaps the open offer's options if the player has a reroll
+	-- left; rate-limited.
+	RerollUpgrade = remote("RemoteEvent", "RerollUpgrade") :: RemoteEvent,
+
 	-- Client -> server. No arguments. Asks to start a new run from the results screen. Ignored
 	-- unless the run has ended; rate-limited per player.
 	RequestRestart = remote("RemoteEvent", "RequestRestart") :: RemoteEvent,

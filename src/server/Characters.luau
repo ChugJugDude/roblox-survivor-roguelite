@@ -19,6 +19,12 @@ local spawnCFrame = CFrame.new()
 local connections: { [Player]: RBXScriptConnection } = {}
 local started = false
 
+-- Max health and walk speed for a player's new character. Upgrades replaces this so passives
+-- (Vitality, Swiftness) apply from the moment a character spawns.
+local statsFor: (Player) -> (number, number) = function(_player: Player)
+	return Config.MAX_HEALTH, Config.WALK_SPEED
+end
+
 local function onCharacterAdded(character: Model)
 	character:WaitForChild("HumanoidRootPart")
 	if character.Parent then
@@ -26,9 +32,14 @@ local function onCharacterAdded(character: Model)
 	end
 
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	humanoid.MaxHealth = Config.MAX_HEALTH
-	humanoid.Health = Config.MAX_HEALTH
-	humanoid.WalkSpeed = Config.WALK_SPEED
+	local player = Players:GetPlayerFromCharacter(character)
+	local maxHealth, walkSpeed = Config.MAX_HEALTH, Config.WALK_SPEED
+	if player then
+		maxHealth, walkSpeed = statsFor(player)
+	end
+	humanoid.MaxHealth = maxHealth
+	humanoid.Health = maxHealth
+	humanoid.WalkSpeed = walkSpeed
 
 	-- Roblox adds a "Health" script that regenerates 1% HP per second. Healing should only come
 	-- from upgrades (the Regen passive), so remove it.
@@ -69,6 +80,10 @@ function Characters.start(spawnPosition: Vector3)
 	for _, player in Players:GetPlayers() do
 		task.spawn(onPlayerAdded, player)
 	end
+end
+
+function Characters.setStatsProvider(provider: (Player) -> (number, number))
+	statsFor = provider
 end
 
 -- Spawns (or respawns) the player's character at the spawn point. Doesn't yield.
