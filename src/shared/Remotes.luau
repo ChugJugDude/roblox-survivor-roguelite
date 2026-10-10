@@ -30,40 +30,37 @@ else
 	folder = ReplicatedStorage:WaitForChild(FOLDER_NAME)
 end
 
-local function event(name: string): RemoteEvent
+local function remote(className: string, name: string): Instance
 	if not IS_SERVER then
-		return folder:WaitForChild(name) :: RemoteEvent
+		return folder:WaitForChild(name)
 	end
 	local existing = folder:FindFirstChild(name)
 	if existing then
-		return existing :: RemoteEvent
+		return existing
 	end
-	local remote = Instance.new("RemoteEvent")
-	remote.Name = name
-	remote.Parent = folder
-	return remote
-end
-
-local function func(name: string): RemoteFunction
-	if not IS_SERVER then
-		return folder:WaitForChild(name) :: RemoteFunction
-	end
-	local existing = folder:FindFirstChild(name)
-	if existing then
-		return existing :: RemoteFunction
-	end
-	local remote = Instance.new("RemoteFunction")
-	remote.Name = name
-	remote.Parent = folder
-	return remote
+	local created = Instance.new(className)
+	created.Name = name
+	created.Parent = folder
+	return created
 end
 
 return table.freeze({
 	-- Server -> client. Payload: the player's full data snapshot (Config.PlayerData.Data).
 	-- Fired once the data loads and again after each change.
-	DataChanged = event("DataChanged"),
+	DataChanged = remote("RemoteEvent", "DataChanged") :: RemoteEvent,
 
 	-- Client -> server. No arguments. Returns the caller's data snapshot, or nil if it isn't
 	-- available. Yields until the data has loaded.
-	GetData = func("GetData"),
+	GetData = remote("RemoteFunction", "GetData") :: RemoteFunction,
+
+	-- Server -> client. Payload: { EnemySnapshot.SpawnInfo }, batched per frame. A client can get
+	-- the same id twice (when it joins mid-fight); ignore the repeat.
+	EnemySpawned = remote("RemoteEvent", "EnemySpawned") :: RemoteEvent,
+
+	-- Server -> client. Payload: { number } of enemy ids that died or were removed, batched per frame.
+	EnemyDespawned = remote("RemoteEvent", "EnemyDespawned") :: RemoteEvent,
+
+	-- Server -> client, unreliable. Payload: a position buffer from EnemySnapshot. Packets can be
+	-- dropped or arrive out of order.
+	EnemySnapshot = remote("UnreliableRemoteEvent", "EnemySnapshot") :: UnreliableRemoteEvent,
 })

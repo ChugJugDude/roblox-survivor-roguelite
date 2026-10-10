@@ -4,8 +4,9 @@ Guidance for Claude Code when working in this repository.
 
 ## Project
 
-<!-- Fill this in once the concept is settled. Keep it to a few lines. -->
-- **Game:** TODO — one-sentence pitch
+- **Game:** Fantasy survivor-like roguelite, solo + co-op (1–4 players), low-poly stylized
+- **Design:** Full design is in `docs/design.md`. Read it before starting gameplay work, and check which milestone we're on.
+- **Current milestone:** M0
 - **Genre / core loop:** TODO — what the player does every 30 seconds, every 10 minutes, every session
 - **Target players:** TODO — age range, platform focus (mobile-first is the Roblox default)
 - **Monetization:** TODO — game passes, developer products, Premium payouts, private servers
