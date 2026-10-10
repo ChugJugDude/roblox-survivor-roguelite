@@ -22,6 +22,23 @@ export type Modifiers = {
 
 local BuildStats = {}
 
+-- A weapon's stats at `level`, where MAX_LEVEL + 1 means evolved.
+local function weaponBase(id: string, level: number): any
+	local def = Config.WEAPONS[id]
+	return if level > Config.MAX_LEVEL then def.evolution.stats else def.levels[level]
+end
+
+-- Whether the weapon has evolved.
+function BuildStats.isEvolved(build: Build, id: string): boolean
+	return (build.weapons[id] or 0) > Config.MAX_LEVEL
+end
+
+-- The display name for a weapon at `level` (its evolution's name once evolved).
+function BuildStats.weaponName(id: string, level: number): string
+	local def = Config.WEAPONS[id]
+	return if level > Config.MAX_LEVEL then def.evolution.name else def.name
+end
+
 local function passiveValue(build: Build, id: string): number
 	local level = build.passives[id]
 	local def = Config.PASSIVES[id]
@@ -47,7 +64,7 @@ function BuildStats.spinningBlade(build: Build): Config.SpinningBladeStats?
 	if not level then
 		return nil
 	end
-	local base: Config.SpinningBladeStats = Config.WEAPONS.SpinningBlade.levels[level]
+	local base: Config.SpinningBladeStats = weaponBase("SpinningBlade", level)
 	local modifiers = BuildStats.modifiers(build)
 	return {
 		bladeCount = base.bladeCount,
@@ -67,7 +84,7 @@ function BuildStats.volleyArrows(build: Build): Config.VolleyArrowsStats?
 	if not level then
 		return nil
 	end
-	local base: Config.VolleyArrowsStats = Config.WEAPONS.VolleyArrows.levels[level]
+	local base: Config.VolleyArrowsStats = weaponBase("VolleyArrows", level)
 	local modifiers = BuildStats.modifiers(build)
 	return {
 		cooldown = base.cooldown * modifiers.cooldown,
@@ -87,7 +104,7 @@ function BuildStats.fireball(build: Build): Config.FireballStats?
 	if not level then
 		return nil
 	end
-	local base: Config.FireballStats = Config.WEAPONS.Fireball.levels[level]
+	local base: Config.FireballStats = weaponBase("Fireball", level)
 	local modifiers = BuildStats.modifiers(build)
 	return {
 		cooldown = base.cooldown * modifiers.cooldown,

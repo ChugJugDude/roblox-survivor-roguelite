@@ -207,6 +207,7 @@ function UpgradePicker.start()
 				card.name.Text = option.name
 				card.level.Text = if option.kind == "heal"
 					then ""
+					elseif option.kind == "evolution" then "EVOLVE"
 					elseif option.isNew then "NEW"
 					else `Lv {option.level}`
 				card.description.Text = option.description

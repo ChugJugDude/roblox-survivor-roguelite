@@ -23,8 +23,8 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 export type Option = {
 	id: string, -- weapon or passive id, or "Heal"
-	kind: "weapon" | "passive" | "heal",
-	level: number, -- the level this option gives (0 for heal)
+	kind: "weapon" | "passive" | "evolution" | "heal",
+	level: number, -- the level this option gives (MAX_LEVEL + 1 for an evolution, 0 for heal)
 	isNew: boolean,
 	name: string,
 	description: string,
@@ -132,6 +132,18 @@ local function passiveOption(id: string, level: number): Option
 	}
 end
 
+local function evolutionOption(id: string): Option
+	local evolution = Config.WEAPONS[id].evolution
+	return {
+		id = id,
+		kind = "evolution",
+		level = Config.MAX_LEVEL + 1,
+		isNew = false,
+		name = evolution.name,
+		description = evolution.description,
+	}
+end
+
 local function healOption(): Option
 	return {
 		id = "Heal",
@@ -143,9 +155,21 @@ local function healOption(): Option
 	}
 end
 
--- Up to OPTION_COUNT distinct options, picked by weight; Heal fills any empty slots.
+-- Up to OPTION_COUNT distinct options: every evolution the player qualifies for first, then
+-- picks by weight; Heal fills any empty slots.
 local function generateOptions(state: State): { Option }
 	local build = state.build
+	local options: { Option } = {}
+	for id, def in Config.WEAPONS do
+		if
+			build.weapons[id] == Config.MAX_LEVEL
+			and build.passives[def.evolution.passive]
+			and #options < Config.OPTION_COUNT
+		then
+			table.insert(options, evolutionOption(id))
+		end
+	end
+
 	local candidates: { { option: Option, weight: number } } = {}
 
 	local weaponCount = count(build.weapons)
@@ -175,7 +199,6 @@ local function generateOptions(state: State): { Option }
 		end
 	end
 
-	local options: { Option } = {}
 	while #options < Config.OPTION_COUNT and #candidates > 0 do
 		local total = 0
 		for _, candidate in candidates do
@@ -229,7 +252,7 @@ local function openOffer(player: Player, state: State)
 end
 
 local function apply(player: Player, state: State, option: Option)
-	if option.kind == "weapon" then
+	if option.kind == "weapon" or option.kind == "evolution" then
 		state.build.weapons[option.id] = option.level
 	elseif option.kind == "passive" then
 		state.build.passives[option.id] = option.level
@@ -312,7 +335,8 @@ function Upgrades.grantBonusPick(player: Player)
 	end
 end
 
--- Studio dev command: set a weapon or passive to `level` (0 removes it). Returns false for an
+-- Studio dev command: set a weapon or passive to `level` (0 removes it; MAX_LEVEL + 1 evolves a
+-- weapon). Returns false for an
 -- unknown id.
 function Upgrades.devSet(player: Player, id: string, level: number): boolean
 	local state = getState(player)
@@ -323,7 +347,9 @@ function Upgrades.devSet(player: Player, id: string, level: number): boolean
 	if not slot then
 		return false
 	end
-	slot[id] = if level > 0 then math.clamp(math.floor(level), 1, Config.MAX_LEVEL) else nil
+	-- Weapons go one past MAX_LEVEL: that's the evolution.
+	local maxLevel = if slot == state.build.weapons then Config.MAX_LEVEL + 1 else Config.MAX_LEVEL
+	slot[id] = if level > 0 then math.clamp(math.floor(level), 1, maxLevel) else nil
 	publishBuild(player, state)
 	applyStats(player)
 	return true

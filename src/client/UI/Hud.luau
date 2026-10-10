@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Create = require(script.Parent.Create)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
+local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
 local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 
 local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
@@ -178,10 +179,11 @@ function Hud.start(arena: Instance)
 	local localPlayer = Players.LocalPlayer
 	local function refreshBuild()
 		local lines = {}
-		for id, def in UpgradesConfig.WEAPONS do
+		for id in UpgradesConfig.WEAPONS do
 			local level = localPlayer:GetAttribute("W_" .. id)
 			if typeof(level) == "number" then
-				table.insert(lines, `{def.name}  {level}`)
+				local evolved = level > UpgradesConfig.MAX_LEVEL
+				table.insert(lines, `{BuildStats.weaponName(id, level)}  {if evolved then "EVO" else level}`)
 			end
 		end
 		for id, def in UpgradesConfig.PASSIVES do

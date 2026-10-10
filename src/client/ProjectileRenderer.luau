@@ -30,6 +30,12 @@ local LOOKS: { [string]: Look } = {
 		shape = Enum.PartType.Ball,
 		height = 3,
 	},
+	Meteor = {
+		size = Vector3.new(3.4, 3.4, 3.4),
+		color = Color3.fromRGB(255, 70, 20),
+		shape = Enum.PartType.Ball,
+		height = 4,
+	},
 	EnemyArrow = {
 		size = Vector3.new(0.5, 0.5, 2),
 		color = Color3.fromRGB(190, 90, 255),

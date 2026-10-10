@@ -2,7 +2,7 @@
 -- Payload shapes for projectile and explosion events (server/ProjectileService ->
 -- client/ProjectileRenderer). Enemy and gem payloads are documented in Remotes and EnemySnapshot.
 
-export type ProjectileKind = "Arrow" | "Fireball" | "EnemyArrow"
+export type ProjectileKind = "Arrow" | "Fireball" | "Meteor" | "EnemyArrow"
 
 export type ProjectileInfo = {
 	id: number,

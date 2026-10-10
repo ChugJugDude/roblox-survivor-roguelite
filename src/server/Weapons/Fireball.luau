@@ -1,6 +1,7 @@
 --!strict
 -- Fireball: every cooldown, hurls fireballs at random enemies in range. Each explodes on the first
--- enemy it touches (or where its target stood), hurting everything in the blast.
+-- enemy it touches (or where its target stood), hurting everything in the blast. Evolved, it's
+-- Meteor: same behavior with bigger numbers and a bigger look.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,13 +30,14 @@ function Fireball.step(now: number, targets: { Characters.Target })
 			continue -- try again next frame rather than wasting the cooldown
 		end
 		nextFireAt[target.player] = now + stats.cooldown
+		local kind = if BuildStats.isEvolved(build :: BuildStats.Build, "Fireball") then "Meteor" else "Fireball"
 
 		for _ = 1, math.min(stats.count, #candidates) do
 			local enemy = table.remove(candidates, random:NextInteger(1, #candidates)) :: EnemyService.Enemy
 			local dx, dz = enemy.x - target.x, enemy.z - target.z
 			local distance = math.max(math.sqrt(dx * dx + dz * dz), 1e-3)
 			ProjectileService.spawn({
-				kind = "Fireball",
+				kind = kind,
 				fromEnemy = false,
 				owner = target.player,
 				x = target.x,

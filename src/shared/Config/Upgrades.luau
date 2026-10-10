@@ -35,10 +35,20 @@ export type FireballStats = {
 	radius: number, -- hit radius of the fireball itself
 }
 
+-- A max-level weapon plus its paired passive (any level) unlocks the evolution, offered as a
+-- level-up choice. An evolved weapon is stored as level MAX_LEVEL + 1.
+export type EvolutionDef = {
+	name: string,
+	passive: string,
+	description: string,
+	stats: any, -- same shape as the weapon's level stats
+}
+
 export type WeaponDef = {
 	name: string,
 	descriptions: { string }, -- what each level adds, shown on the card
 	levels: { any }, -- full stats per level; the type depends on the weapon
+	evolution: EvolutionDef,
 }
 
 export type PassiveDef = {
@@ -110,6 +120,20 @@ return table.freeze({
 				"+1 blade. +30% damage. Longer blades.",
 			},
 			levels = SPINNING_BLADE_LEVELS,
+			evolution = table.freeze({
+				name = "Bladestorm",
+				passive = "Might",
+				description = "Six huge blades that shred everything around you.",
+				stats = table.freeze({
+					bladeCount = 6,
+					innerRadius = 2,
+					outerRadius = 12,
+					width = 1.8,
+					spinSpeed = 5.5,
+					damage = 28,
+					hitCooldown = 0.3,
+				}) :: SpinningBladeStats,
+			}),
 		}),
 		VolleyArrows = table.freeze({
 			name = "Volley Arrows",
@@ -121,6 +145,21 @@ return table.freeze({
 				"+1 arrow. +25% damage. Pierces 1 more.",
 			},
 			levels = VOLLEY_ARROWS_LEVELS,
+			evolution = table.freeze({
+				name = "Arrow Storm",
+				passive = "Swiftness",
+				description = "A rapid, wide fan of arrows that pierce through crowds.",
+				stats = table.freeze({
+					cooldown = 0.6,
+					arrowCount = 7,
+					spread = 1.2,
+					speed = 85,
+					damage = 22,
+					pierce = 5,
+					range = 60,
+					radius = 0.7,
+				}) :: VolleyArrowsStats,
+			}),
 		}),
 		Fireball = table.freeze({
 			name = "Fireball",
@@ -132,6 +171,20 @@ return table.freeze({
 				"+1 fireball. Casts faster.",
 			},
 			levels = FIREBALL_LEVELS,
+			evolution = table.freeze({
+				name = "Meteor",
+				passive = "Reach",
+				description = "Calls down meteors with huge, devastating blasts.",
+				stats = table.freeze({
+					cooldown = 1.6,
+					count = 4,
+					speed = 55,
+					damage = 60,
+					blastRadius = 11,
+					range = 50,
+					radius = 1.5,
+				}) :: FireballStats,
+			}),
 		}),
 	}) :: { [string]: WeaponDef },
 

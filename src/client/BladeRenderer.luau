@@ -13,6 +13,7 @@ local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
 -- How far below the character's root part the blades spin (roughly waist height).
 local HEIGHT_OFFSET = -1
 local BLADE_COLOR = Color3.fromRGB(225, 235, 255)
+local BLADESTORM_COLOR = Color3.fromRGB(255, 210, 70)
 
 type Blades = {
 	parts: { BasePart },
@@ -36,13 +37,13 @@ local function destroyBlades(blades: Blades)
 	end
 end
 
-local function createBlades(count: number, size: Vector3, shape: string): Blades
+local function createBlades(count: number, size: Vector3, color: Color3, shape: string): Blades
 	local parts = {}
 	for _ = 1, count do
 		local part = Instance.new("Part")
 		part.Name = "SpinningBlade"
 		part.Size = size
-		part.Color = BLADE_COLOR
+		part.Color = color
 		part.Material = Enum.Material.Neon
 		part.Anchored = true
 		part.CanCollide = false
@@ -71,21 +72,23 @@ local function render()
 		if not humanoid or humanoid.Health <= 0 or not root or not root:IsA("BasePart") then
 			continue
 		end
-		local stats = BuildStats.spinningBlade(BuildStats.fromAttributes(player))
+		local build = BuildStats.fromAttributes(player)
+		local stats = BuildStats.spinningBlade(build)
 		if not stats then
 			continue
 		end
 
-		-- Rebuild the parts when an upgrade changes the blade count or size.
+		-- Rebuild the parts when an upgrade changes the blade count, size, or color.
 		local size = Vector3.new(stats.width, 0.3, stats.outerRadius - stats.innerRadius)
-		local shape = `{stats.bladeCount}:{size}`
+		local color = if BuildStats.isEvolved(build, "SpinningBlade") then BLADESTORM_COLOR else BLADE_COLOR
+		local shape = `{stats.bladeCount}:{size}:{color}`
 		local blades = bladesByCharacter[character]
 		if blades and blades.shape ~= shape then
 			destroyBlades(blades)
 			blades = nil
 		end
 		if not blades then
-			blades = createBlades(stats.bladeCount, size, shape)
+			blades = createBlades(stats.bladeCount, size, color, shape)
 			bladesByCharacter[character] = blades
 		end
 		seen[character] = true
