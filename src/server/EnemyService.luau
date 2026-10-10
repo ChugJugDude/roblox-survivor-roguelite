@@ -24,6 +24,8 @@ export type Enemy = {
 	x: number,
 	z: number,
 	health: number,
+	maxHealth: number, -- after stage scaling
+	contactDamage: number, -- after stage scaling
 	attackReadyAt: number,
 	hitReadyAt: { [any]: number }, -- per attacker, when they can hit this enemy again
 }
@@ -84,7 +86,14 @@ function EnemyService.init(newArena: Arena.Arena)
 	arena = newArena
 end
 
-function EnemyService.spawn(kind: string, x: number, z: number): Enemy
+-- `healthMultiplier` and `damageMultiplier` scale the kind's base stats (for later stages).
+function EnemyService.spawn(
+	kind: string,
+	x: number,
+	z: number,
+	healthMultiplier: number?,
+	damageMultiplier: number?
+): Enemy
 	local def = Config.TYPES[kind]
 	assert(def, `Unknown enemy kind "{kind}"`)
 
@@ -100,7 +109,9 @@ function EnemyService.spawn(kind: string, x: number, z: number): Enemy
 		def = def,
 		x = x,
 		z = z,
-		health = def.maxHealth,
+		health = def.maxHealth * (healthMultiplier or 1),
+		maxHealth = def.maxHealth * (healthMultiplier or 1),
+		contactDamage = def.contactDamage * (damageMultiplier or 1),
 		attackReadyAt = 0,
 		hitReadyAt = {},
 	}
@@ -141,6 +152,16 @@ function EnemyService.clear()
 	for _, enemy in enemies do
 		remove(enemy)
 	end
+	updateCounters()
+end
+
+function EnemyService.getKills(): number
+	return kills
+end
+
+-- Zeroes the kill counter, for a new run.
+function EnemyService.resetKills()
+	kills = 0
 	updateCounters()
 end
 
@@ -251,7 +272,7 @@ function EnemyService.attack(now: number, targets: { Target })
 		for _, target in targets do
 			local dx, dz = target.x - enemy.x, target.z - enemy.z
 			if dx * dx + dz * dz <= reach * reach and target.humanoid.Health > 0 then
-				target.humanoid:TakeDamage(def.contactDamage)
+				Characters.damage(target, enemy.contactDamage, now)
 				enemy.attackReadyAt = now + def.attackCooldown
 				break
 			end

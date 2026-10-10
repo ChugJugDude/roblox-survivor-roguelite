@@ -25,13 +25,16 @@ A fantasy survivor-like roguelite for Roblox. Drop into a cursed arena alone or 
 
 **Moment to moment (every few seconds):** move to dodge enemies and collect XP gems; weapons fire automatically.
 
-**Run loop (~10 minutes):**
+**Run loop (~10 minutes, "race the clock"):**
 1. Pick a hero (starting weapon + passive).
-2. Survive waves that escalate in density and enemy variety.
-3. Level up → choose 1 of 3 upgrades (new weapon, weapon level, or passive).
-4. Elite enemies at set times drop chests (bonus upgrades).
-5. Boss spawns at the final minute. Kill it to win the run.
-6. Win or die → earn **Shards** based on time survived, kills, and bosses.
+2. A run is **3 short stages (~3 min each)** in the arena, each harder than the last. Waves escalate in density and enemy variety within a stage.
+3. Level up → choose 1 of 3 upgrades (new weapon, weapon level, passive, or evolution).
+4. A **Goblin Giant mini-boss** appears mid-stage and drops a chest (bonus upgrade).
+5. When a stage's timer runs out, **overtime** starts: a portal opens and spawns ramp up hard. Stand in the portal to charge it; a full charge moves the party to the next stage.
+6. Charging the portal after stage 3 wins the run. (M4: the **Ogre boss** guards the end of stage 3.)
+7. Win or die → earn **Shards** based on time survived, kills, and bosses.
+
+Why stages instead of one long timer: short goals every few minutes keep the payoff coming, which suits Roblox players better than one 10–15 minute stretch.
 
 **Session / meta loop:** spend Shards on permanent upgrades and hero unlocks → start another run slightly stronger, with new options.
 
@@ -63,23 +66,27 @@ Three kinds, all offered through the level-up choice:
   - Spinning Blade, Volley Arrows, Fireball, Chain Lightning, Frost Nova, Holy Ground (damage zone).
 - **Passives (~12):** max 4 per run. Each has 5 levels.
   - Examples: Might (+damage), Haste (−cooldown), Reach (+area), Swiftness (+move speed), Vitality (+max HP), Magnet (+pickup radius), Multishot (+projectiles), Duration, Armor, Regen, Luck, Greed (+Shards).
-- **Evolutions (2–4 in v1):** a max-level weapon + a specific passive at max level turns the weapon into an upgraded version (e.g., Fireball + Reach → Meteor). This is the main build-crafting payoff.
+- **Evolutions (2–4 in v1):** once a weapon is max level and you **own its paired passive (any level)**, the evolution appears as a level-up choice (Survivor.io style), turning the weapon into an upgraded version. This is the main build-crafting payoff.
+  - Spinning Blade + Might → Bladestorm
+  - Volley Arrows + Swiftness → Arrow Storm
+  - Fireball + Reach → Meteor
+- **M1 set (9):** Spinning Blade, Volley Arrows, Fireball; Might, Haste, Swiftness, Reach, Vitality, Magnet; plus the 3 evolutions above.
 
 Design rules:
 - Every upgrade should be noticeable when picked. Avoid tiny +2% bumps.
 - Offer weapons more often early, passives more often once weapon slots are full.
 - One reroll per run by default (more via meta upgrades).
 
-## 7. Enemies (v1: 5 + 1 boss)
+## 7. Enemies (v1: 4 + mini-boss + boss)
 
 | Enemy | Behavior | Role |
 | --- | --- | --- |
 | Goblin | Walks straight at nearest player | Filler / XP source |
 | Bat swarm | Fast, low HP, moves in groups | Pressure movement |
 | Skeleton archer | Keeps distance, shoots slow projectiles | Forces dodging |
-| Ogre | Slow, tanky, big hitbox | Body-blocks paths |
 | Elite (any type) | Larger, glowing, more HP | Drops a chest |
-| **Boss: Lich King** | Phases: summons adds, ring of projectiles, charge | End-of-run climax |
+| **Mini-boss: Goblin Giant** | Slow, tanky, big hitbox; appears mid-stage | Drops a chest |
+| **Boss: Ogre** | Phases: summons adds, ring of projectiles, charge | End-of-run climax (M4) |
 
 A **wave director** controls spawns over time: which enemy types are allowed, spawn rate, max alive count, and elite/boss timings. All of it lives in config so runs can be tuned without code changes.
 

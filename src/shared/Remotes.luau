@@ -63,4 +63,8 @@ return table.freeze({
 	-- Server -> client, unreliable. Payload: a position buffer from EnemySnapshot. Packets can be
 	-- dropped or arrive out of order.
 	EnemySnapshot = remote("UnreliableRemoteEvent", "EnemySnapshot") :: UnreliableRemoteEvent,
+
+	-- Client -> server. No arguments. Asks to start a new run from the results screen. Ignored
+	-- unless the run has ended; rate-limited per player.
+	RequestRestart = remote("RemoteEvent", "RequestRestart") :: RemoteEvent,
 })

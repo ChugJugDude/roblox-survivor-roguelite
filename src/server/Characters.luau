@@ -61,11 +61,35 @@ function Characters.start(spawnPosition: Vector3)
 	started = true
 	spawnCFrame = CFrame.new(spawnPosition)
 
+	-- Run decides when characters spawn: at the start of a run, not automatically after death.
+	Players.CharacterAutoLoads = false
+
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
 	for _, player in Players:GetPlayers() do
 		task.spawn(onPlayerAdded, player)
 	end
+end
+
+-- Spawns (or respawns) the player's character at the spawn point. Doesn't yield.
+function Characters.spawn(player: Player)
+	task.spawn(function()
+		local ok, err = pcall(player.LoadCharacter, player)
+		if not ok and player.Parent then
+			warn(`[Characters] Couldn't spawn {player.Name}: {err}`)
+		end
+	end)
+end
+
+-- The one way to hurt a player. Skips the hit while they're invulnerable: until the server time
+-- in their InvulnerableUntil attribute, or always with the Studio-only Dev_God attribute.
+function Characters.damage(target: Target, amount: number, now: number)
+	local player = target.player
+	local invulnerableUntil = player:GetAttribute("InvulnerableUntil")
+	if player:GetAttribute("Dev_God") or (typeof(invulnerableUntil) == "number" and now < invulnerableUntil) then
+		return
+	end
+	target.humanoid:TakeDamage(amount)
 end
 
 -- Every player whose character is alive, with their position on the ground plane.
