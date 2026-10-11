@@ -38,6 +38,7 @@ local pendingXP = 0 -- collected this frame, added in one go at the end of step
 local levelUpListeners: { (number) -> () } = {}
 local nearby: { number } = {} -- reused for every hash query
 local started = false
+local xpFrozen = false -- Studio dev command: gems still collect, but give no XP
 
 -- Replaced by Upgrades once Magnet exists; until then everyone uses the base radius.
 local pickupRadiusFor: (Player) -> number = function(_player: Player)
@@ -104,6 +105,9 @@ function Progression.setPickupRadiusProvider(provider: (Player) -> number)
 end
 
 function Progression.addXP(amount: number)
+	if xpFrozen then
+		return
+	end
 	xp += amount
 	while xp >= Progression.xpToNext(level) do
 		xp -= Progression.xpToNext(level)
@@ -113,6 +117,15 @@ function Progression.addXP(amount: number)
 		end
 	end
 	publish()
+end
+
+-- Studio dev command: stop XP (and so level-ups and their pauses), e.g. to benchmark a fixed build.
+function Progression.devSetXPFrozen(frozen: boolean)
+	xpFrozen = frozen
+end
+
+function Progression.devIsXPFrozen(): boolean
+	return xpFrozen
 end
 
 -- Clears gems and XP for a new run.

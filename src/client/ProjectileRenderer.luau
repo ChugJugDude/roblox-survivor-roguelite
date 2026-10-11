@@ -16,6 +16,7 @@ type Look = {
 	color: Color3,
 	shape: Enum.PartType,
 	height: number, -- above the floor
+	material: Enum.Material?, -- default Neon
 }
 
 local LOOKS: { [string]: Look } = {
@@ -37,11 +38,15 @@ local LOOKS: { [string]: Look } = {
 		shape = Enum.PartType.Ball,
 		height = 4,
 	},
+	-- Enemy shots must read at a glance over anything the player has: a solid crimson orb (not neon,
+	-- whose glow washes red toward orange next to gold) flying above the blades, so the top-down
+	-- camera always draws it on top.
 	EnemyArrow = {
-		size = Vector3.new(0.5, 0.5, 2),
-		color = Color3.fromRGB(190, 90, 255),
-		shape = Enum.PartType.Block,
-		height = 2.5,
+		size = Vector3.new(1.9, 1.9, 1.9),
+		color = Color3.fromRGB(190, 0, 35),
+		shape = Enum.PartType.Ball,
+		height = 4.5,
+		material = Enum.Material.SmoothPlastic,
 	},
 }
 local EXPLOSION_COLOR = Color3.fromRGB(255, 140, 40)
@@ -77,7 +82,7 @@ local function acquire(kind: string): BasePart
 		newPart.Shape = look.shape
 		newPart.Size = look.size
 		newPart.Color = look.color
-		newPart.Material = Enum.Material.Neon
+		newPart.Material = look.material or Enum.Material.Neon
 		newPart.Anchored = true
 		newPart.CanCollide = false
 		newPart.CanQuery = false

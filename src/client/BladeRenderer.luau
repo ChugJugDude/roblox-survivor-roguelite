@@ -15,6 +15,8 @@ local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
 local HEIGHT_OFFSET = -1
 local BLADE_COLOR = Color3.fromRGB(225, 235, 255)
 local BLADESTORM_COLOR = Color3.fromRGB(255, 210, 70)
+-- Bladestorm covers a lot of screen, so it's see-through enough for enemy shots under it to show.
+local BLADESTORM_TRANSPARENCY = 0.35
 
 type Blades = {
 	parts: { BasePart },
@@ -46,6 +48,7 @@ local function createBlades(count: number, size: Vector3, color: Color3, shape: 
 		part.Name = "SpinningBlade"
 		part.Size = size
 		part.Color = color
+		part.Transparency = if color == BLADESTORM_COLOR then BLADESTORM_TRANSPARENCY else 0
 		part.Material = Enum.Material.Neon
 		part.Anchored = true
 		part.CanCollide = false

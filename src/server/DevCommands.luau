@@ -10,6 +10,7 @@
 		killall     kill every enemy (counts as kills)
 		god         toggle invulnerability for every player
 		xp <n>      add n XP to the party
+		freezexp    toggle XP gain off/on (no level-ups or pauses; for benchmarks)
 		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 
@@ -62,6 +63,8 @@ local function execute(command: string)
 			warn(`[Dev] {err}`)
 			return
 		end
+	elseif name == "freezexp" then
+		Progression.devSetXPFrozen(not Progression.devIsXPFrozen())
 	elseif name == "god" then
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("Dev_God", not player:GetAttribute("Dev_God"))
