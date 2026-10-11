@@ -12,7 +12,7 @@ local Create = require(script.Parent.Create)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local FONT = Enum.Font.GothamBold
-local CARD_SIZE = Vector2.new(160, 170)
+local CARD_SIZE = Vector2.new(160, 190)
 local CARD_GAP = 10
 local MAX_CARDS = 3
 -- Below this screen height, everything shrinks to fit (phones in landscape).
@@ -41,6 +41,7 @@ type Card = {
 	name: TextLabel,
 	level: TextLabel,
 	description: TextLabel,
+	hint: TextLabel,
 }
 
 local UpgradePicker = {}
@@ -79,8 +80,10 @@ local function createCard(parent: Instance, index: number): Card
 		name = text(button, "UpgradeName", UDim2.new(1, -12, 0, 44), UDim2.fromOffset(6, 26), 19),
 		level = text(button, "LevelText", UDim2.new(1, 0, 0, 18), UDim2.fromOffset(0, 70), 15),
 		description = text(button, "Description", UDim2.new(1, -16, 0, 56), UDim2.fromOffset(8, 92), 13),
+		hint = text(button, "Hint", UDim2.new(1, -12, 0, 18), UDim2.fromOffset(6, 150), 12),
 	}
 	card.description.TextColor3 = Color3.fromRGB(210, 210, 225)
+	card.hint.TextColor3 = Color3.fromRGB(255, 210, 70)
 	text(button, "Key", UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 1, -20), 12).Text = `[{index}]`
 	return card
 end
@@ -211,6 +214,7 @@ function UpgradePicker.start()
 					elseif option.isNew then "NEW"
 					else `Lv {option.level}`
 				card.description.Text = option.description
+				card.hint.Text = if typeof(option.hint) == "string" then option.hint else ""
 			end
 		end
 

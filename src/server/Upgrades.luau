@@ -34,6 +34,7 @@ export type Option = {
 	isNew: boolean,
 	name: string,
 	description: string,
+	hint: string?, -- the evolution pairing, e.g. "Evolves with Reach", so players can plan for it
 }
 
 type State = {
@@ -130,12 +131,14 @@ local function weaponOption(id: string, level: number): Option
 		isNew = level == 1,
 		name = def.name,
 		description = def.descriptions[level],
+		hint = `Evolves with {Config.PASSIVES[def.evolution.passive].name}`,
 	}
 end
 
 local function passiveOption(id: string, level: number): Option
 	local def = Config.PASSIVES[id]
 	local value = def.values[level]
+	local evolves = BuildStats.weaponEvolvedBy(id)
 	return {
 		id = id,
 		kind = "passive",
@@ -143,6 +146,7 @@ local function passiveOption(id: string, level: number): Option
 		isNew = level == 1,
 		name = def.name,
 		description = string.format(def.description, math.floor((if def.percent then value * 100 else value) + 0.5)),
+		hint = if evolves then `Evolves {Config.WEAPONS[evolves].name}` else nil,
 	}
 end
 

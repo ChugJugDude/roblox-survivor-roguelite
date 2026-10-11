@@ -164,7 +164,7 @@ function Hud.start(arena: Instance)
 	-- The local player's upgrades, bottom-left. Placeholder for icons in M4.
 	local buildLabel = Create("TextLabel", {
 		Name = "Build",
-		Size = UDim2.fromOffset(220, 160),
+		Size = UDim2.fromOffset(300, 160),
 		Position = UDim2.new(0, 12, 1, -12),
 		AnchorPoint = Vector2.new(0, 1),
 		BackgroundTransparency = 1,
@@ -184,7 +184,9 @@ function Hud.start(arena: Instance)
 			local level = localPlayer:GetAttribute("W_" .. id)
 			if typeof(level) == "number" then
 				local evolved = level > UpgradesConfig.MAX_LEVEL
-				table.insert(lines, `{BuildStats.weaponName(id, level)}  {if evolved then "EVO" else level}`)
+				local pair = UpgradesConfig.PASSIVES[UpgradesConfig.WEAPONS[id].evolution.passive].name
+				local suffix = if evolved then "EVO" else `{level}  (evolves with {pair})`
+				table.insert(lines, `{BuildStats.weaponName(id, level)}  {suffix}`)
 			end
 		end
 		for id, def in UpgradesConfig.PASSIVES do

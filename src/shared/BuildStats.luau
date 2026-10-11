@@ -33,6 +33,16 @@ function BuildStats.isEvolved(build: Build, id: string): boolean
 	return (build.weapons[id] or 0) > Config.MAX_LEVEL
 end
 
+-- The weapon a passive evolves, or nil if it isn't any weapon's evolution pair.
+function BuildStats.weaponEvolvedBy(passiveId: string): string?
+	for id, def in Config.WEAPONS do
+		if def.evolution.passive == passiveId then
+			return id
+		end
+	end
+	return nil
+end
+
 -- The display name for a weapon at `level` (its evolution's name once evolved).
 function BuildStats.weaponName(id: string, level: number): string
 	local def = Config.WEAPONS[id]
