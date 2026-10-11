@@ -1,11 +1,17 @@
 --!strict
 -- Spawns characters where they're wanted (lobby or a match's arena), sets them up, and lists the
--- living ones for each match's simulation.
+-- ones still standing for each match's simulation.
+--
+-- Downed, not dead: a hit that would kill instead downs the player (Downed attribute, held at 1
+-- health and anchored in place). Downed players aren't targets, so enemies ignore them, their
+-- weapons stop, and they can't pick things up. A standing teammate nearby revives them
+-- (stepRevives); progress is published as their ReviveProgress attribute (0 to 1).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Player)
+local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
 
 export type Target = {
 	player: Player,
@@ -38,6 +44,9 @@ local function onCharacterAdded(character: Model)
 	local maxHealth, walkSpeed = Config.MAX_HEALTH, Config.WALK_SPEED
 	if player then
 		maxHealth, walkSpeed = statsFor(player)
+		-- A fresh character is never downed.
+		player:SetAttribute("Downed", nil)
+		player:SetAttribute("ReviveProgress", nil)
 	end
 	humanoid.MaxHealth = maxHealth
 	humanoid.Health = maxHealth
@@ -99,18 +108,98 @@ function Characters.spawn(player: Player, cframe: CFrame)
 	end)
 end
 
--- The one way to hurt a player. Skips the hit while they're invulnerable: until the server time
--- in their InvulnerableUntil attribute, or always with the Studio-only Dev_God attribute.
+function Characters.isDowned(player: Player): boolean
+	return player:GetAttribute("Downed") == true
+end
+
+-- Downs the player: held at 1 health and anchored in place until a teammate revives them.
+function Characters.down(player: Player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or Characters.isDowned(player) then
+		return
+	end
+	humanoid.Health = 1
+	if root and root:IsA("BasePart") then
+		root.Anchored = true
+	end
+	player:SetAttribute("ReviveProgress", 0)
+	player:SetAttribute("Downed", true)
+end
+
+local function revive(player: Player, now: number)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	player:SetAttribute("Downed", nil)
+	player:SetAttribute("ReviveProgress", nil)
+	if not character or not humanoid then
+		return
+	end
+	humanoid.Health = humanoid.MaxHealth * PartyConfig.REVIVE_HEALTH_FRACTION
+	if root and root:IsA("BasePart") then
+		root.Anchored = false
+	end
+	-- A moment to get clear of whatever downed them. The ForceField is the visible cue.
+	player:SetAttribute("InvulnerableUntil", now + PartyConfig.REVIVE_GRACE)
+	local shield = Instance.new("ForceField")
+	shield.Parent = character
+	task.delay(PartyConfig.REVIVE_GRACE, function()
+		shield:Destroy()
+	end)
+end
+
+-- Fills each downed member's revive while a standing teammate (in `targets`) is close enough,
+-- and revives them when it's full. Progress holds when the teammate steps away.
+function Characters.stepRevives(members: { Player }, targets: { Target }, dt: number, now: number)
+	local radiusSq = PartyConfig.REVIVE_RADIUS * PartyConfig.REVIVE_RADIUS
+	for _, player in members do
+		if not Characters.isDowned(player) then
+			continue
+		end
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root or not root:IsA("BasePart") then
+			continue
+		end
+		local helped = false
+		for _, target in targets do
+			local dx, dz = target.x - root.Position.X, target.z - root.Position.Z
+			if dx * dx + dz * dz <= radiusSq then
+				helped = true
+				break
+			end
+		end
+		if helped then
+			local progress = (player:GetAttribute("ReviveProgress") or 0) + dt / PartyConfig.REVIVE_TIME
+			if progress >= 1 then
+				revive(player, now)
+			else
+				player:SetAttribute("ReviveProgress", progress)
+			end
+		end
+	end
+end
+
+-- The one way to hurt a player. Skips the hit while they're invulnerable: until the game time in
+-- their InvulnerableUntil attribute, or always with the Studio-only Dev_God attribute. A hit
+-- that would kill downs them instead.
 function Characters.damage(target: Target, amount: number, now: number)
 	local player = target.player
 	local invulnerableUntil = player:GetAttribute("InvulnerableUntil")
 	if player:GetAttribute("Dev_God") or (typeof(invulnerableUntil) == "number" and now < invulnerableUntil) then
 		return
 	end
-	target.humanoid:TakeDamage(amount)
+	if target.humanoid.Health - amount <= 0 then
+		Characters.down(player)
+	else
+		target.humanoid:TakeDamage(amount)
+	end
 end
 
--- Each of `players` whose character is alive, with their position on the ground plane.
+-- Each of `players` who is standing (alive and not downed), with their position on the ground
+-- plane.
 function Characters.getTargets(players: { Player }): { Target }
 	local targets: { Target } = {}
 	for _, player in players do
@@ -120,7 +209,7 @@ function Characters.getTargets(players: { Player }): { Target }
 		end
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		local root = character:FindFirstChild("HumanoidRootPart")
-		if humanoid and humanoid.Health > 0 and root and root:IsA("BasePart") then
+		if humanoid and humanoid.Health > 0 and not Characters.isDowned(player) and root and root:IsA("BasePart") then
 			local position = root.Position
 			table.insert(targets, {
 				player = player,

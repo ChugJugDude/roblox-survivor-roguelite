@@ -10,6 +10,7 @@ local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local Config = require(ReplicatedStorage.Shared.Config.Waves)
+local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
 local RunConfig = require(ReplicatedStorage.Shared.Config.Run)
 
 -- What the wave director needs to know about the run this frame (the match fills it in).
@@ -19,6 +20,7 @@ export type RunView = {
 	stageElapsed: number, -- seconds since the stage started, counting on through overtime
 	overtime: boolean,
 	overtimeElapsed: number, -- 0 outside overtime
+	partySize: number,
 }
 
 export type State = {
@@ -117,10 +119,14 @@ function WaveDirector.step(state: State, now: number, targets: { Characters.Targ
 		interval /= 1 + RunConfig.OVERTIME_RAMP * run.overtimeElapsed
 		maxAlive = math.floor(maxAlive * RunConfig.OVERTIME_MAX_ALIVE_MULTIPLIER)
 	end
+	-- Bigger parties face tougher, faster, bigger waves.
+	local extraPlayers = math.max(0, run.partySize - 1)
+	interval /= 1 + PartyConfig.SPAWN_RATE_PER_EXTRA_PLAYER * extraPlayers
+	maxAlive = math.floor(maxAlive * (1 + PartyConfig.MAX_ALIVE_PER_EXTRA_PLAYER * extraPlayers))
 	maxAlive = math.min(maxAlive, Config.HARD_CAP)
 
 	local scaling: EnemyService.Scaling = {
-		health = stageDef.healthMultiplier,
+		health = stageDef.healthMultiplier * (1 + PartyConfig.HEALTH_PER_EXTRA_PLAYER * extraPlayers),
 		damage = stageDef.damageMultiplier,
 		xp = stageDef.xpMultiplier,
 	}

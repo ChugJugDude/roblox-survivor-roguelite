@@ -17,6 +17,7 @@
 		drop <kind>    put a Chest, Meat, Bomb, or Magnet 6 studs from the first living player
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 		party       start the party on the lobby's portal pad now
+		down        down the first player (as if a hit would have killed them)
 		lobby       send every player back to the lobby
 
 	A client can set the attribute on its own copy of Workspace, but that never reaches the server,
@@ -50,6 +51,13 @@ local function execute(command: string)
 		return
 	elseif name == "freezexp" and (argument == "on" or argument == "off") then
 		Progression.devSetXPFrozen(argument == "on")
+		print(`[Dev] {command}`)
+		return
+	elseif name == "down" then
+		local first = Players:GetPlayers()[1]
+		if first then
+			Characters.down(first)
+		end
 		print(`[Dev] {command}`)
 		return
 	elseif name == "party" then

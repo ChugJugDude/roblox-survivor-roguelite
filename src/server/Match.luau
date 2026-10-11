@@ -52,6 +52,7 @@ export type Match = {
 	pickups: Pickups.State,
 	waves: WaveDirector.State,
 	portal: Portal.State,
+	partySize: number, -- members when the run started, for scaling
 	phase: Phase,
 	stage: number,
 	phaseStartedAt: number,
@@ -123,6 +124,7 @@ local function runView(match: Match, now: number): WaveDirector.RunView
 			else 0,
 		overtime = phase == "Overtime",
 		overtimeElapsed = if phase == "Overtime" then sinceStart else 0,
+		partySize = match.partySize,
 	}
 end
 
@@ -177,6 +179,7 @@ function Match.create(slot: number): Match
 		pickups = Pickups.new(arena, enemies, progression, party, net),
 		waves = WaveDirector.new(arena, enemies),
 		portal = Portal.new(arena),
+		partySize = 1,
 		phase = "Countdown",
 		stage = 0,
 		phaseStartedAt = 0,
@@ -222,6 +225,7 @@ function Match.startRun(match: Match)
 	Pickups.clear(match.pickups)
 	Portal.close(match.portal)
 	match.stage = 1
+	match.partySize = math.max(1, #match.members)
 	match.runStartedAt = now + Config.COUNTDOWN
 	for _, player in match.members do
 		Characters.spawn(player, Arena.spawnCFrame(match.arena))
@@ -233,7 +237,7 @@ function Match.step(match: Match, dt: number)
 	local now = Pause.now(match.clock)
 	local targets = Characters.getTargets(match.members)
 
-	-- Nobody left standing ends the run, even mid-pause (e.g. the last player went down on the same
+	-- Nobody left standing (everyone downed or gone) ends the run, even mid-pause (e.g. the last player went down on the same
 	-- frame as a level-up): the party shouldn't be left choosing upgrades for a lost run.
 	if (match.phase == "Stage" or match.phase == "Overtime") and #targets == 0 then
 		endRun(match, "Defeat", now)
@@ -248,6 +252,7 @@ function Match.step(match: Match, dt: number)
 
 	local step = math.min(dt, MAX_STEP)
 
+	Characters.stepRevives(match.members, targets, step, now)
 	stepRun(match, now, step, targets)
 	WaveDirector.step(match.waves, now, targets, runView(match, now))
 	EnemyService.move(match.enemies, step, targets)
