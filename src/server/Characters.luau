@@ -1,5 +1,6 @@
 --!strict
--- Sets up each player's character when it spawns, and lists the living ones for the simulation.
+-- Spawns characters where they're wanted (lobby or a match's arena), sets them up, and lists the
+-- living ones for each match's simulation.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,7 +16,7 @@ export type Target = {
 
 local Characters = {}
 
-local spawnCFrame = CFrame.new()
+local spawnAt: { [Player]: CFrame } = {} -- where each player's next character appears
 local connections: { [Player]: RBXScriptConnection } = {}
 local started = false
 
@@ -27,12 +28,13 @@ end
 
 local function onCharacterAdded(character: Model)
 	character:WaitForChild("HumanoidRootPart")
-	if character.Parent then
-		character:PivotTo(spawnCFrame)
+	local player = Players:GetPlayerFromCharacter(character)
+	local cframe = player and spawnAt[player]
+	if cframe and character.Parent then
+		character:PivotTo(cframe)
 	end
 
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	local player = Players:GetPlayerFromCharacter(character)
 	local maxHealth, walkSpeed = Config.MAX_HEALTH, Config.WALK_SPEED
 	if player then
 		maxHealth, walkSpeed = statsFor(player)
@@ -65,14 +67,14 @@ local function onPlayerRemoving(player: Player)
 		connection:Disconnect()
 		connections[player] = nil
 	end
+	spawnAt[player] = nil
 end
 
-function Characters.start(spawnPosition: Vector3)
+function Characters.start()
 	assert(not started, "Characters.start() was called twice")
 	started = true
-	spawnCFrame = CFrame.new(spawnPosition)
 
-	-- Run decides when characters spawn: at the start of a run, not automatically after death.
+	-- The lobby and matches decide when and where characters spawn; never automatically after death.
 	Players.CharacterAutoLoads = false
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
@@ -86,8 +88,9 @@ function Characters.setStatsProvider(provider: (Player) -> (number, number))
 	statsFor = provider
 end
 
--- Spawns (or respawns) the player's character at the spawn point. Doesn't yield.
-function Characters.spawn(player: Player)
+-- Spawns (or respawns) the player's character at `cframe`. Doesn't yield.
+function Characters.spawn(player: Player, cframe: CFrame)
+	spawnAt[player] = cframe
 	task.spawn(function()
 		local ok, err = pcall(player.LoadCharacter, player)
 		if not ok and player.Parent then
@@ -107,10 +110,10 @@ function Characters.damage(target: Target, amount: number, now: number)
 	target.humanoid:TakeDamage(amount)
 end
 
--- Every player whose character is alive, with their position on the ground plane.
-function Characters.getTargets(): { Target }
+-- Each of `players` whose character is alive, with their position on the ground plane.
+function Characters.getTargets(players: { Player }): { Target }
 	local targets: { Target } = {}
-	for _, player in Players:GetPlayers() do
+	for _, player in players do
 		local character = player.Character
 		if not character then
 			continue

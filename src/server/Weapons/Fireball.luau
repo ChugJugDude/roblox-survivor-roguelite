@@ -17,7 +17,12 @@ local candidates: { EnemyService.Enemy } = {} -- reused every cast
 
 local Fireball = {}
 
-function Fireball.step(now: number, targets: { Characters.Target })
+function Fireball.step(
+	enemies: EnemyService.State,
+	projectiles: ProjectileService.State,
+	now: number,
+	targets: { Characters.Target }
+)
 	for _, target in targets do
 		local build = Upgrades.getBuild(target.player)
 		local stats = build and BuildStats.fireball(build)
@@ -25,7 +30,7 @@ function Fireball.step(now: number, targets: { Characters.Target })
 			continue
 		end
 		table.clear(candidates)
-		EnemyService.queryRadius(target.x, target.z, stats.range, candidates)
+		EnemyService.queryRadius(enemies, target.x, target.z, stats.range, candidates)
 		-- Don't waste fireballs on crates.
 		for index = #candidates, 1, -1 do
 			if EnemyService.isProp(candidates[index]) then
@@ -42,7 +47,7 @@ function Fireball.step(now: number, targets: { Characters.Target })
 			local enemy = table.remove(candidates, random:NextInteger(1, #candidates)) :: EnemyService.Enemy
 			local dx, dz = enemy.x - target.x, enemy.z - target.z
 			local distance = math.max(math.sqrt(dx * dx + dz * dz), 1e-3)
-			ProjectileService.spawn({
+			ProjectileService.spawn(projectiles, {
 				kind = kind,
 				fromEnemy = false,
 				owner = target.player,

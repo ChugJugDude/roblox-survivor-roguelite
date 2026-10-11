@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+local CurrentArena = require(script.Parent.CurrentArena)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local EntityNet = require(ReplicatedStorage.Shared.EntityNet)
 local GameClock = require(ReplicatedStorage.Shared.GameClock)
@@ -65,7 +66,6 @@ type Active = {
 local active: { [number]: Active } = {}
 local pools: { [string]: { BasePart } } = {}
 local folder: Folder? = nil
-local arena: Instance? = nil
 local started = false
 
 -- Reused every frame for BulkMoveTo.
@@ -182,7 +182,7 @@ local function onExplosions(list: any)
 end
 
 local function render()
-	local currentArena = arena
+	local currentArena = CurrentArena.get()
 	if not currentArena then
 		return
 	end
@@ -209,10 +209,16 @@ local function render()
 	end
 end
 
-function ProjectileRenderer.start(newArena: Instance)
+function ProjectileRenderer.start()
 	assert(not started, "ProjectileRenderer.start() was called twice")
 	started = true
-	arena = newArena
+	-- The player moved to another world: drop every projectile.
+	CurrentArena.onReset(function()
+		for id, entry in active do
+			active[id] = nil
+			release(entry)
+		end
+	end)
 
 	local newFolder = Instance.new("Folder")
 	newFolder.Name = "ProjectileVisuals"

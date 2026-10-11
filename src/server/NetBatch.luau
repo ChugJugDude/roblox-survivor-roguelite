@@ -1,33 +1,53 @@
 --!strict
--- Collects server -> client events during a frame and sends each remote's batch once, as a list,
--- when Simulation calls flush. Remotes flush in the order they were registered, so for example a
--- gem's "spawned" event always arrives before its "collected" event from the same frame.
+-- Collects one match's server -> client events during a frame and sends each remote's batch once,
+-- as a list, to that match's members. Every batch sends remotes in the same fixed order, so for
+-- example an enemy's "spawned" event always arrives before its "despawned" event from the same
+-- frame, and a gem's "spawned" before its "collected".
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+export type Batch = {
+	queues: { [RemoteEvent]: { any } },
+}
+
+local ORDER: { RemoteEvent } = {
+	Remotes.EnemySpawned,
+	Remotes.EnemyDespawned,
+	Remotes.EnemiesHit,
+	Remotes.GemsSpawned,
+	Remotes.GemsCollected,
+	Remotes.ProjectilesSpawned,
+	Remotes.ProjectilesRemoved,
+	Remotes.Explosions,
+}
 
 local NetBatch = {}
 
-local order: { RemoteEvent } = {}
-local queues: { [RemoteEvent]: { any } } = {}
-
-function NetBatch.register(remote: RemoteEvent)
-	if queues[remote] then
-		return
+function NetBatch.new(): Batch
+	local queues = {}
+	for _, remote in ORDER do
+		queues[remote] = {}
 	end
-	table.insert(order, remote)
-	queues[remote] = {}
+	return { queues = queues }
 end
 
-function NetBatch.push(remote: RemoteEvent, item: any)
-	local queue = queues[remote]
-	assert(queue, `{remote.Name} isn't registered with NetBatch`)
+function NetBatch.push(batch: Batch, remote: RemoteEvent, item: any)
+	local queue = batch.queues[remote]
+	assert(queue, `{remote.Name} isn't one of NetBatch's remotes`)
 	table.insert(queue, item)
 end
 
-function NetBatch.flush()
-	for _, remote in order do
-		local queue = queues[remote]
+-- Sends everything queued to `players` and empties the batch.
+function NetBatch.flush(batch: Batch, players: { Player })
+	for _, remote in ORDER do
+		local queue = batch.queues[remote]
 		if #queue > 0 then
-			queues[remote] = {}
-			remote:FireAllClients(queue)
+			batch.queues[remote] = {}
+			for _, player in players do
+				remote:FireClient(player, queue)
+			end
 		end
 	end
 end

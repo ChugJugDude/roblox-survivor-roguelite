@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CurrentArena = require(script.Parent.Parent.CurrentArena)
 local Create = require(script.Parent.Create)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local GameClock = require(ReplicatedStorage.Shared.GameClock)
@@ -49,7 +50,7 @@ local function set(instance: Instance, property: string, value: any)
 	end
 end
 
-function Hud.start(arena: Instance)
+function Hud.start()
 	local gui = Create("ScreenGui", {
 		Name = "Hud",
 		ResetOnSpawn = false,
@@ -204,6 +205,11 @@ function Hud.start(arena: Instance)
 	RunService.RenderStepped:Connect(function()
 		if not picker then
 			picker = localPlayer.PlayerGui:FindFirstChild("UpgradePicker") :: ScreenGui?
+		end
+		local arena = CurrentArena.get()
+		gui.Enabled = arena ~= nil
+		if not arena then
+			return -- the lobby
 		end
 		local now = GameClock.read(arena)
 		local phase = arena:GetAttribute("Phase")

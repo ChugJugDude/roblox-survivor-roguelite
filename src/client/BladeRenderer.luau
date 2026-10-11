@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CurrentArena = require(script.Parent.CurrentArena)
 local BladeOrbit = require(ReplicatedStorage.Shared.BladeOrbit)
 local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
@@ -25,7 +26,6 @@ type Blades = {
 
 local bladesByCharacter: { [Model]: Blades } = {}
 local folder: Folder? = nil
-local arena: Instance? = nil
 local started = false
 
 -- Reused every frame.
@@ -62,7 +62,7 @@ local function createBlades(count: number, size: Vector3, color: Color3, shape: 
 end
 
 local function render()
-	local currentArena = arena
+	local currentArena = CurrentArena.get()
 	if not currentArena then
 		return
 	end
@@ -72,8 +72,9 @@ local function render()
 	table.clear(moveCFrames)
 
 	for _, player in Players:GetPlayers() do
+		-- Only players in this arena (others are in their own matches, or the lobby).
 		local character = player.Character
-		if not character then
+		if not character or player:GetAttribute("ArenaName") ~= currentArena.Name then
 			continue
 		end
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -126,10 +127,9 @@ local function render()
 	end
 end
 
-function BladeRenderer.start(newArena: Instance)
+function BladeRenderer.start()
 	assert(not started, "BladeRenderer.start() was called twice")
 	started = true
-	arena = newArena
 
 	local newFolder = Instance.new("Folder")
 	newFolder.Name = "BladeVisuals"

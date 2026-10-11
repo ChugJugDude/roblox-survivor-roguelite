@@ -1,7 +1,7 @@
 --!strict
 --[[
-	Projectiles: straight-line shots simulated on the server. Player shots hit enemies (arrows pierce,
-	fireballs explode); enemy shots hit players through Characters.damage.
+	One match's projectiles: straight-line shots simulated on the server. Player shots hit enemies
+	(arrows pierce, fireballs explode); enemy shots hit players through Characters.damage.
 
 	Clients get one spawn event per projectile and work out its position themselves, since it flies
 	in a straight line. Removal is only sent when a projectile stops early; at max distance it just
@@ -43,44 +43,49 @@ type Projectile = Spec & {
 	hits: { [EnemyService.Enemy]: boolean },
 }
 
-local projectiles: { [number]: Projectile } = {}
-local nextId = 0
+export type State = {
+	enemies: EnemyService.State,
+	net: NetBatch.Batch,
+	clock: Pause.Clock,
+	projectiles: { [number]: Projectile },
+	nextId: number,
+}
+
 local nearby: { EnemyService.Enemy } = {} -- reused for every query
-local started = false
 
 local ProjectileService = {}
 
-local function remove(projectile: Projectile, notify: boolean)
-	projectiles[projectile.id] = nil
+local function remove(state: State, projectile: Projectile, notify: boolean)
+	state.projectiles[projectile.id] = nil
 	if notify then
-		NetBatch.push(Remotes.ProjectilesRemoved, projectile.id)
+		NetBatch.push(state.net, Remotes.ProjectilesRemoved, projectile.id)
 	end
 end
 
-local function explode(projectile: Projectile, x: number, z: number)
+local function explode(state: State, projectile: Projectile, x: number, z: number)
 	local radius = projectile.blastRadius or 0
 	table.clear(nearby)
-	EnemyService.queryRadius(x, z, radius, nearby)
+	EnemyService.queryRadius(state.enemies, x, z, radius, nearby)
 	for _, enemy in nearby do
-		EnemyService.damage(enemy, projectile.damage)
+		EnemyService.damage(state.enemies, enemy, projectile.damage)
 	end
-	NetBatch.push(Remotes.Explosions, { x = x, z = z, radius = radius })
+	NetBatch.push(state.net, Remotes.Explosions, { x = x, z = z, radius = radius })
 end
 
 -- Checks a player shot at (x, z). Returns true if the projectile is used up.
-local function hitEnemies(projectile: Projectile, x: number, z: number): boolean
+local function hitEnemies(state: State, projectile: Projectile, x: number, z: number): boolean
 	table.clear(nearby)
-	EnemyService.queryRadius(x, z, projectile.radius, nearby)
+	EnemyService.queryRadius(state.enemies, x, z, projectile.radius, nearby)
 	for _, enemy in nearby do
 		if projectile.hits[enemy] then
 			continue
 		end
 		if projectile.blastRadius then
-			explode(projectile, x, z)
+			explode(state, projectile, x, z)
 			return true
 		end
 		projectile.hits[enemy] = true
-		EnemyService.damage(enemy, projectile.damage)
+		EnemyService.damage(state.enemies, enemy, projectile.damage)
 		projectile.pierce -= 1
 		if projectile.pierce <= 0 then
 			return true
@@ -108,14 +113,18 @@ local function hitPlayers(
 	return false
 end
 
-function ProjectileService.spawn(spec: Spec)
-	nextId += 1
+function ProjectileService.new(enemies: EnemyService.State, net: NetBatch.Batch, clock: Pause.Clock): State
+	return { enemies = enemies, net = net, clock = clock, projectiles = {}, nextId = 0 }
+end
+
+function ProjectileService.spawn(state: State, spec: Spec)
+	state.nextId += 1
 	-- The spec table becomes the projectile; callers pass a fresh table each time.
 	local projectile = (spec :: any) :: Projectile
-	projectile.id = nextId
+	projectile.id = state.nextId
 	projectile.traveled = 0
 	projectile.hits = {}
-	projectiles[projectile.id] = projectile
+	state.projectiles[projectile.id] = projectile
 
 	local info: EntityNet.ProjectileInfo = {
 		id = projectile.id,
@@ -126,20 +135,20 @@ function ProjectileService.spawn(spec: Spec)
 		dirZ = spec.dirZ,
 		speed = spec.speed,
 		maxDistance = spec.maxDistance,
-		startedAt = Pause.now(),
+		startedAt = Pause.now(state.clock),
 	}
-	NetBatch.push(Remotes.ProjectilesSpawned, info)
+	NetBatch.push(state.net, Remotes.ProjectilesSpawned, info)
 end
 
 -- Removes every projectile (clients expire them on their own or get removal events).
-function ProjectileService.clear()
-	for _, projectile in projectiles do
-		remove(projectile, true)
+function ProjectileService.clear(state: State)
+	for _, projectile in state.projectiles do
+		remove(state, projectile, true)
 	end
 end
 
-function ProjectileService.step(dt: number, now: number, targets: { Characters.Target })
-	for _, projectile in projectiles do
+function ProjectileService.step(state: State, dt: number, now: number, targets: { Characters.Target })
+	for _, projectile in state.projectiles do
 		local remaining = math.min(projectile.speed * dt, projectile.maxDistance - projectile.traveled)
 		local done = false
 		while remaining > 0 and not done do
@@ -151,29 +160,21 @@ function ProjectileService.step(dt: number, now: number, targets: { Characters.T
 			if projectile.fromEnemy then
 				done = hitPlayers(projectile, projectile.x, projectile.z, now, targets)
 			else
-				done = hitEnemies(projectile, projectile.x, projectile.z)
+				done = hitEnemies(state, projectile, projectile.x, projectile.z)
 			end
 		end
 
 		if done then
-			remove(projectile, true)
+			remove(state, projectile, true)
 		elseif projectile.traveled >= projectile.maxDistance then
 			if projectile.blastRadius then
-				explode(projectile, projectile.x, projectile.z)
-				remove(projectile, true)
+				explode(state, projectile, projectile.x, projectile.z)
+				remove(state, projectile, true)
 			else
-				remove(projectile, false)
+				remove(state, projectile, false)
 			end
 		end
 	end
-end
-
-function ProjectileService.start()
-	assert(not started, "ProjectileService.start() was called twice")
-	started = true
-	NetBatch.register(Remotes.ProjectilesSpawned)
-	NetBatch.register(Remotes.ProjectilesRemoved)
-	NetBatch.register(Remotes.Explosions)
 end
 
 return ProjectileService

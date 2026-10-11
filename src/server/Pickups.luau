@@ -1,6 +1,6 @@
 --!strict
 --[[
-	Items on the floor; walk over one to use it.
+	One match's items on the floor; walk over one to use it.
 		Chest   from mini-bosses: a bonus upgrade pick
 		Meat    heals
 		Bomb    kills every regular enemy around you and hurts bosses
@@ -39,11 +39,17 @@ local RING_COLORS: { [Kind]: Color3 } = {
 	Magnet = Color3.fromRGB(90, 170, 255),
 }
 
+export type State = {
+	arena: Arena.Arena,
+	enemies: EnemyService.State,
+	progression: Progression.State,
+	party: Upgrades.Party,
+	net: NetBatch.Batch,
+	items: { Item }, -- oldest first
+}
+
 local random = Random.new()
-local arena: Arena.Arena? = nil
-local items: { Item } = {} -- oldest first
 local nearby: { EnemyService.Enemy } = {} -- reused by bombs
-local started = false
 
 local Pickups = {}
 
@@ -187,47 +193,49 @@ local function randomItemKind(): Kind
 	return "Meat"
 end
 
-local function detonate(x: number, z: number)
+local function detonate(state: State, x: number, z: number)
+	local enemies = state.enemies
 	table.clear(nearby)
-	EnemyService.queryRadius(x, z, Config.BOMB_RADIUS, nearby)
+	EnemyService.queryRadius(enemies, x, z, Config.BOMB_RADIUS, nearby)
 	for _, enemy in nearby do
 		if EnemyService.isProp(enemy) then
 			continue
 		elseif enemy.def.isBoss then
-			EnemyService.damage(enemy, enemy.maxHealth * Config.BOMB_BOSS_DAMAGE_FRACTION)
+			EnemyService.damage(enemies, enemy, enemy.maxHealth * Config.BOMB_BOSS_DAMAGE_FRACTION)
 		else
-			EnemyService.damage(enemy, math.huge)
+			EnemyService.damage(enemies, enemy, math.huge)
 		end
 	end
-	NetBatch.push(Remotes.Explosions, { x = x, z = z, radius = Config.BOMB_RADIUS, kind = "Bomb" })
+	NetBatch.push(state.net, Remotes.Explosions, { x = x, z = z, radius = Config.BOMB_RADIUS, kind = "Bomb" })
 end
 
-local function use(item: Item, target: Characters.Target)
+local function use(state: State, item: Item, target: Characters.Target)
 	if item.kind == "Chest" then
-		Upgrades.grantBonusPick(target.player)
+		Upgrades.grantBonusPick(state.party, target.player)
 	elseif item.kind == "Meat" then
 		local humanoid = target.humanoid
 		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + humanoid.MaxHealth * Config.MEAT_HEAL_FRACTION)
 	elseif item.kind == "Bomb" then
-		detonate(target.x, target.z)
+		detonate(state, target.x, target.z)
 	elseif item.kind == "Magnet" then
-		Progression.vacuum({ target })
+		Progression.vacuum(state.progression, { target })
 	end
 end
 
 -- Puts an item on the floor at (x, z), removing the oldest if the floor is full.
-function Pickups.drop(kind: Kind, x: number, z: number)
-	local currentArena = assert(arena, "Pickups.start() must be called first")
+function Pickups.drop(state: State, kind: Kind, x: number, z: number)
+	local items = state.items
 	if #items >= Config.MAX_ITEMS then
 		table.remove(items, 1).model:Destroy()
 	end
-	local model = buildModel(kind, Vector3.new(x, currentArena.origin.Y, z))
-	model.Parent = currentArena.model
+	local model = buildModel(kind, Vector3.new(x, state.arena.origin.Y, z))
+	model.Parent = state.arena.model
 	table.insert(items, { kind = kind, model = model, x = x, z = z })
 end
 
 -- Uses items that a living player is standing on.
-function Pickups.step(targets: { Characters.Target })
+function Pickups.step(state: State, targets: { Characters.Target })
+	local items = state.items
 	-- Collect first, then use: a bomb's kills can drop new items, which would shift this list.
 	local collected: { { item: Item, target: Characters.Target } } = {}
 	local radiusSq = Config.PICKUP_RADIUS * Config.PICKUP_RADIUS
@@ -244,28 +252,40 @@ function Pickups.step(targets: { Characters.Target })
 		end
 	end
 	for _, pickup in collected do
-		use(pickup.item, pickup.target)
+		use(state, pickup.item, pickup.target)
 	end
 end
 
-function Pickups.clear()
-	for _, item in items do
+function Pickups.clear(state: State)
+	for _, item in state.items do
 		item.model:Destroy()
 	end
-	table.clear(items)
+	table.clear(state.items)
 end
 
-function Pickups.start(newArena: Arena.Arena)
-	assert(not started, "Pickups.start() was called twice")
-	started = true
-	arena = newArena
-	EnemyService.onKilled(function(enemy)
+function Pickups.new(
+	arena: Arena.Arena,
+	enemies: EnemyService.State,
+	progression: Progression.State,
+	party: Upgrades.Party,
+	net: NetBatch.Batch
+): State
+	local state: State = {
+		arena = arena,
+		enemies = enemies,
+		progression = progression,
+		party = party,
+		net = net,
+		items = {},
+	}
+	EnemyService.onKilled(enemies, function(enemy)
 		if enemy.def.dropsChest then
-			Pickups.drop("Chest", enemy.x, enemy.z)
+			Pickups.drop(state, "Chest", enemy.x, enemy.z)
 		elseif EnemyService.isProp(enemy) or random:NextNumber() < Config.ENEMY_DROP_CHANCE then
-			Pickups.drop(randomItemKind(), enemy.x, enemy.z)
+			Pickups.drop(state, randomItemKind(), enemy.x, enemy.z)
 		end
 	end)
+	return state
 end
 
 return Pickups

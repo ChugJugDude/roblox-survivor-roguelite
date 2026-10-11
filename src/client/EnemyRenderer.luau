@@ -9,6 +9,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CurrentArena = require(script.Parent.CurrentArena)
 local EnemyModels = require(script.Parent.EnemyModels)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Enemies)
@@ -37,7 +38,6 @@ local GROUND_Y = ArenaConfig.ORIGIN.Y
 local entries: { [number]: Entry } = {}
 local pools: { [string]: { EnemyModels.Visual } } = {}
 local folder: Folder? = nil
-local arena: Instance? = nil
 local started = false
 
 -- Reused every frame for BulkMoveTo.
@@ -169,7 +169,7 @@ local function samplePosition(entry: Entry, renderTime: number): (number, number
 end
 
 local function render()
-	local currentArena = arena
+	local currentArena = CurrentArena.get()
 	if not currentArena then
 		return
 	end
@@ -201,10 +201,21 @@ local function render()
 	end
 end
 
-function EnemyRenderer.start(newArena: Instance)
+-- Drops every enemy (the player moved to another world).
+local function reset()
+	for id, entry in entries do
+		if entry.flashing then
+			setFlash(entry, false)
+		end
+		release(entry.kind, entry.visual)
+		entries[id] = nil
+	end
+end
+
+function EnemyRenderer.start()
 	assert(not started, "EnemyRenderer.start() was called twice")
 	started = true
-	arena = newArena
+	CurrentArena.onReset(reset)
 
 	local newFolder = Instance.new("Folder")
 	newFolder.Name = "EnemyVisuals"

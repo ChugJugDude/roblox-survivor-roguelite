@@ -1,6 +1,6 @@
 --!strict
--- Builds an arena (floor and walls) from Config.Arena at a given origin. It can build at any
--- offset, so M2 can build one per party.
+-- Builds an arena (floor and walls) from Config.Arena at a given origin, as a model named `name`
+-- under workspace.Arenas. Each match gets its own, far apart from the others and the lobby.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -28,14 +28,25 @@ local function makePart(name: string, size: Vector3, cframe: CFrame, color: Colo
 	return part
 end
 
-function Arena.build(origin: Vector3): Arena
+local function arenasFolder(): Folder
+	local existing = workspace:FindFirstChild("Arenas")
+	if existing and existing:IsA("Folder") then
+		return existing
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Arenas"
+	folder.Parent = workspace
+	return folder
+end
+
+function Arena.build(origin: Vector3, name: string): Arena
 	local size = Config.SIZE
 	local half = size / 2
 	local wallThickness = Config.WALL_THICKNESS
 	local outer = size + wallThickness * 2
 
 	local model = Instance.new("Model")
-	model.Name = "Arena"
+	model.Name = name
 
 	makePart(
 		"Floor",
@@ -58,13 +69,22 @@ function Arena.build(origin: Vector3): Arena
 	model:SetAttribute("EnemiesAlive", 0)
 	model:SetAttribute("Kills", 0)
 
-	model.Parent = workspace
+	model.Parent = arenasFolder()
 
 	return {
 		model = model,
 		origin = origin,
 		halfSize = half,
 	}
+end
+
+function Arena.destroy(arena: Arena)
+	arena.model:Destroy()
+end
+
+-- Where players appear: just above the middle of the floor.
+function Arena.spawnCFrame(arena: Arena): CFrame
+	return CFrame.new(arena.origin + Vector3.new(0, 4, 0))
 end
 
 -- Clamps a ground position so it stays `margin` studs inside the walls.

@@ -15,7 +15,7 @@ local SpinningBlade = {}
 
 local nearby: { EnemyService.Enemy } = {} -- reused every step
 
-function SpinningBlade.step(now: number, targets: { Characters.Target })
+function SpinningBlade.step(enemies: EnemyService.State, now: number, targets: { Characters.Target })
 	for _, target in targets do
 		local build = Upgrades.getBuild(target.player)
 		local stats = build and BuildStats.spinningBlade(build)
@@ -24,7 +24,7 @@ function SpinningBlade.step(now: number, targets: { Characters.Target })
 		end
 
 		table.clear(nearby)
-		EnemyService.queryRadius(target.x, target.z, stats.outerRadius, nearby)
+		EnemyService.queryRadius(enemies, target.x, target.z, stats.outerRadius, nearby)
 		if #nearby == 0 then
 			continue
 		end
@@ -45,7 +45,7 @@ function SpinningBlade.step(now: number, targets: { Characters.Target })
 					offX * offX + offZ * offZ <= reach * reach
 					and EnemyService.tryHit(enemy, target.player, now, stats.hitCooldown)
 				then
-					EnemyService.damage(enemy, stats.damage)
+					EnemyService.damage(enemies, enemy, stats.damage)
 				end
 			end
 		end

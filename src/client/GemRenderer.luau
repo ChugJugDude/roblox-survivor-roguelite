@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CurrentArena = require(script.Parent.CurrentArena)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Progression)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -159,6 +160,17 @@ function GemRenderer.start()
 	newFolder.Parent = workspace
 	folder = newFolder
 
+	-- The player moved to another world: drop every gem, including ones mid-flight.
+	CurrentArena.onReset(function()
+		for id, gem in gems do
+			gems[id] = nil
+			release(gem.part)
+		end
+		for _, fly in flying do
+			release(fly.part)
+		end
+		table.clear(flying)
+	end)
 	Remotes.GemsSpawned.OnClientEvent:Connect(onSpawned)
 	Remotes.GemsCollected.OnClientEvent:Connect(onCollected)
 	RunService.RenderStepped:Connect(render)

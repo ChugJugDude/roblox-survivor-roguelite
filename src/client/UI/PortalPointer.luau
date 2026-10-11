@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local CurrentArena = require(script.Parent.Parent.CurrentArena)
 local Create = require(script.Parent.Create)
 
 local COLOR = Color3.fromRGB(190, 120, 255)
@@ -13,7 +14,7 @@ local EDGE_MARGIN = 70
 
 local PortalPointer = {}
 
-function PortalPointer.start(arena: Instance)
+function PortalPointer.start()
 	local player = Players.LocalPlayer
 	local gui = Create("ScreenGui", {
 		Name = "PortalPointer",
@@ -57,6 +58,11 @@ function PortalPointer.start(arena: Instance)
 	})
 
 	RunService.RenderStepped:Connect(function()
+		local arena = CurrentArena.get()
+		if not arena then
+			pointer.Visible = false
+			return
+		end
 		local camera = workspace.CurrentCamera
 		local portal = arena:FindFirstChild("Portal")
 		local pad = portal and portal:FindFirstChild("Pad")

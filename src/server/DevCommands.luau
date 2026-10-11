@@ -2,33 +2,33 @@
 --[[
 	Studio-only test hooks. Does nothing in a live server.
 
-	Set the Arena's Dev_Command attribute from the command bar or the Studio MCP, for example
-		workspace.Arena:SetAttribute("Dev_Command", "skip")
+	Set Workspace's Dev_Command attribute from the command bar or the Studio MCP, for example
+		workspace:SetAttribute("Dev_Command", "skip")
+	Commands act on the match of the first player in the server (in Studio solo, that's you).
 
 		skip        end the current phase now (in overtime: fill the portal)
 		stage <n>   jump to the start of stage n
-		killall     kill every enemy (counts as kills)
+		killall     kill every enemy and crate (counts as kills)
 		god         toggle invulnerability for every player
 		xp <n>      add n XP to the party
-		freezexp on|off   stop or restart XP gain (no level-ups or pauses; for benchmarks). Lasts
-		                  across runs until turned off.
+		freezexp on|off   stop or restart XP gain everywhere (no level-ups or pauses; for benchmarks).
+		                  Lasts across runs until turned off.
 		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
 		drop <kind>    put a Chest, Meat, Bomb, or Magnet 6 studs from the first living player
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 
-	Only the server can set attributes on server-owned instances, so clients can't trigger these.
+	A client can set the attribute on its own copy of Workspace, but that never reaches the server,
+	so clients can't trigger these.
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
-local Pause = require(script.Parent.Pause)
-local Progression = require(script.Parent.Progression)
+local Match = require(script.Parent.Match)
 local Pickups = require(script.Parent.Pickups)
-local Run = require(script.Parent.Run)
+local Progression = require(script.Parent.Progression)
 local Upgrades = require(script.Parent.Upgrades)
 
 local ATTRIBUTE = "Dev_Command"
@@ -36,18 +36,19 @@ local ATTRIBUTE = "Dev_Command"
 local DevCommands = {}
 
 local function execute(command: string)
-	local now = Pause.now()
 	local name, argument, extra = string.match(command, "^%s*(%S+)%s*(%S*)%s*(%S*)")
-	if name == "skip" then
-		Run.devSkip(now)
-	elseif name == "stage" and tonumber(argument) then
-		Run.devSetStage(tonumber(argument) :: number, now)
-	elseif name == "killall" then
-		for _, enemy in EnemyService.getAll() do
-			EnemyService.damage(enemy, math.huge)
+
+	-- Commands that don't need a match.
+	if name == "god" then
+		for _, player in Players:GetPlayers() do
+			player:SetAttribute("Dev_God", not player:GetAttribute("Dev_God"))
 		end
-	elseif name == "xp" and tonumber(argument) then
-		Progression.addXP(tonumber(argument) :: number)
+		print(`[Dev] {command}`)
+		return
+	elseif name == "freezexp" and (argument == "on" or argument == "off") then
+		Progression.devSetXPFrozen(argument == "on")
+		print(`[Dev] {command}`)
+		return
 	elseif name == "give" and tonumber(extra) then
 		for _, player in Players:GetPlayers() do
 			if not Upgrades.devSet(player, argument, tonumber(extra) :: number) then
@@ -55,30 +56,44 @@ local function execute(command: string)
 				return
 			end
 		end
+		print(`[Dev] {command}`)
+		return
+	end
+
+	local first = Players:GetPlayers()[1]
+	local match = first and Match.forPlayer(first)
+	if not match then
+		warn(`[Dev] "{command}" needs a match, and the first player isn't in one`)
+		return
+	end
+	local target = Characters.getTargets(match.members)[1]
+
+	if name == "skip" then
+		Match.devSkip(match)
+	elseif name == "stage" and tonumber(argument) then
+		Match.devSetStage(match, tonumber(argument) :: number)
+	elseif name == "killall" then
+		for _, enemy in EnemyService.getAll(match.enemies) do
+			EnemyService.damage(match.enemies, enemy, math.huge)
+		end
+	elseif name == "xp" and tonumber(argument) then
+		Progression.addXP(match.progression, tonumber(argument) :: number)
 	elseif name == "spawn" and argument ~= "" then
-		local target = Characters.getTargets()[1]
 		if not target then
 			warn("[Dev] No living player to spawn near")
 			return
 		end
-		local ok, err = pcall(EnemyService.spawn, argument, target.x + 25, target.z)
+		local ok, err = pcall(EnemyService.spawn, match.enemies, argument, target.x + 25, target.z)
 		if not ok then
 			warn(`[Dev] {err}`)
 			return
 		end
-	elseif name == "freezexp" and (argument == "on" or argument == "off") then
-		Progression.devSetXPFrozen(argument == "on")
 	elseif name == "drop" and table.find({ "Chest", "Meat", "Bomb", "Magnet" }, argument) then
-		local target = Characters.getTargets()[1]
 		if not target then
 			warn("[Dev] No living player to drop near")
 			return
 		end
-		Pickups.drop(argument :: Pickups.Kind, target.x + 6, target.z)
-	elseif name == "god" then
-		for _, player in Players:GetPlayers() do
-			player:SetAttribute("Dev_God", not player:GetAttribute("Dev_God"))
-		end
+		Pickups.drop(match.pickups, argument :: Pickups.Kind, target.x + 6, target.z)
 	else
 		warn(`[Dev] Unknown command "{command}"`)
 		return
@@ -86,18 +101,17 @@ local function execute(command: string)
 	print(`[Dev] {command}`)
 end
 
-function DevCommands.start(arena: Arena.Arena)
+function DevCommands.start()
 	if not RunService:IsStudio() then
 		return
 	end
-	local model = arena.model
-	model:SetAttribute(ATTRIBUTE, "")
-	model:GetAttributeChangedSignal(ATTRIBUTE):Connect(function()
-		local command = model:GetAttribute(ATTRIBUTE)
+	workspace:SetAttribute(ATTRIBUTE, "")
+	workspace:GetAttributeChangedSignal(ATTRIBUTE):Connect(function()
+		local command = workspace:GetAttribute(ATTRIBUTE)
 		if typeof(command) ~= "string" or command == "" then
 			return
 		end
-		model:SetAttribute(ATTRIBUTE, "")
+		workspace:SetAttribute(ATTRIBUTE, "")
 		execute(command)
 	end)
 end

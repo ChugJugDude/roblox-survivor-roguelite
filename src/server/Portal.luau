@@ -1,6 +1,6 @@
 --!strict
--- The overtime portal: it opens near a living player, and fills while any living player stands
--- inside it. Its charge (0 to 1) is published as the Arena's PortalCharge attribute.
+-- One match's overtime portal: it opens near a living player, and fills while any living player
+-- stands inside it. Its charge (0 to 1) is published as the match Arena's PortalCharge attribute.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,20 +12,23 @@ local PORTAL_COLOR = Color3.fromRGB(170, 90, 255)
 -- Only republish the charge when it moves by at least this much, to limit replication.
 local CHARGE_PUBLISH_STEP = 0.02
 
+export type State = {
+	arena: Arena.Arena,
+	model: Model?,
+	center: Vector3,
+	charge: number,
+	publishedCharge: number,
+}
+
 local random = Random.new()
-local arena: Arena.Arena? = nil
-local model: Model? = nil
-local center = Vector3.zero
-local charge = 0
-local publishedCharge = 0
 
 local Portal = {}
 
-local function publishCharge(force: boolean?)
-	local currentArena = arena
-	if currentArena and (force or math.abs(charge - publishedCharge) >= CHARGE_PUBLISH_STEP or charge >= 1) then
-		publishedCharge = charge
-		currentArena.model:SetAttribute("PortalCharge", charge)
+local function publishCharge(state: State, force: boolean?)
+	local charge = state.charge
+	if force or math.abs(charge - state.publishedCharge) >= CHARGE_PUBLISH_STEP or charge >= 1 then
+		state.publishedCharge = charge
+		state.arena.model:SetAttribute("PortalCharge", charge)
 	end
 end
 
@@ -67,17 +70,19 @@ local function pickPosition(currentArena: Arena.Arena, targets: { Characters.Tar
 	return Arena.clamp(currentArena, x, z, margin)
 end
 
-function Portal.init(newArena: Arena.Arena)
-	arena = newArena
-	newArena.model:SetAttribute("PortalCharge", 0)
+function Portal.new(arena: Arena.Arena): State
+	local state: State = { arena = arena, model = nil, center = Vector3.zero, charge = 0, publishedCharge = 0 }
+	publishCharge(state, true)
+	return state
 end
 
-function Portal.open(targets: { Characters.Target })
-	local currentArena = assert(arena, "Portal.init() must be called first")
-	Portal.close()
+function Portal.open(state: State, targets: { Characters.Target })
+	local currentArena = state.arena
+	Portal.close(state)
 
 	local x, z = pickPosition(currentArena, targets)
-	center = Vector3.new(x, currentArena.origin.Y, z)
+	local center = Vector3.new(x, currentArena.origin.Y, z)
+	state.center = center
 
 	local newModel = Instance.new("Model")
 	newModel.Name = "Portal"
@@ -87,43 +92,45 @@ function Portal.open(targets: { Characters.Target })
 	makePart(newModel, "Pad", Vector3.new(0.4, diameter, diameter), CFrame.new(center) * upright, 0.2)
 	makePart(newModel, "Beam", Vector3.new(60, 3, 3), CFrame.new(center + Vector3.new(0, 30, 0)) * upright, 0.5)
 	newModel.Parent = currentArena.model
-	model = newModel
+	state.model = newModel
 
-	charge = 0
-	publishCharge(true)
+	state.charge = 0
+	publishCharge(state, true)
 end
 
-function Portal.close()
+function Portal.close(state: State)
+	local model = state.model
 	if model then
 		model:Destroy()
-		model = nil
+		state.model = nil
 	end
-	charge = 0
-	publishCharge(true)
+	state.charge = 0
+	publishCharge(state, true)
 end
 
 -- Adds charge while any living player is inside. Returns true once fully charged.
-function Portal.step(dt: number, targets: { Characters.Target }): boolean
-	if not model then
+function Portal.step(state: State, dt: number, targets: { Characters.Target }): boolean
+	if not state.model then
 		return false
 	end
+	local center = state.center
 	local radiusSq = Config.PORTAL_RADIUS * Config.PORTAL_RADIUS
 	for _, target in targets do
 		local dx, dz = target.x - center.X, target.z - center.Z
 		if dx * dx + dz * dz <= radiusSq then
-			charge = math.min(1, charge + dt / Config.PORTAL_CHARGE_TIME)
-			publishCharge()
+			state.charge = math.min(1, state.charge + dt / Config.PORTAL_CHARGE_TIME)
+			publishCharge(state)
 			break
 		end
 	end
-	return charge >= 1
+	return state.charge >= 1
 end
 
 -- Studio dev command: fill the charge instantly.
-function Portal.fill()
-	if model then
-		charge = 1
-		publishCharge(true)
+function Portal.fill(state: State)
+	if state.model then
+		state.charge = 1
+		publishCharge(state, true)
 	end
 end
 

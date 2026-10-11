@@ -5,8 +5,10 @@
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local CurrentArena = require(script.Parent.Parent.CurrentArena)
 local Create = require(script.Parent.Create)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -18,7 +20,7 @@ local DEFEAT_COLOR = Color3.fromRGB(255, 100, 100)
 
 local Results = {}
 
-function Results.start(arena: Instance)
+function Results.start()
 	local gui = Create("ScreenGui", {
 		Name = "Results",
 		ResetOnSpawn = false,
@@ -85,11 +87,11 @@ function Results.start(arena: Instance)
 		Remotes.RequestRestart:FireServer()
 	end)
 
-	local function refresh()
-		local phase = arena:GetAttribute("Phase")
+	local function refresh(arena: Instance?)
+		local phase = arena and arena:GetAttribute("Phase")
 		local ended = phase == "Victory" or phase == "Defeat"
 		gui.Enabled = ended
-		if not ended then
+		if not ended or not arena then
 			if GuiService.SelectedObject == button then
 				GuiService.SelectedObject = nil
 			end
@@ -112,8 +114,17 @@ function Results.start(arena: Instance)
 		end
 	end
 
-	arena:GetAttributeChangedSignal("Phase"):Connect(refresh)
-	refresh()
+	-- Follow whichever arena the player is in; refresh when it or its phase changes.
+	local shownArena: Instance? = nil
+	local shownPhase: any = nil
+	RunService.RenderStepped:Connect(function()
+		local arena = CurrentArena.get()
+		local phase = arena and arena:GetAttribute("Phase")
+		if arena ~= shownArena or phase ~= shownPhase then
+			shownArena, shownPhase = arena, phase
+			refresh(arena)
+		end
+	end)
 end
 
 return Results

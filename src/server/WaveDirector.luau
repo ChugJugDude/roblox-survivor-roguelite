@@ -1,5 +1,5 @@
 --!strict
--- Spawns enemies during stages and overtime, following the current stage's timeline in
+-- Spawns one match's enemies during stages and overtime, following the current stage's timeline in
 -- Config.Waves, with Config.Run's overtime ramp on top, plus each stage's mini-boss and supply
 -- crates.
 
@@ -8,16 +8,28 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Arena = require(script.Parent.Arena)
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
-local Run = require(script.Parent.Run)
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local Config = require(ReplicatedStorage.Shared.Config.Waves)
 local RunConfig = require(ReplicatedStorage.Shared.Config.Run)
 
+-- What the wave director needs to know about the run this frame (the match fills it in).
+export type RunView = {
+	fighting: boolean, -- in a stage or its overtime
+	stage: number,
+	stageElapsed: number, -- seconds since the stage started, counting on through overtime
+	overtime: boolean,
+	overtimeElapsed: number, -- 0 outside overtime
+}
+
+export type State = {
+	arena: Arena.Arena,
+	enemies: EnemyService.State,
+	nextSpawnAt: number,
+	miniBossSpawned: boolean,
+	cratesSpawned: number, -- crates due so far this stage
+}
+
 local random = Random.new()
-local arena: Arena.Arena? = nil
-local nextSpawnAt = 0
-local miniBossSpawned = false
-local cratesSpawned = 0 -- crates due so far this stage
 
 local WaveDirector = {}
 
@@ -32,16 +44,16 @@ local function currentSegment(stageDef: Config.Stage, elapsed: number): Config.S
 	return current
 end
 
-local function atCap(kind: string): boolean
+local function atCap(enemies: EnemyService.State, kind: string): boolean
 	local cap = Config.KIND_CAPS[kind]
-	return cap ~= nil and EnemyService.countKind(kind) >= cap
+	return cap ~= nil and EnemyService.countKind(enemies, kind) >= cap
 end
 
 -- A weighted pick from the mix, leaving out kinds at their cap. Nil if every kind is capped.
-local function pickKind(mix: { [string]: number }): string?
+local function pickKind(enemies: EnemyService.State, mix: { [string]: number }): string?
 	local total = 0
 	for kind, weight in mix do
-		if not atCap(kind) then
+		if not atCap(enemies, kind) then
 			total += weight
 		end
 	end
@@ -51,7 +63,7 @@ local function pickKind(mix: { [string]: number }): string?
 	local roll = random:NextNumber(0, total)
 	local last: string? = nil
 	for kind, weight in mix do
-		if atCap(kind) then
+		if atCap(enemies, kind) then
 			continue
 		end
 		last = kind
@@ -87,21 +99,22 @@ local function pickSpawnPoint(
 	return Arena.clamp(currentArena, x, z, Config.ARENA_MARGIN)
 end
 
-function WaveDirector.init(newArena: Arena.Arena)
-	arena = newArena
+function WaveDirector.new(arena: Arena.Arena, enemies: EnemyService.State): State
+	return { arena = arena, enemies = enemies, nextSpawnAt = 0, miniBossSpawned = false, cratesSpawned = 0 }
 end
 
-function WaveDirector.step(now: number, targets: { Characters.Target })
-	local currentArena = assert(arena, "WaveDirector.init() must be called first")
-	if not Run.isFighting() or #targets == 0 then
+function WaveDirector.step(state: State, now: number, targets: { Characters.Target }, run: RunView)
+	if not run.fighting or #targets == 0 then
 		return
 	end
+	local currentArena = state.arena
+	local enemies = state.enemies
 
-	local stageDef = Config.STAGES[Run.getStage()]
-	local segment = currentSegment(stageDef, Run.stageElapsed(now))
+	local stageDef = Config.STAGES[run.stage]
+	local segment = currentSegment(stageDef, run.stageElapsed)
 	local interval, maxAlive = segment.interval, segment.maxAlive
-	if Run.getPhase() == "Overtime" then
-		interval /= 1 + RunConfig.OVERTIME_RAMP * Run.overtimeElapsed(now)
+	if run.overtime then
+		interval /= 1 + RunConfig.OVERTIME_RAMP * run.overtimeElapsed
 		maxAlive = math.floor(maxAlive * RunConfig.OVERTIME_MAX_ALIVE_MULTIPLIER)
 	end
 	maxAlive = math.min(maxAlive, Config.HARD_CAP)
@@ -116,35 +129,35 @@ function WaveDirector.step(now: number, targets: { Characters.Target })
 	-- restarts), it's due again.
 	local miniBossAt = stageDef.miniBossAt
 	if stageDef.miniBoss and miniBossAt then
-		if Run.stageElapsed(now) < miniBossAt then
-			miniBossSpawned = false
-		elseif not miniBossSpawned then
-			miniBossSpawned = true
+		if run.stageElapsed < miniBossAt then
+			state.miniBossSpawned = false
+		elseif not state.miniBossSpawned then
+			state.miniBossSpawned = true
 			local target = targets[random:NextInteger(1, #targets)]
 			local x, z = pickSpawnPoint(currentArena, target)
-			EnemyService.spawn(stageDef.miniBoss, x, z, scaling)
+			EnemyService.spawn(enemies, stageDef.miniBoss, x, z, scaling)
 		end
 	end
 
 	-- A supply crate every CRATE_INTERVAL seconds of the stage (counting resets each stage).
-	local cratesDue = math.floor(Run.stageElapsed(now) / Config.CRATE_INTERVAL)
-	if cratesDue < cratesSpawned then
-		cratesSpawned = cratesDue -- a new stage started
-	elseif cratesDue > cratesSpawned then
-		cratesSpawned = cratesDue
-		if EnemyService.countKind("Crate") < Config.CRATE_MAX then
+	local cratesDue = math.floor(run.stageElapsed / Config.CRATE_INTERVAL)
+	if cratesDue < state.cratesSpawned then
+		state.cratesSpawned = cratesDue -- a new stage started
+	elseif cratesDue > state.cratesSpawned then
+		state.cratesSpawned = cratesDue
+		if EnemyService.countKind(enemies, "Crate") < Config.CRATE_MAX then
 			local target = targets[random:NextInteger(1, #targets)]
 			local x, z = pickSpawnPoint(currentArena, target, Config.CRATE_DISTANCE_MIN, Config.CRATE_DISTANCE_MAX)
-			EnemyService.spawn("Crate", x, z)
+			EnemyService.spawn(enemies, "Crate", x, z)
 		end
 	end
 
-	if now < nextSpawnAt or EnemyService.count() >= maxAlive then
+	if now < state.nextSpawnAt or EnemyService.count(enemies) >= maxAlive then
 		return
 	end
-	nextSpawnAt = now + interval
+	state.nextSpawnAt = now + interval
 
-	local kind = pickKind(segment.mix)
+	local kind = pickKind(enemies, segment.mix)
 	if not kind then
 		return
 	end
@@ -155,7 +168,7 @@ function WaveDirector.step(now: number, targets: { Characters.Target })
 		local scatterX = if groupSize > 1 then random:NextNumber(-1, 1) * Config.GROUP_SCATTER else 0
 		local scatterZ = if groupSize > 1 then random:NextNumber(-1, 1) * Config.GROUP_SCATTER else 0
 		local spawnX, spawnZ = Arena.clamp(currentArena, x + scatterX, z + scatterZ, Config.ARENA_MARGIN)
-		EnemyService.spawn(kind, spawnX, spawnZ, scaling)
+		EnemyService.spawn(enemies, kind, spawnX, spawnZ, scaling)
 	end
 end
 

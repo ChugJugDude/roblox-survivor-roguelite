@@ -31,10 +31,10 @@ end
 -- Fills aimAt/aimAngles with up to `count` targets in priority order (ranged enemies, then the rest;
 -- nearest first within each), skipping ones too close in direction to a target already chosen,
 -- then topping up in the same order.
-local function chooseTargets(x: number, z: number, range: number, count: number)
+local function chooseTargets(enemies: EnemyService.State, x: number, z: number, range: number, count: number)
 	table.clear(aimAt)
 	table.clear(aimAngles)
-	EnemyService.nearestN(x, z, range, math.huge, inRange)
+	EnemyService.nearestN(enemies, x, z, range, math.huge, inRange)
 	table.clear(candidates)
 	for _, enemy in inRange do
 		if enemy.def.behavior == "ranged" then
@@ -74,7 +74,12 @@ local function chooseTargets(x: number, z: number, range: number, count: number)
 	end
 end
 
-function VolleyArrows.step(now: number, targets: { Characters.Target })
+function VolleyArrows.step(
+	enemies: EnemyService.State,
+	projectiles: ProjectileService.State,
+	now: number,
+	targets: { Characters.Target }
+)
 	for _, target in targets do
 		local build = Upgrades.getBuild(target.player)
 		local stats = build and BuildStats.volleyArrows(build)
@@ -82,7 +87,7 @@ function VolleyArrows.step(now: number, targets: { Characters.Target })
 			continue
 		end
 		-- No enemy in range: try again next frame rather than wasting the cooldown.
-		chooseTargets(target.x, target.z, stats.range, stats.targets)
+		chooseTargets(enemies, target.x, target.z, stats.range, stats.targets)
 		if #aimAt == 0 then
 			continue
 		end
@@ -97,7 +102,7 @@ function VolleyArrows.step(now: number, targets: { Characters.Target })
 				local k = index - 1
 				local slot = if k % 2 == 1 then (k + 1) / 2 else -k / 2
 				local angle = aim + slot * step
-				ProjectileService.spawn({
+				ProjectileService.spawn(projectiles, {
 					kind = "Arrow",
 					fromEnemy = false,
 					owner = target.player,

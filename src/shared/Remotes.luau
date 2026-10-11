@@ -100,6 +100,11 @@ return table.freeze({
 	-- left; rate-limited.
 	RerollUpgrade = remote("RemoteEvent", "RerollUpgrade") :: RemoteEvent,
 
+	-- Server -> client. Payload: (arenaName: string?). The player moved to another world: the named
+	-- model under workspace.Arenas, or nil for the lobby. The client drops every enemy, gem, and
+	-- projectile it's drawing; the server then sends what's in the new world.
+	WorldReset = remote("RemoteEvent", "WorldReset") :: RemoteEvent,
+
 	-- Client -> server. No arguments. Asks to start a new run from the results screen. Ignored
 	-- unless the run has ended; rate-limited per player.
 	RequestRestart = remote("RemoteEvent", "RequestRestart") :: RemoteEvent,

@@ -1,15 +1,14 @@
 --!strict
 --[[
-	XP. Enemies drop gems where they die; walking near a gem collects it. All XP goes into one
-	party-wide pool with a shared level, and every level-up notifies listeners (Upgrades gives
-	each player a pick).
+	One match's XP. Enemies drop gems where they die; walking near a gem collects it. All XP goes
+	into one party-wide pool with a shared level, and every level-up notifies listeners (Upgrades
+	gives each member a pick).
 
 	Gems are server data, like enemies. Clients get spawn and collected events; a collected event
-	names the player so the gem can fly to them. Party progress is published on the Arena as
+	names the player so the gem can fly to them. Party progress is published on the match's Arena as
 	PartyLevel, PartyXP, and XPToNext.
 ]]
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Arena = require(script.Parent.Arena)
@@ -27,54 +26,57 @@ type Gem = {
 	value: number,
 }
 
-local arena: Arena.Arena? = nil
-local gems: { [number]: Gem } = {}
-local gemCount = 0
-local nextGemId = 0
-local hash = SpatialHash.new(Config.GEM_CELL_SIZE)
-local xp = 0
-local level = 1
-local pendingXP = 0 -- collected this frame, added in one go at the end of step
-local levelUpListeners: { (number) -> () } = {}
-local nearby: { number } = {} -- reused for every hash query
-local started = false
-local xpFrozen = false -- Studio dev command: gems still collect, but give no XP
+export type State = {
+	arena: Arena.Arena,
+	net: NetBatch.Batch,
+	gems: { [number]: Gem },
+	gemCount: number,
+	nextGemId: number,
+	hash: SpatialHash.SpatialHash,
+	xp: number,
+	level: number,
+	pendingXP: number, -- collected this frame, added in one go at the end of step
+	levelUpListeners: { (number) -> () },
+}
 
--- Replaced by Upgrades once Magnet exists; until then everyone uses the base radius.
+local nearby: { number } = {} -- reused for every hash query
+local xpFrozen = false -- Studio dev command: gems still collect, but give no XP (all matches)
+
+-- Replaced by Upgrades (Magnet); until then everyone uses the base radius.
 local pickupRadiusFor: (Player) -> number = function(_player: Player)
 	return Config.PICKUP_RADIUS
 end
 
 local Progression = {}
 
-local function publish()
-	local model = assert(arena, "Progression.start() must be called first").model
-	model:SetAttribute("PartyLevel", level)
-	model:SetAttribute("PartyXP", xp)
-	model:SetAttribute("XPToNext", Progression.xpToNext(level))
+local function publish(state: State)
+	local model = state.arena.model
+	model:SetAttribute("PartyLevel", state.level)
+	model:SetAttribute("PartyXP", state.xp)
+	model:SetAttribute("XPToNext", Progression.xpToNext(state.level))
 end
 
-local function collect(gem: Gem, userId: number)
-	gems[gem.id] = nil
-	gemCount -= 1
-	SpatialHash.remove(hash, gem.id, gem.x, gem.z)
-	NetBatch.push(Remotes.GemsCollected, { id = gem.id, userId = userId })
+local function collect(state: State, gem: Gem, userId: number)
+	state.gems[gem.id] = nil
+	state.gemCount -= 1
+	SpatialHash.remove(state.hash, gem.id, gem.x, gem.z)
+	NetBatch.push(state.net, Remotes.GemsCollected, { id = gem.id, userId = userId })
 end
 
-local function spawnGem(x: number, z: number, value: number)
+local function spawnGem(state: State, x: number, z: number, value: number)
 	if value <= 0 then
 		return -- crates and other props drop no XP
 	end
-	if gemCount >= Config.MAX_GEMS then
-		pendingXP += value
+	if state.gemCount >= Config.MAX_GEMS then
+		state.pendingXP += value
 		return
 	end
-	nextGemId += 1
-	local gem: Gem = { id = nextGemId, x = x, z = z, value = value }
-	gems[gem.id] = gem
-	gemCount += 1
-	SpatialHash.insert(hash, gem.id, x, z)
-	NetBatch.push(Remotes.GemsSpawned, { id = gem.id, x = x, z = z, value = value })
+	state.nextGemId += 1
+	local gem: Gem = { id = state.nextGemId, x = x, z = z, value = value }
+	state.gems[gem.id] = gem
+	state.gemCount += 1
+	SpatialHash.insert(state.hash, gem.id, x, z)
+	NetBatch.push(state.net, Remotes.GemsSpawned, { id = gem.id, x = x, z = z, value = value })
 end
 
 local function nearestTarget(targets: { Characters.Target }, x: number, z: number): Characters.Target?
@@ -90,36 +92,56 @@ local function nearestTarget(targets: { Characters.Target }, x: number, z: numbe
 	return best
 end
 
+function Progression.new(arena: Arena.Arena, net: NetBatch.Batch, enemies: EnemyService.State): State
+	local state: State = {
+		arena = arena,
+		net = net,
+		gems = {},
+		gemCount = 0,
+		nextGemId = 0,
+		hash = SpatialHash.new(Config.GEM_CELL_SIZE),
+		xp = 0,
+		level = 1,
+		pendingXP = 0,
+		levelUpListeners = {},
+	}
+	publish(state)
+	EnemyService.onKilled(enemies, function(enemy)
+		spawnGem(state, enemy.x, enemy.z, enemy.xp)
+	end)
+	return state
+end
+
 function Progression.xpToNext(currentLevel: number): number
 	return math.floor(Config.XP_BASE + Config.XP_GROWTH * (currentLevel - 1) ^ Config.XP_EXPONENT + 0.5)
 end
 
-function Progression.getLevel(): number
-	return level
+function Progression.getLevel(state: State): number
+	return state.level
 end
 
 -- Calls `listener(newLevel)` for every level gained.
-function Progression.onLevelUp(listener: (number) -> ())
-	table.insert(levelUpListeners, listener)
+function Progression.onLevelUp(state: State, listener: (number) -> ())
+	table.insert(state.levelUpListeners, listener)
 end
 
 function Progression.setPickupRadiusProvider(provider: (Player) -> number)
 	pickupRadiusFor = provider
 end
 
-function Progression.addXP(amount: number)
+function Progression.addXP(state: State, amount: number)
 	if xpFrozen then
 		return
 	end
-	xp += amount
-	while xp >= Progression.xpToNext(level) do
-		xp -= Progression.xpToNext(level)
-		level += 1
-		for _, listener in levelUpListeners do
-			task.spawn(listener, level)
+	state.xp += amount
+	while state.xp >= Progression.xpToNext(state.level) do
+		state.xp -= Progression.xpToNext(state.level)
+		state.level += 1
+		for _, listener in state.levelUpListeners do
+			task.spawn(listener, state.level)
 		end
 	end
-	publish()
+	publish(state)
 end
 
 -- Studio dev command: stop XP (and so level-ups and their pauses), e.g. to benchmark a fixed build.
@@ -128,76 +150,64 @@ function Progression.devSetXPFrozen(frozen: boolean)
 end
 
 -- Clears gems and XP for a new run.
-function Progression.reset()
-	for _, gem in gems do
-		collect(gem, 0)
+function Progression.reset(state: State)
+	for _, gem in state.gems do
+		collect(state, gem, 0)
 	end
-	xp = 0
-	level = 1
-	pendingXP = 0
-	publish()
+	state.xp = 0
+	state.level = 1
+	state.pendingXP = 0
+	publish(state)
 end
 
--- Collects every gem on the floor, each flying to its nearest living player. For stage clears.
-function Progression.vacuum(targets: { Characters.Target })
+-- Collects every gem on the floor, each flying to its nearest player in `targets`. For stage clears
+-- and magnets.
+function Progression.vacuum(state: State, targets: { Characters.Target })
 	local total = 0
-	for _, gem in gems do
+	for _, gem in state.gems do
 		local target = nearestTarget(targets, gem.x, gem.z)
 		total += gem.value
-		collect(gem, if target then target.player.UserId else 0)
+		collect(state, gem, if target then target.player.UserId else 0)
 	end
 	if total > 0 then
-		Progression.addXP(total)
+		Progression.addXP(state, total)
 	end
 end
 
 -- Picks up gems within each living player's pickup radius, then applies the frame's XP.
-function Progression.step(targets: { Characters.Target })
+function Progression.step(state: State, targets: { Characters.Target })
 	for _, target in targets do
 		local radius = pickupRadiusFor(target.player)
 		table.clear(nearby)
-		SpatialHash.query(hash, target.x, target.z, radius, nearby)
+		SpatialHash.query(state.hash, target.x, target.z, radius, nearby)
 		for _, id in nearby do
-			local gem = gems[id]
+			local gem = state.gems[id]
 			if gem then
 				local dx, dz = gem.x - target.x, gem.z - target.z
 				if dx * dx + dz * dz <= radius * radius then
-					pendingXP += gem.value
-					collect(gem, target.player.UserId)
+					state.pendingXP += gem.value
+					collect(state, gem, target.player.UserId)
 				end
 			end
 		end
 	end
 
-	if pendingXP > 0 then
-		local amount = pendingXP
-		pendingXP = 0
-		Progression.addXP(amount)
+	if state.pendingXP > 0 then
+		local amount = state.pendingXP
+		state.pendingXP = 0
+		Progression.addXP(state, amount)
 	end
 end
 
-function Progression.start(newArena: Arena.Arena)
-	assert(not started, "Progression.start() was called twice")
-	started = true
-	arena = newArena
-	NetBatch.register(Remotes.GemsSpawned)
-	NetBatch.register(Remotes.GemsCollected)
-	publish()
-
-	EnemyService.onKilled(function(enemy)
-		spawnGem(enemy.x, enemy.z, enemy.xp)
-	end)
-
-	-- Players who join mid-run need the gems already on the floor.
-	Players.PlayerAdded:Connect(function(player)
-		local current = {}
-		for _, gem in gems do
-			table.insert(current, { id = gem.id, x = gem.x, z = gem.z, value = gem.value })
-		end
-		if #current > 0 then
-			Remotes.GemsSpawned:FireClient(player, current)
-		end
-	end)
+-- Sends every gem on the floor to one player (who just entered this match's arena).
+function Progression.syncTo(state: State, player: Player)
+	local current = {}
+	for _, gem in state.gems do
+		table.insert(current, { id = gem.id, x = gem.x, z = gem.z, value = gem.value })
+	end
+	if #current > 0 then
+		Remotes.GemsSpawned:FireClient(player, current)
+	end
 end
 
 return Progression
