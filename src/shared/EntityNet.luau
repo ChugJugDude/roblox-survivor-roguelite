@@ -20,6 +20,7 @@ export type ExplosionInfo = {
 	x: number,
 	z: number,
 	radius: number,
+	kind: "Bomb"?, -- a bomb pickup draws a wide flat shockwave instead of a fireball blast
 }
 
 return nil

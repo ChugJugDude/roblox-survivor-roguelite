@@ -8,8 +8,10 @@ export type EnemyDef = {
 	contactDamage: number,
 	attackCooldown: number, -- seconds between contact hits from one enemy
 	xp: number, -- XP in the gem it drops
-	-- "chase" walks straight at the nearest player; "ranged" keeps a distance band and shoots.
-	behavior: "chase" | "ranged",
+	-- "chase" walks straight at the nearest player; "ranged" keeps a distance band and shoots;
+	-- "prop" is a breakable object (crates): never moves or attacks, isn't counted as an enemy or a
+	-- kill, and auto-aim ignores it.
+	behavior: "chase" | "ranged" | "prop",
 	groupSize: number?, -- spawns this many together (bats)
 	ranged: RangedDef?,
 	isBoss: boolean?, -- shown on the boss health bar
@@ -78,6 +80,16 @@ local Enemies = {
 			isBoss = true,
 			dropsChest = true,
 			displayName = "Goblin Giant",
+		}),
+		-- Breakable supply crate. Weapons that touch it break it; it always drops an item.
+		Crate = table.freeze({
+			maxHealth = 40,
+			speed = 0,
+			radius = 1.6,
+			contactDamage = 0,
+			attackCooldown = 1,
+			xp = 0,
+			behavior = "prop",
 		}),
 	}) :: { [string]: EnemyDef },
 

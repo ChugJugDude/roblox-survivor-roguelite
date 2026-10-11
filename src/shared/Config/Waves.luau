@@ -69,6 +69,13 @@ return table.freeze({
 		SkeletonArcher = 8,
 	} :: { [string]: number },
 
+	-- Supply crates: one every CRATE_INTERVAL seconds of a stage, at most CRATE_MAX on the floor,
+	-- placed on a ring around a random living player so they're on or near the screen.
+	CRATE_INTERVAL = 35,
+	CRATE_MAX = 3,
+	CRATE_DISTANCE_MIN = 20,
+	CRATE_DISTANCE_MAX = 35,
+
 	-- Enemies appear on a ring around a random living player, near the edge of the screen.
 	SPAWN_DISTANCE_MIN = 35,
 	SPAWN_DISTANCE_MAX = 50,

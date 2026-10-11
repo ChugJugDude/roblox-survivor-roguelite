@@ -12,6 +12,7 @@
 		xp <n>      add n XP to the party
 		freezexp    toggle XP gain off/on (no level-ups or pauses; for benchmarks)
 		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
+		drop <kind>    put a Chest, Meat, Bomb, or Magnet 6 studs from the first living player
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 
 	Only the server can set attributes on server-owned instances, so clients can't trigger these.
@@ -25,6 +26,7 @@ local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Pause = require(script.Parent.Pause)
 local Progression = require(script.Parent.Progression)
+local Pickups = require(script.Parent.Pickups)
 local Run = require(script.Parent.Run)
 local Upgrades = require(script.Parent.Upgrades)
 
@@ -65,6 +67,13 @@ local function execute(command: string)
 		end
 	elseif name == "freezexp" then
 		Progression.devSetXPFrozen(not Progression.devIsXPFrozen())
+	elseif name == "drop" and table.find({ "Chest", "Meat", "Bomb", "Magnet" }, argument) then
+		local target = Characters.getTargets()[1]
+		if not target then
+			warn("[Dev] No living player to drop near")
+			return
+		end
+		Pickups.drop(argument :: Pickups.Kind, target.x + 6, target.z)
 	elseif name == "god" then
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("Dev_God", not player:GetAttribute("Dev_God"))

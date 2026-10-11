@@ -62,6 +62,9 @@ local function collect(gem: Gem, userId: number)
 end
 
 local function spawnGem(x: number, z: number, value: number)
+	if value <= 0 then
+		return -- crates and other props drop no XP
+	end
 	if gemCount >= Config.MAX_GEMS then
 		pendingXP += value
 		return

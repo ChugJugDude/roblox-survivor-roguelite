@@ -1,6 +1,7 @@
 --!strict
 -- Spawns enemies during stages and overtime, following the current stage's timeline in
--- Config.Waves, with Config.Run's overtime ramp on top, plus each stage's mini-boss.
+-- Config.Waves, with Config.Run's overtime ramp on top, plus each stage's mini-boss and supply
+-- crates.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -16,6 +17,7 @@ local random = Random.new()
 local arena: Arena.Arena? = nil
 local nextSpawnAt = 0
 local miniBossSpawned = false
+local cratesSpawned = 0 -- crates due so far this stage
 
 local WaveDirector = {}
 
@@ -61,12 +63,19 @@ local function pickKind(mix: { [string]: number }): string?
 	return last
 end
 
--- A random point on the spawn ring around `target` that's inside the walls.
-local function pickSpawnPoint(currentArena: Arena.Arena, target: Characters.Target): (number, number)
+-- A random point on a ring around `target` that's inside the walls. Defaults to the enemy spawn
+-- ring.
+local function pickSpawnPoint(
+	currentArena: Arena.Arena,
+	target: Characters.Target,
+	minDistance: number?,
+	maxDistance: number?
+): (number, number)
 	local x, z = target.x, target.z
 	for _ = 1, 8 do
 		local angle = random:NextNumber(0, 2 * math.pi)
-		local distance = random:NextNumber(Config.SPAWN_DISTANCE_MIN, Config.SPAWN_DISTANCE_MAX)
+		local distance =
+			random:NextNumber(minDistance or Config.SPAWN_DISTANCE_MIN, maxDistance or Config.SPAWN_DISTANCE_MAX)
 		x = target.x + math.cos(angle) * distance
 		z = target.z + math.sin(angle) * distance
 		local clampedX, clampedZ = Arena.clamp(currentArena, x, z, Config.ARENA_MARGIN)
@@ -114,6 +123,19 @@ function WaveDirector.step(now: number, targets: { Characters.Target })
 			local target = targets[random:NextInteger(1, #targets)]
 			local x, z = pickSpawnPoint(currentArena, target)
 			EnemyService.spawn(stageDef.miniBoss, x, z, scaling)
+		end
+	end
+
+	-- A supply crate every CRATE_INTERVAL seconds of the stage (counting resets each stage).
+	local cratesDue = math.floor(Run.stageElapsed(now) / Config.CRATE_INTERVAL)
+	if cratesDue < cratesSpawned then
+		cratesSpawned = cratesDue -- a new stage started
+	elseif cratesDue > cratesSpawned then
+		cratesSpawned = cratesDue
+		if EnemyService.countKind("Crate") < Config.CRATE_MAX then
+			local target = targets[random:NextInteger(1, #targets)]
+			local x, z = pickSpawnPoint(currentArena, target, Config.CRATE_DISTANCE_MIN, Config.CRATE_DISTANCE_MAX)
+			EnemyService.spawn("Crate", x, z)
 		end
 	end
 

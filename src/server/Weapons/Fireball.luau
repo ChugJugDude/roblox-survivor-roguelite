@@ -26,6 +26,12 @@ function Fireball.step(now: number, targets: { Characters.Target })
 		end
 		table.clear(candidates)
 		EnemyService.queryRadius(target.x, target.z, stats.range, candidates)
+		-- Don't waste fireballs on crates.
+		for index = #candidates, 1, -1 do
+			if EnemyService.isProp(candidates[index]) then
+				table.remove(candidates, index)
+			end
+		end
 		if #candidates == 0 then
 			continue -- try again next frame rather than wasting the cooldown
 		end

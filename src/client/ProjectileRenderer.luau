@@ -51,6 +51,8 @@ local LOOKS: { [string]: Look } = {
 }
 local EXPLOSION_COLOR = Color3.fromRGB(255, 140, 40)
 local EXPLOSION_TIME = 0.3
+local SHOCKWAVE_COLOR = Color3.fromRGB(255, 235, 200)
+local SHOCKWAVE_TIME = 0.5
 
 type Active = {
 	info: EntityNet.ProjectileInfo,
@@ -144,11 +146,14 @@ local function onExplosions(list: any)
 		if typeof(info) ~= "table" then
 			continue
 		end
+		-- A bomb covers about a screen, so it's a flat ring racing outward along the floor rather than a
+		-- sphere that would swallow the camera.
+		local isBomb = info.kind == "Bomb"
 		local blast = Instance.new("Part")
 		blast.Name = "Explosion"
-		blast.Shape = Enum.PartType.Ball
-		blast.Size = Vector3.one
-		blast.Color = EXPLOSION_COLOR
+		blast.Shape = if isBomb then Enum.PartType.Cylinder else Enum.PartType.Ball
+		blast.Size = if isBomb then Vector3.new(0.4, 1, 1) else Vector3.one
+		blast.Color = if isBomb then SHOCKWAVE_COLOR else EXPLOSION_COLOR
 		blast.Material = Enum.Material.Neon
 		blast.Transparency = 0.2
 		blast.Anchored = true
@@ -156,12 +161,19 @@ local function onExplosions(list: any)
 		blast.CanQuery = false
 		blast.CanTouch = false
 		blast.CastShadow = false
-		blast.Position = Vector3.new(info.x, ArenaConfig.ORIGIN.Y + 1, info.z)
+		local center = Vector3.new(info.x, ArenaConfig.ORIGIN.Y + 1, info.z)
+		-- A cylinder's axis is its X size; turn it upright so it lies flat as a disc.
+		blast.CFrame = if isBomb then CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90)) else CFrame.new(center)
 		blast.Parent = folder
-		local tween = TweenService:Create(blast, TweenInfo.new(EXPLOSION_TIME, Enum.EasingStyle.Quad), {
-			Size = Vector3.one * info.radius * 2,
-			Transparency = 1,
-		})
+		local diameter = info.radius * 2
+		local tween = TweenService:Create(
+			blast,
+			TweenInfo.new(if isBomb then SHOCKWAVE_TIME else EXPLOSION_TIME, Enum.EasingStyle.Quad),
+			{
+				Size = if isBomb then Vector3.new(0.4, diameter, diameter) else Vector3.one * diameter,
+				Transparency = 1,
+			}
+		)
 		tween.Completed:Once(function()
 			blast:Destroy()
 		end)

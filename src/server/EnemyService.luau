@@ -8,6 +8,10 @@
 	Weapons find enemies with queryRadius; EnemyShooter fires for ranged enemies.
 
 	A living boss is published on the Arena as BossName and BossHealth (0 to 1) for the boss bar.
+
+	Props (behavior "prop", e.g. crates) live here too so weapons hit them for free, but they never
+	move or attack, aren't counted in count()/EnemiesAlive or as kills, and nearest/nearestN skip
+	them so auto-aim never wastes a shot on one.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -86,12 +90,18 @@ local function publishBoss()
 	model:SetAttribute("BossHealth", if boss then math.max(0, boss.health / boss.maxHealth) else 0)
 end
 
+local function isProp(enemy: Enemy): boolean
+	return enemy.def.behavior == "prop"
+end
+
 local function remove(enemy: Enemy)
 	if enemies[enemy.id] ~= enemy then
 		return
 	end
 	enemies[enemy.id] = nil
-	aliveCount -= 1
+	if not isProp(enemy) then
+		aliveCount -= 1
+	end
 	kindCounts[enemy.kind] -= 1
 	table.insert(despawned, enemy.id)
 	if enemy == boss then
@@ -150,7 +160,9 @@ function EnemyService.spawn(kind: string, x: number, z: number, scaling: Scaling
 		hitReadyAt = {},
 	}
 	enemies[enemy.id] = enemy
-	aliveCount += 1
+	if not isProp(enemy) then
+		aliveCount += 1
+	end
 	kindCounts[kind] = (kindCounts[kind] or 0) + 1
 	table.insert(spawned, { id = enemy.id, kind = kind, x = x, z = z })
 	updateCounters()
@@ -178,12 +190,18 @@ function EnemyService.damage(enemy: Enemy, amount: number): boolean
 		return false
 	end
 	remove(enemy)
-	kills += 1
+	if not isProp(enemy) then
+		kills += 1
+	end
 	updateCounters()
 	for _, listener in killedListeners do
 		listener(enemy)
 	end
 	return true
+end
+
+function EnemyService.isProp(enemy: Enemy): boolean
+	return isProp(enemy)
 end
 
 -- Whether `attacker` can hit this enemy now. If so, starts that attacker's cooldown on it.
@@ -254,13 +272,16 @@ end
 
 local nearestBuffer: { Enemy } = {}
 
--- The closest living enemy within `range` of (x, z), or nil.
+-- The closest living enemy (not prop) within `range` of (x, z), or nil.
 function EnemyService.nearest(x: number, z: number, range: number): Enemy?
 	table.clear(nearestBuffer)
 	EnemyService.queryRadius(x, z, range, nearestBuffer)
 	local best: Enemy? = nil
 	local bestDistSq = math.huge
 	for _, enemy in nearestBuffer do
+		if isProp(enemy) then
+			continue
+		end
 		local dx, dz = enemy.x - x, enemy.z - z
 		local distSq = dx * dx + dz * dz
 		if distSq < bestDistSq then
@@ -272,13 +293,16 @@ end
 
 local byDistance: { { enemy: Enemy, distSq: number } } = {}
 
--- Fills `out` with up to `count` living enemies within `range` of (x, z), closest first.
+-- Fills `out` with up to `count` living enemies (not props) within `range` of (x, z), closest first.
 function EnemyService.nearestN(x: number, z: number, range: number, count: number, out: { Enemy }): { Enemy }
 	table.clear(out)
 	table.clear(nearestBuffer)
 	table.clear(byDistance)
 	EnemyService.queryRadius(x, z, range, nearestBuffer)
 	for _, enemy in nearestBuffer do
+		if isProp(enemy) then
+			continue
+		end
 		local dx, dz = enemy.x - x, enemy.z - z
 		table.insert(byDistance, { enemy = enemy, distSq = dx * dx + dz * dz })
 	end
@@ -299,6 +323,9 @@ function EnemyService.move(dt: number, targets: { Target })
 
 	for _, enemy in enemies do
 		local def = enemy.def
+		if def.behavior == "prop" then
+			continue -- stays put; others still push away from it
+		end
 
 		local moveX, moveZ = 0, 0
 		local target, distSq = nearestTarget(targets, enemy.x, enemy.z)
@@ -368,7 +395,7 @@ end
 -- Enemies touching a living player damage them, once per attackCooldown.
 function EnemyService.attack(now: number, targets: { Target })
 	for _, enemy in enemies do
-		if now < enemy.attackReadyAt then
+		if now < enemy.attackReadyAt or isProp(enemy) then
 			continue
 		end
 		local def = enemy.def

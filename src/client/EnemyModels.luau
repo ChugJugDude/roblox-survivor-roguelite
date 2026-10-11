@@ -138,6 +138,16 @@ local builders: { [string]: () -> Visual } = {
 	end,
 }
 
+-- Wooden supply crate with metal bands; breaks into an item.
+builders.Crate = function()
+	local visual = newVisual("Crate")
+	local wood, band = Color3.fromRGB(160, 110, 60), Color3.fromRGB(90, 90, 100)
+	addPart(visual, Vector3.new(2.6, 2.4, 2.6), CFrame.new(0, 1.2, 0), wood, Enum.Material.Wood)
+	addPart(visual, Vector3.new(2.7, 0.3, 2.7), CFrame.new(0, 0.5, 0), band, Enum.Material.Metal)
+	addPart(visual, Vector3.new(2.7, 0.3, 2.7), CFrame.new(0, 1.9, 0), band, Enum.Material.Metal)
+	return visual
+end
+
 -- A bright block, so an enemy kind without a model is obvious instead of invisible.
 local function buildFallback(kind: string): Visual
 	local visual = newVisual(kind)
