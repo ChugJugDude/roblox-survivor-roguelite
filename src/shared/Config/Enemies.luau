@@ -50,12 +50,13 @@ local Enemies = {
 			behavior = "chase",
 			groupSize = 5,
 		}),
-		-- Hangs back and fires slow arrows the player has to dodge.
+		-- Hangs back and fires slow arrows the player has to dodge. Each hit stings less than a goblin's:
+		-- archers are dangerous because several shoot at once, not per shot.
 		SkeletonArcher = table.freeze({
 			maxHealth = 25,
 			speed = 8,
 			radius = 1.4,
-			contactDamage = 6,
+			contactDamage = 4,
 			attackCooldown = 1,
 			xp = 2,
 			behavior = "ranged",
@@ -65,7 +66,7 @@ local Enemies = {
 				shotRange = 34,
 				shotCooldown = 2.5,
 				shotSpeed = 22,
-				shotDamage = 10,
+				shotDamage = 4,
 			}),
 		}),
 		-- Mid-stage mini-boss. Slow, tanky, hits hard, drops a chest.

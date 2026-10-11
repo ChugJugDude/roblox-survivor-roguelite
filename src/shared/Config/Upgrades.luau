@@ -110,11 +110,12 @@ return table.freeze({
 	HEAL_FRACTION = 0.3,
 	STARTING_WEAPON = "SpinningBlade",
 
-	-- Relative chance of each kind of option. New weapons come up more while there's room for them.
+	-- Relative chance of each kind of option. Levels for weapons you own come up often, so a build can
+	-- reach an evolution even with six passives competing for the cards.
 	WEIGHTS = table.freeze({
 		newWeapon = 3,
-		weaponLevel = 2,
-		newPassive = 2,
+		weaponLevel = 3.5,
+		newPassive = 1.5,
 		passiveLevel = 1.5,
 	}),
 

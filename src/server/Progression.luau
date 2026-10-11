@@ -127,10 +127,6 @@ function Progression.devSetXPFrozen(frozen: boolean)
 	xpFrozen = frozen
 end
 
-function Progression.devIsXPFrozen(): boolean
-	return xpFrozen
-end
-
 -- Clears gems and XP for a new run.
 function Progression.reset()
 	for _, gem in gems do

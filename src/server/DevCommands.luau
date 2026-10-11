@@ -10,7 +10,8 @@
 		killall     kill every enemy (counts as kills)
 		god         toggle invulnerability for every player
 		xp <n>      add n XP to the party
-		freezexp    toggle XP gain off/on (no level-ups or pauses; for benchmarks)
+		freezexp on|off   stop or restart XP gain (no level-ups or pauses; for benchmarks). Lasts
+		                  across runs until turned off.
 		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
 		drop <kind>    put a Chest, Meat, Bomb, or Magnet 6 studs from the first living player
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
@@ -65,8 +66,8 @@ local function execute(command: string)
 			warn(`[Dev] {err}`)
 			return
 		end
-	elseif name == "freezexp" then
-		Progression.devSetXPFrozen(not Progression.devIsXPFrozen())
+	elseif name == "freezexp" and (argument == "on" or argument == "off") then
+		Progression.devSetXPFrozen(argument == "on")
 	elseif name == "drop" and table.find({ "Chest", "Meat", "Bomb", "Magnet" }, argument) then
 		local target = Characters.getTargets()[1]
 		if not target then
