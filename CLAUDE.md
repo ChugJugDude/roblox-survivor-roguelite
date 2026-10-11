@@ -11,17 +11,17 @@ Guidance for Claude Code when working in this repository.
 - **Target players:** TODO — age range. Platform: mobile-first (one-thumb movement is a design pillar).
 - **Monetization:** principles only so far (no pay-to-win; cosmetics and convenience) — `docs/design.md` §12. Not until the core loop is fun.
 
-## Status (last updated 2026-10-09)
+## Status (last updated 2026-10-11)
 
 - **M0** done. **M1** done in 6 steps (commits `707138e`..`6f2d3cb`), then playtest-driven changes: a stronger starting Spinning Blade (`837740b`), pausing the game for level-up picks (`d1c0c08`), and a polish pass (2026-10-11): readable crimson enemy shots (`02819d8`), multi-target Arrow Storm + archer cap of 8 (`067f1e6`), supply crates and meat/bomb/magnet pickups (`2b4aa58`).
 - **Playtest feedback so far:** the loop is fun; the user won a full run after the blade buff (stage 1 easy, stages 2 and 3 close). Archer shots are dodgeable, Giant HP and portal charge feel right, stage-1 level-up pacing is good. The 2026-10-11 polish (shots, Arrow Storm, archer cap, crates/pickups) hasn't been playtested yet. Backlog: projectile-deleting "warding rings" item (design doc §9).
 - **Not yet verified:** a full natural run without dev commands; low-end phone performance (Studio device emulator at the 200-enemy cap); co-op pause behavior (all players picking, 15s idle limit, "WAITING FOR OTHERS") — needs 2 players, test in M2.
-- **Known follow-ups:** M2 must turn the run-level server modules (Run, EnemyService, Progression, WaveDirector, Portal, Chests, ProjectileService, Pause) from module-level singletons into per-arena objects; builds in Upgrades are already per player. Boss/portal bars sit close to the player on short screens (M4 UI pass). Level-up picks can pile up with no cap.
+- **Known follow-ups:** M2 must turn the run-level server modules (Run, EnemyService, Progression, WaveDirector, Portal, Pickups, ProjectileService, Pause) from module-level singletons into per-arena objects; builds in Upgrades are already per player. Boss/portal bars sit close to the player on short screens (M4 UI pass). Level-up picks can pile up with no cap.
 - **Working style:** for multi-step milestones, the user wants to discuss the plan first — remind them to switch to plan mode (Shift+Tab) before planning. Commit after each verified step.
 
 ## Architecture (gameplay)
 
-- **Server is the simulation; clients only draw.** One fixed-order Heartbeat tick in `server/Simulation.luau`: Upgrades.step (pause control) → Run → WaveDirector → enemy movement → weapons → projectiles → contact damage → enemy shooting → gem pickup → chests → replication → `NetBatch.flush()`.
+- **Server is the simulation; clients only draw.** One fixed-order Heartbeat tick in `server/Simulation.luau`: Upgrades.step (pause control) → Run → WaveDirector → enemy movement → weapons → projectiles → contact damage → enemy shooting → gem pickup → item pickups → replication → `NetBatch.flush()`.
 - **Enemies, gems, and projectiles are plain server data, not Parts or Humanoids.** Enemies replicate as binary position snapshots (`shared/EnemySnapshot.luau`, UnreliableRemoteEvent, ~20 Hz) plus reliable spawn/despawn events; clients pool primitive models and interpolate 100 ms behind. Gems only send spawn/collected events; projectiles only send a spawn event (clients compute the straight line) and a removal if they stop early. Hits use spatial hashes (`server/SpatialHash.luau`), never `.Touched`.
 - **Game clock** (`shared/GameClock.luau`, owned by `server/Pause.luau`): server time minus time spent paused. All gameplay timing (stage timers, cooldowns, projectiles, blade angles, snapshots) uses it, so pausing freezes everything. Don't use `workspace:GetServerTimeNow()` for gameplay; use `Pause.now()` on the server and `GameClock.read(arena)` on clients.
 - **Shared stat math:** `shared/BuildStats.luau` turns a build (weapon/passive levels, replicated as `W_<id>` / `P_<id>` Player attributes; weapon level 6 = evolved) into stats; both server hits and client visuals use it. `shared/BladeOrbit.luau` does the same for blade angles.
