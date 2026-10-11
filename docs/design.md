@@ -102,8 +102,8 @@ Readability rule: **enemy shots are solid crimson orbs drawn above everything th
 - **XP is shared** across the party, but each player gets their own level-up choice.
 - **Level-ups pause the whole party.** XP is shared, so everyone levels at the same moment: the game pauses and every player picks at once, resuming when all have chosen (with 2+ players, a 15-second limit picks at random for anyone idle). After a pause, the next one waits at least 5 seconds of play; level-ups in between come up together in that next pause. Everyone gets a brief invulnerability grace on resume.
 - **Chest picks don't pause** (they belong to one player): the choice opens right away with ~2 seconds of invulnerability.
-- **Downed, not dead:** at 0 HP a player is downed. A teammate standing next to them for 3 seconds revives them at 50% HP. If the whole party is down, the run ends.
-- **Scaling with party size:** enemy HP and spawn rate scale up with players; per-player Shard rewards stay the same, so co-op is never punished.
+- **Downed, not dead:** a hit that would kill instead downs the player: they can't move, enemies ignore them, and their weapons stop. A teammate standing within ~5 studs for 3 seconds revives them at 50% HP with a moment of invulnerability (progress holds if the teammate steps away). If the whole party is down, the run ends. Solo is a party of 1, so going down ends the run.
+- **Scaling with party size** (fixed at run start), per player past the first: enemy HP +50%, spawn rate +35%, max enemies alive +35% (still capped). Per-player Shard rewards stay the same, so co-op is never punished.
 - Each player's build is their own; synergies between players (e.g., one slows, one does AoE) are a stretch goal, not v1.
 
 ## 9. Meta progression
@@ -122,8 +122,8 @@ Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty ti
 
 **v1 approach: one place, instanced arenas.**
 - Players spawn in a small **lobby** (a town square) with a hero select stand, the Altar, and a **portal**.
-- Players who step into the portal together (party of up to 4, 10-second countdown) are moved into their **own arena instance**, cloned far from other arenas in the same server.
-- On run end, players return to the lobby with a results screen.
+- Players who step into the portal together (party of up to 4, 10-second countdown that starts with the first player on the pad; stepping off leaves; anyone on the pad can press **Start now**) are moved into their **own arena instance**, built far from other arenas in the same server (up to 4 at once; the pad waits if all are busy).
+- On run end, a results screen with **Back to lobby** (automatic after 20 seconds). An arena is torn down once its last player leaves.
 - Server size kept small (e.g., 12–16) so the server never runs too many arenas at once.
 
 **Later:** move runs to reserved servers in a separate place (TeleportService) once the game is proven. Better performance and isolation, but harder to test in Studio, so not worth it for v1.
