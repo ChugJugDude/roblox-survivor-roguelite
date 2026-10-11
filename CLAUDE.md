@@ -13,8 +13,8 @@ Guidance for Claude Code when working in this repository.
 
 ## Status (last updated 2026-10-09)
 
-- **M0** done. **M1** done in 6 steps (commits `707138e`..`6f2d3cb`), then two playtest-driven changes: a stronger starting Spinning Blade (`837740b`) and pausing the game for level-up picks (`d1c0c08`).
-- **Playtest feedback so far:** runs are hard (couldn't win in 3 tries; fine, M3 meta progression will help). Archer shots are dodgeable, Giant HP and portal charge feel right, stage-1 level-up pacing is good. The new blade and the pause haven't been playtested yet.
+- **M0** done. **M1** done in 6 steps (commits `707138e`..`6f2d3cb`), then playtest-driven changes: a stronger starting Spinning Blade (`837740b`), pausing the game for level-up picks (`d1c0c08`), and a polish pass (2026-10-11): readable crimson enemy shots (`02819d8`), multi-target Arrow Storm + archer cap of 8 (`067f1e6`), supply crates and meat/bomb/magnet pickups (`2b4aa58`).
+- **Playtest feedback so far:** the loop is fun; the user won a full run after the blade buff (stage 1 easy, stages 2 and 3 close). Archer shots are dodgeable, Giant HP and portal charge feel right, stage-1 level-up pacing is good. The 2026-10-11 polish (shots, Arrow Storm, archer cap, crates/pickups) hasn't been playtested yet. Backlog: projectile-deleting "warding rings" item (design doc §9).
 - **Not yet verified:** a full natural run without dev commands; low-end phone performance (Studio device emulator at the 200-enemy cap); co-op pause behavior (all players picking, 15s idle limit, "WAITING FOR OTHERS") — needs 2 players, test in M2.
 - **Known follow-ups:** M2 must turn the run-level server modules (Run, EnemyService, Progression, WaveDirector, Portal, Chests, ProjectileService, Pause) from module-level singletons into per-arena objects; builds in Upgrades are already per player. Boss/portal bars sit close to the player on short screens (M4 UI pass). Level-up picks can pile up with no cap.
 - **Working style:** for multi-step milestones, the user wants to discuss the plan first — remind them to switch to plan mode (Shift+Tab) before planning. Commit after each verified step.
@@ -33,7 +33,9 @@ Guidance for Claude Code when working in this repository.
 
 - Keep Studio's window in front, or screenshots come back blank and the client throttles to ~15 fps.
 - `execute_luau` runs in the plugin's own Lua VM: `require` gives a fresh, unstarted copy of a module, so you can't reach live module state. Read instance attributes instead, or drive the game with dev commands.
-- **Dev commands** (Studio only, `server/DevCommands.luau`): `workspace.Arena:SetAttribute("Dev_Command", "<cmd>")` with `skip`, `stage <n>`, `killall`, `god`, `xp <n>`, `give <id> <level>` (0 removes, 6 evolves a weapon), `spawn <kind>`.
+- **Dev commands** (Studio only, `server/DevCommands.luau`): `workspace.Arena:SetAttribute("Dev_Command", "<cmd>")` with `skip`, `stage <n>`, `killall` (crates too), `god`, `xp <n>`, `freezexp` (no XP, so no level-up pauses: use for benchmarks), `give <id> <level>` (0 removes, 6 evolves a weapon), `spawn <kind>` (incl. `Crate`), `drop <Chest|Meat|Bomb|Magnet>`.
+- **Solo level-up pauses wait forever for a pick**, so long automated tests either `freezexp` or click the picker cards; otherwise a script waiting on game time hangs.
+- **Weapon benchmark:** stage 3 overtime, `god` + `freezexp`, one evolution alone, then sample `EnemiesAlive` every 0.5s for 20s (lower average = better clearing; raw kills saturate at the spawn rate). Baseline 2026-10-11: Meteor 84, Bladestorm 92, Arrow Storm 71.
 - Studio's virtual input can't send the "1" key (use numpad 1 or click). Clicks work with `instance_path`, e.g. `LocalPlayer.PlayerGui.UpgradePicker.Container.Cards.Card1`.
 - The DataStore warnings at startup are expected while "Enable Studio Access to API Services" is off; PlayerData falls back to unsaved defaults.
 - When editing files with scripts, write bytes (or LF) explicitly; the repo enforces LF via `.gitattributes` and StyLua won't fix line endings inside `-- stylua: ignore` blocks.

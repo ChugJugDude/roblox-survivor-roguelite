@@ -30,6 +30,7 @@ A fantasy survivor-like roguelite for Roblox. Drop into a cursed arena alone or 
 2. A run is **3 short stages (~3 min each)** in the arena, each harder than the last. Waves escalate in density and enemy variety within a stage.
 3. Level up → choose 1 of 3 upgrades (new weapon, weapon level, passive, or evolution).
 4. A **Goblin Giant mini-boss** appears mid-stage and drops a chest (bonus upgrade).
+   - **Supply crates** appear near the player every ~35s; weapons break them and they drop an item: **meat** (heal 30%), a **bomb** (clears the screen, hurts bosses), or a **magnet** (pulls in every gem). Regular enemies rarely (0.5%) drop one too. This is how a player recovers when low.
 5. When a stage's timer runs out, **overtime** starts: a portal opens and spawns ramp up hard. Stand in the portal to charge it; a full charge moves the party to the next stage.
 6. Charging the portal after stage 3 wins the run. (M4: the **Ogre boss** guards the end of stage 3.)
 7. Win or die → earn **Shards** based on time survived, kills, and bosses.
@@ -68,7 +69,7 @@ Three kinds, all offered through the level-up choice:
   - Examples: Might (+damage), Haste (−cooldown), Reach (+area), Swiftness (+move speed), Vitality (+max HP), Magnet (+pickup radius), Multishot (+projectiles), Duration, Armor, Regen, Luck, Greed (+Shards).
 - **Evolutions (2–4 in v1):** once a weapon is max level and you **own its paired passive (any level)**, the evolution appears as a level-up choice (Survivor.io style), turning the weapon into an upgraded version. This is the main build-crafting payoff.
   - Spinning Blade + Might → Bladestorm
-  - Volley Arrows + Swiftness → Arrow Storm
+  - Volley Arrows + Swiftness → Arrow Storm (fans at up to 3 enemies in different directions, so it answers threats from all sides)
   - Fireball + Reach → Meteor
 - **M1 set (9):** Spinning Blade, Volley Arrows, Fireball; Might, Haste, Swiftness, Reach, Vitality, Magnet; plus the 3 evolutions above.
 
@@ -85,10 +86,15 @@ Design rules:
 | Bat swarm | Fast, low HP, moves in groups | Pressure movement |
 | Skeleton archer | Keeps distance, shoots slow projectiles | Forces dodging |
 | Elite (any type) | Larger, glowing, more HP | Drops a chest |
+| Supply crate | Doesn't move or attack; breakable | Drops meat, a bomb, or a magnet |
 | **Mini-boss: Goblin Giant** | Slow, tanky, big hitbox; appears mid-stage | Drops a chest |
 | **Boss: Ogre** | Phases: summons adds, ring of projectiles, charge | End-of-run climax (M4) |
 
 A **wave director** controls spawns over time: which enemy types are allowed, spawn rate, max alive count, and elite/boss timings. All of it lives in config so runs can be tuned without code changes.
+
+Per-kind caps keep any one threat from taking over: at most **8 skeleton archers** alive at once, so overtime can't ring the player with shooters they can't reach.
+
+Readability rule: **enemy shots are solid crimson orbs drawn above everything the player has** (no player effect uses red), so they stay visible even inside evolved weapons.
 
 ## 8. Co-op
 
@@ -108,6 +114,9 @@ A **wave director** controls spawns over time: which enemy types are allowed, sp
 - **Collection log:** tracks weapons, evolutions, and enemies discovered. Cheap to build and gives completionists a goal.
 
 Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty tiers, cosmetic unlocks from achievements.
+
+**Backlog ideas (from playtests):**
+- **Warding rings:** a low-damage orbiting item whose rings delete enemy projectiles they touch (like Survivor.io), so ranged enemies can't whittle down a player who's charging the portal.
 
 ## 10. Structure and flow
 
