@@ -95,6 +95,7 @@ function BuildStats.volleyArrows(build: Build): Config.VolleyArrowsStats?
 		pierce = base.pierce,
 		range = base.range,
 		radius = base.radius,
+		targets = base.targets,
 	}
 end
 

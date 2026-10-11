@@ -63,6 +63,11 @@ return table.freeze({
 
 	-- Never more than this many enemies alive, whatever a stage or overtime asks for.
 	HARD_CAP = 200,
+	-- Per-kind limits on how many can be alive at once. Archers are capped so overtime can't ring the
+	-- player with shooters they can't reach.
+	KIND_CAPS = {
+		SkeletonArcher = 8,
+	} :: { [string]: number },
 
 	-- Enemies appear on a ring around a random living player, near the edge of the screen.
 	SPAWN_DISTANCE_MIN = 35,

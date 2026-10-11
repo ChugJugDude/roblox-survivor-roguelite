@@ -30,14 +30,28 @@ local function currentSegment(stageDef: Config.Stage, elapsed: number): Config.S
 	return current
 end
 
-local function pickKind(mix: { [string]: number }): string
+local function atCap(kind: string): boolean
+	local cap = Config.KIND_CAPS[kind]
+	return cap ~= nil and EnemyService.countKind(kind) >= cap
+end
+
+-- A weighted pick from the mix, leaving out kinds at their cap. Nil if every kind is capped.
+local function pickKind(mix: { [string]: number }): string?
 	local total = 0
-	for _, weight in mix do
-		total += weight
+	for kind, weight in mix do
+		if not atCap(kind) then
+			total += weight
+		end
+	end
+	if total <= 0 then
+		return nil
 	end
 	local roll = random:NextNumber(0, total)
-	local last = ""
+	local last: string? = nil
 	for kind, weight in mix do
+		if atCap(kind) then
+			continue
+		end
 		last = kind
 		roll -= weight
 		if roll <= 0 then
@@ -109,6 +123,9 @@ function WaveDirector.step(now: number, targets: { Characters.Target })
 	nextSpawnAt = now + interval
 
 	local kind = pickKind(segment.mix)
+	if not kind then
+		return
+	end
 	local target = targets[random:NextInteger(1, #targets)]
 	local x, z = pickSpawnPoint(currentArena, target)
 	local groupSize = EnemyConfig.TYPES[kind].groupSize or 1

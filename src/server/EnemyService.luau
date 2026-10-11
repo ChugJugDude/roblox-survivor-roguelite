@@ -52,6 +52,7 @@ local MAX_ID = 65535
 local arena: Arena.Arena? = nil
 local enemies: { [number]: Enemy } = {}
 local aliveCount = 0
+local kindCounts: { [string]: number } = {}
 local kills = 0
 local nextId = 0
 local hash = SpatialHash.new(Config.SPATIAL_CELL_SIZE)
@@ -91,6 +92,7 @@ local function remove(enemy: Enemy)
 	end
 	enemies[enemy.id] = nil
 	aliveCount -= 1
+	kindCounts[enemy.kind] -= 1
 	table.insert(despawned, enemy.id)
 	if enemy == boss then
 		boss = nil
@@ -149,6 +151,7 @@ function EnemyService.spawn(kind: string, x: number, z: number, scaling: Scaling
 	}
 	enemies[enemy.id] = enemy
 	aliveCount += 1
+	kindCounts[kind] = (kindCounts[kind] or 0) + 1
 	table.insert(spawned, { id = enemy.id, kind = kind, x = x, z = z })
 	updateCounters()
 	if def.isBoss then
@@ -211,6 +214,11 @@ function EnemyService.resetKills()
 	updateCounters()
 end
 
+-- How many of one kind are alive.
+function EnemyService.countKind(kind: string): number
+	return kindCounts[kind] or 0
+end
+
 function EnemyService.count(): number
 	return aliveCount
 end
@@ -260,6 +268,27 @@ function EnemyService.nearest(x: number, z: number, range: number): Enemy?
 		end
 	end
 	return best
+end
+
+local byDistance: { { enemy: Enemy, distSq: number } } = {}
+
+-- Fills `out` with up to `count` living enemies within `range` of (x, z), closest first.
+function EnemyService.nearestN(x: number, z: number, range: number, count: number, out: { Enemy }): { Enemy }
+	table.clear(out)
+	table.clear(nearestBuffer)
+	table.clear(byDistance)
+	EnemyService.queryRadius(x, z, range, nearestBuffer)
+	for _, enemy in nearestBuffer do
+		local dx, dz = enemy.x - x, enemy.z - z
+		table.insert(byDistance, { enemy = enemy, distSq = dx * dx + dz * dz })
+	end
+	table.sort(byDistance, function(a, b)
+		return a.distSq < b.distSq
+	end)
+	for index = 1, math.min(count, #byDistance) do
+		table.insert(out, byDistance[index].enemy)
+	end
+	return out
 end
 
 function EnemyService.move(dt: number, targets: { Target })

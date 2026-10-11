@@ -23,6 +23,7 @@ export type VolleyArrowsStats = {
 	pierce: number, -- enemies one arrow can hit before it stops
 	range: number, -- only fires at enemies this close; arrows fly this far
 	radius: number, -- hit radius
+	targets: number, -- volleys fire one fan at each of this many nearest enemies
 }
 
 export type FireballStats = {
@@ -72,11 +73,11 @@ local SPINNING_BLADE_LEVELS: { SpinningBladeStats } = {
 -- Same one-row-per-level layout.
 -- stylua: ignore
 local VOLLEY_ARROWS_LEVELS: { VolleyArrowsStats } = {
-	{ cooldown = 1.4, arrowCount = 1, spread = 0, speed = 70, damage = 12, pierce = 1, range = 55, radius = 0.6 },
-	{ cooldown = 1.4, arrowCount = 2, spread = 0.25, speed = 70, damage = 12, pierce = 1, range = 55, radius = 0.6 },
-	{ cooldown = 1.4, arrowCount = 2, spread = 0.25, speed = 70, damage = 16, pierce = 2, range = 55, radius = 0.6 },
-	{ cooldown = 1.15, arrowCount = 3, spread = 0.35, speed = 70, damage = 16, pierce = 2, range = 55, radius = 0.6 },
-	{ cooldown = 1.15, arrowCount = 4, spread = 0.45, speed = 70, damage = 20, pierce = 3, range = 55, radius = 0.6 },
+	{ cooldown = 1.4, arrowCount = 1, spread = 0, speed = 70, damage = 12, pierce = 1, range = 55, radius = 0.6, targets = 1 },
+	{ cooldown = 1.4, arrowCount = 2, spread = 0.25, speed = 70, damage = 12, pierce = 1, range = 55, radius = 0.6, targets = 1 },
+	{ cooldown = 1.4, arrowCount = 2, spread = 0.25, speed = 70, damage = 16, pierce = 2, range = 55, radius = 0.6, targets = 1 },
+	{ cooldown = 1.15, arrowCount = 3, spread = 0.35, speed = 70, damage = 16, pierce = 2, range = 55, radius = 0.6, targets = 1 },
+	{ cooldown = 1.15, arrowCount = 4, spread = 0.45, speed = 70, damage = 20, pierce = 3, range = 55, radius = 0.6, targets = 1 },
 }
 
 -- Same one-row-per-level layout.
@@ -156,16 +157,17 @@ return table.freeze({
 			evolution = table.freeze({
 				name = "Arrow Storm",
 				passive = "Swiftness",
-				description = "A rapid, wide fan of arrows that pierce through crowds.",
+				description = "Rapid fans of piercing arrows at the three nearest enemies.",
 				stats = table.freeze({
 					cooldown = 0.6,
-					arrowCount = 7,
-					spread = 1.2,
+					arrowCount = 4,
+					spread = 0.45,
 					speed = 85,
 					damage = 22,
 					pierce = 5,
 					range = 60,
 					radius = 0.7,
+					targets = 3,
 				}) :: VolleyArrowsStats,
 			}),
 		}),
