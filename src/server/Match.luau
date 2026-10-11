@@ -13,6 +13,7 @@
 		Stage        current stage number
 		PhaseEndsAt  game time (shared/GameClock) the timed phases end (0 when not timed)
 		ResultTime, ResultStage, ResultKills, ResultLevel   set when the run ends
+		EndedAt      server time the run ended (the lobby sends everyone back a while after)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -105,6 +106,7 @@ local function endRun(match: Match, result: Phase, now: number)
 	arenaModel:SetAttribute("ResultStage", match.stage)
 	arenaModel:SetAttribute("ResultKills", EnemyService.getKills(match.enemies))
 	arenaModel:SetAttribute("ResultLevel", Progression.getLevel(match.progression))
+	arenaModel:SetAttribute("EndedAt", workspace:GetServerTimeNow())
 	setPhase(match, result, now)
 end
 
@@ -131,9 +133,7 @@ local function stepRun(match: Match, now: number, dt: number, targets: { Charact
 			startStage(match, now)
 		end
 	elseif phase == "Stage" or phase == "Overtime" then
-		if #targets == 0 then
-			endRun(match, "Defeat", now)
-		elseif phase == "Stage" then
+		if phase == "Stage" then
 			if now >= match.phaseEndsAt then
 				setPhase(match, "Overtime", now)
 				Portal.open(match.portal, targets)
@@ -153,7 +153,8 @@ local function stepRun(match: Match, now: number, dt: number, targets: { Charact
 	end
 end
 
--- Creates a match in arena slot `slot` (not started; add members, then start).
+-- Creates a match in arena slot `slot` (not started; add members, then start). Slot 0 is the
+-- lobby's spot, so use 1 and up.
 function Match.create(slot: number): Match
 	local arena = Arena.build(ArenaConfig.ORIGIN + Vector3.new(slot * SLOT_SPACING, 0, 0), `Arena{slot}`)
 	local members: { Player } = {}
@@ -229,6 +230,15 @@ function Match.startRun(match: Match)
 end
 
 function Match.step(match: Match, dt: number)
+	local now = Pause.now(match.clock)
+	local targets = Characters.getTargets(match.members)
+
+	-- Nobody left standing ends the run, even mid-pause (e.g. the last player went down on the same
+	-- frame as a level-up): the party shouldn't be left choosing upgrades for a lost run.
+	if (match.phase == "Stage" or match.phase == "Overtime") and #targets == 0 then
+		endRun(match, "Defeat", now)
+	end
+
 	-- Level-up picks can pause the match; while paused, nothing else moves.
 	Upgrades.step(match.party)
 	if Pause.isPaused(match.clock) then
@@ -236,9 +246,7 @@ function Match.step(match: Match, dt: number)
 		return
 	end
 
-	local now = Pause.now(match.clock)
 	local step = math.min(dt, MAX_STEP)
-	local targets = Characters.getTargets(match.members)
 
 	stepRun(match, now, step, targets)
 	WaveDirector.step(match.waves, now, targets, runView(match, now))

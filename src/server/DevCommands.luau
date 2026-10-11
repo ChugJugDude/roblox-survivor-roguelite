@@ -16,6 +16,8 @@
 		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
 		drop <kind>    put a Chest, Meat, Bomb, or Magnet 6 studs from the first living player
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
+		party       start the party on the lobby's portal pad now
+		lobby       send every player back to the lobby
 
 	A client can set the attribute on its own copy of Workspace, but that never reaches the server,
 	so clients can't trigger these.
@@ -26,6 +28,7 @@ local RunService = game:GetService("RunService")
 
 local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
+local Lobby = require(script.Parent.Lobby)
 local Match = require(script.Parent.Match)
 local Pickups = require(script.Parent.Pickups)
 local Progression = require(script.Parent.Progression)
@@ -47,6 +50,16 @@ local function execute(command: string)
 		return
 	elseif name == "freezexp" and (argument == "on" or argument == "off") then
 		Progression.devSetXPFrozen(argument == "on")
+		print(`[Dev] {command}`)
+		return
+	elseif name == "party" then
+		Lobby.devStartParty()
+		print(`[Dev] {command}`)
+		return
+	elseif name == "lobby" then
+		for _, player in Players:GetPlayers() do
+			Lobby.returnPlayer(player)
+		end
 		print(`[Dev] {command}`)
 		return
 	elseif name == "give" and tonumber(extra) then

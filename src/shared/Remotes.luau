@@ -105,7 +105,11 @@ return table.freeze({
 	-- projectile it's drawing; the server then sends what's in the new world.
 	WorldReset = remote("RemoteEvent", "WorldReset") :: RemoteEvent,
 
-	-- Client -> server. No arguments. Asks to start a new run from the results screen. Ignored
-	-- unless the run has ended; rate-limited per player.
-	RequestRestart = remote("RemoteEvent", "RequestRestart") :: RemoteEvent,
+	-- Client -> server. No arguments. "Start now" for the party forming on the lobby's portal pad.
+	-- Ignored unless the sender is on the pad; rate-limited per player.
+	RequestStartParty = remote("RemoteEvent", "RequestStartParty") :: RemoteEvent,
+
+	-- Client -> server. No arguments. Leave a finished run for the lobby. Ignored unless the
+	-- sender's match has ended; rate-limited per player.
+	ReturnToLobby = remote("RemoteEvent", "ReturnToLobby") :: RemoteEvent,
 })

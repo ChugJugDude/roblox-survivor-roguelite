@@ -1,5 +1,6 @@
 --!strict
--- The end-of-run screen: victory or defeat, the run's stats, and "Play again". Shown whenever the
+-- The end-of-run screen: victory or defeat, the run's stats, and "Back to lobby" (which also
+-- happens on its own after Config.Party.RETURN_TO_LOBBY_AFTER seconds). Shown whenever the
 -- Arena's Phase is Victory or Defeat. Placeholder look; polish comes in M4.
 
 local GuiService = game:GetService("GuiService")
@@ -11,6 +12,7 @@ local UserInputService = game:GetService("UserInputService")
 local CurrentArena = require(script.Parent.Parent.CurrentArena)
 local Create = require(script.Parent.Create)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
+local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 
@@ -70,7 +72,7 @@ function Results.start()
 		Parent = panel,
 	})
 	local button = Create("TextButton", {
-		Name = "PlayAgain",
+		Name = "BackToLobby",
 		Size = UDim2.fromOffset(220, 56),
 		Position = UDim2.new(0.5, 0, 1, -24),
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -78,13 +80,24 @@ function Results.start()
 		Font = FONT,
 		TextSize = 26,
 		TextColor3 = Color3.new(1, 1, 1),
-		Text = "PLAY AGAIN",
+		Text = "BACK TO LOBBY",
 		Parent = panel,
 	})
 	Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = button })
+	local autoReturn = Create("TextLabel", {
+		Name = "AutoReturn",
+		Size = UDim2.new(1, 0, 0, 18),
+		Position = UDim2.new(0, 0, 1, -100),
+		BackgroundTransparency = 1,
+		Font = FONT,
+		TextSize = 14,
+		TextColor3 = Color3.fromRGB(170, 170, 185),
+		Text = "",
+		Parent = panel,
+	})
 
 	button.Activated:Connect(function()
-		Remotes.RequestRestart:FireServer()
+		Remotes.ReturnToLobby:FireServer()
 	end)
 
 	local function refresh(arena: Instance?)
@@ -123,6 +136,15 @@ function Results.start()
 		if arena ~= shownArena or phase ~= shownPhase then
 			shownArena, shownPhase = arena, phase
 			refresh(arena)
+		end
+		if gui.Enabled and arena then
+			local endedAt = arena:GetAttribute("EndedAt") or 0
+			local left =
+				math.max(0, math.ceil(endedAt + PartyConfig.RETURN_TO_LOBBY_AFTER - workspace:GetServerTimeNow()))
+			local text = `Back to the lobby in {left}`
+			if autoReturn.Text ~= text then
+				autoReturn.Text = text
+			end
 		end
 	end)
 end
