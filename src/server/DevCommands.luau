@@ -8,6 +8,7 @@
 
 		skip        end the current phase now (in overtime: fill the portal)
 		stage <n>   jump to the start of stage n
+		boss        jump to the final boss fight (skip in it kills the boss)
 		killall     kill every enemy and crate (counts as kills)
 		god         toggle invulnerability for every player
 		xp <n>      add n XP to the party
@@ -112,6 +113,8 @@ local function execute(command: string)
 		Match.devSkip(match)
 	elseif name == "stage" and tonumber(argument) then
 		Match.devSetStage(match, tonumber(argument) :: number)
+	elseif name == "boss" then
+		Match.devBoss(match)
 	elseif name == "killall" then
 		for _, enemy in EnemyService.getAll(match.enemies) do
 			EnemyService.damage(match.enemies, enemy, math.huge)

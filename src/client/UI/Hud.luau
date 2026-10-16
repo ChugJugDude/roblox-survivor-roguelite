@@ -215,7 +215,11 @@ function Hud.start()
 		local phase = arena:GetAttribute("Phase")
 		local stage = arena:GetAttribute("Stage") or 0
 		local endsAt = arena:GetAttribute("PhaseEndsAt") or 0
-		local inRun = phase == "Countdown" or phase == "Stage" or phase == "Overtime" or phase == "Transition"
+		local inRun = phase == "Countdown"
+			or phase == "Stage"
+			or phase == "Overtime"
+			or phase == "Boss"
+			or phase == "Transition"
 
 		set(top, "Visible", inRun)
 		set(buildLabel, "Visible", inRun)
@@ -227,6 +231,10 @@ function Hud.start()
 		set(killsLabel, "Text", `Kills {arena:GetAttribute("Kills") or 0}`)
 		if phase == "Overtime" then
 			set(timerLabel, "Text", "OVERTIME")
+			set(timerLabel, "TextColor3", OVERTIME_COLOR)
+		elseif phase == "Boss" then
+			local name = arena:GetAttribute("BossName") or ""
+			set(timerLabel, "Text", if name ~= "" then `DEFEAT THE {string.upper(name)}` else "")
 			set(timerLabel, "TextColor3", OVERTIME_COLOR)
 		elseif phase == "Stage" then
 			set(timerLabel, "Text", TimeFormat.minutesSeconds(math.ceil(endsAt - now)))

@@ -2,14 +2,15 @@
 --[[
 	A match: one party's run in its own arena. It owns the arena, its members, one state object from
 	each run system, and the run itself: a countdown, then Config.Run.STAGE_COUNT timed stages. When a
-	stage's timer runs out, overtime starts: a portal opens and has to be charged to move on.
-	Charging it after the last stage wins; if no member is left standing, the run is lost.
+	stage's timer runs out, overtime starts: a portal opens and has to be charged to move on. The
+	last stage instead ends in a Boss phase: its final boss (Config.Waves finalBoss) arrives, and
+	killing it wins. If no member is left standing, the run is lost.
 
 	Each frame Simulation calls Match.step for every match, which runs the systems in a fixed order.
 
 	Run state is published as attributes on the match's Arena model for its members' HUD (and
 	playtest tooling):
-		Phase        "Countdown" | "Stage" | "Overtime" | "Transition" | "Victory" | "Defeat"
+		Phase        "Countdown" | "Stage" | "Overtime" | "Boss" | "Transition" | "Victory" | "Defeat"
 		Stage        current stage number
 		PhaseEndsAt  game time (shared/GameClock) the timed phases end (0 when not timed)
 		ResultTime, ResultStage, ResultKills, ResultLevel, ResultStagesCleared, ResultBosses
@@ -37,10 +38,11 @@ local WaveDirector = require(script.Parent.WaveDirector)
 local WeaponService = require(script.Parent.Weapons.WeaponService)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
+local WavesConfig = require(ReplicatedStorage.Shared.Config.Waves)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local ShardReward = require(ReplicatedStorage.Shared.ShardReward)
 
-export type Phase = "Countdown" | "Stage" | "Overtime" | "Transition" | "Victory" | "Defeat"
+export type Phase = "Countdown" | "Stage" | "Overtime" | "Boss" | "Transition" | "Victory" | "Defeat"
 
 export type Match = {
 	slot: number,
@@ -57,6 +59,7 @@ export type Match = {
 	waves: WaveDirector.State,
 	portal: Portal.State,
 	bosses: BossBrain.State,
+	finalBoss: EnemyService.Enemy?, -- alive during the Boss phase
 	partySize: number, -- members when the run started, for scaling
 	phase: Phase,
 	stage: number,
@@ -91,7 +94,12 @@ end
 
 local function isLive(match: Match): boolean
 	local phase = match.phase
-	return phase == "Countdown" or phase == "Stage" or phase == "Overtime" or phase == "Transition"
+	return phase == "Countdown" or phase == "Stage" or phase == "Overtime" or phase == "Boss" or phase == "Transition"
+end
+
+-- Stage, overtime, or the boss fight: enemies spawn and the party can lose.
+local function isFighting(phase: Phase): boolean
+	return phase == "Stage" or phase == "Overtime" or phase == "Boss"
 end
 
 local function clearField(match: Match)
@@ -104,6 +112,7 @@ local function startStage(match: Match, now: number)
 end
 
 local function endRun(match: Match, result: Phase, now: number)
+	match.finalBoss = nil
 	Upgrades.stop(match.party)
 	clearField(match)
 	Portal.close(match.portal)
@@ -135,11 +144,11 @@ local function runView(match: Match, now: number): WaveDirector.RunView
 	local phase = match.phase
 	local sinceStart = now - match.phaseStartedAt
 	return {
-		fighting = phase == "Stage" or phase == "Overtime",
+		fighting = isFighting(phase),
 		stage = match.stage,
 		stageElapsed = if phase == "Stage"
 			then sinceStart
-			elseif phase == "Overtime" then Config.STAGE_DURATION + sinceStart
+			elseif phase == "Overtime" or phase == "Boss" then Config.STAGE_DURATION + sinceStart
 			else 0,
 		overtime = phase == "Overtime",
 		overtimeElapsed = if phase == "Overtime" then sinceStart else 0,
@@ -153,11 +162,25 @@ local function stepRun(match: Match, now: number, dt: number, targets: { Charact
 		if now >= match.phaseEndsAt then
 			startStage(match, now)
 		end
+	elseif phase == "Boss" then
+		local boss = match.finalBoss
+		if not boss or EnemyService.getAll(match.enemies)[boss.id] ~= boss then
+			match.finalBoss = nil
+			endRun(match, "Victory", now)
+		end
 	elseif phase == "Stage" or phase == "Overtime" then
 		if phase == "Stage" then
 			if now >= match.phaseEndsAt then
-				setPhase(match, "Overtime", now)
-				Portal.open(match.portal, targets)
+				local finalBoss = if match.stage >= Config.STAGE_COUNT
+					then WavesConfig.STAGES[match.stage].finalBoss
+					else nil
+				if finalBoss then
+					setPhase(match, "Boss", now)
+					match.finalBoss = WaveDirector.spawnBoss(match.waves, finalBoss, targets, runView(match, now))
+				else
+					setPhase(match, "Overtime", now)
+					Portal.open(match.portal, targets)
+				end
 			end
 		elseif Portal.step(match.portal, dt, targets) then
 			Portal.close(match.portal)
@@ -200,6 +223,7 @@ function Match.create(slot: number): Match
 		waves = WaveDirector.new(arena, enemies),
 		portal = Portal.new(arena),
 		bosses = BossBrain.new(arena, enemies, projectiles, net),
+		finalBoss = nil,
 		partySize = 1,
 		phase = "Countdown",
 		stage = 0,
@@ -261,7 +285,7 @@ function Match.step(match: Match, dt: number)
 
 	-- Nobody left standing (everyone downed or gone) ends the run, even mid-pause (e.g. the last player went down on the same
 	-- frame as a level-up): the party shouldn't be left choosing upgrades for a lost run.
-	if (match.phase == "Stage" or match.phase == "Overtime") and #targets == 0 then
+	if isFighting(match.phase) and #targets == 0 then
 		endRun(match, "Defeat", now)
 	end
 
@@ -317,15 +341,27 @@ function Match.hasEnded(match: Match): boolean
 	return not isLive(match)
 end
 
--- Studio dev command: end the current phase now (in overtime, fill the portal).
+-- Studio dev command: end the current phase now (in overtime, fill the portal; in the boss fight,
+-- kill the boss).
 function Match.devSkip(match: Match)
 	local now = Pause.now(match.clock)
+	local boss = match.finalBoss
 	if match.phase == "Overtime" then
 		Portal.fill(match.portal)
+	elseif match.phase == "Boss" and boss then
+		EnemyService.damage(match.enemies, boss, math.huge)
 	elseif match.phaseEndsAt > 0 then
 		match.phaseEndsAt = now
 		model(match):SetAttribute("PhaseEndsAt", now)
 	end
+end
+
+-- Studio dev command: jump to the last stage's boss fight.
+function Match.devBoss(match: Match)
+	Match.devSetStage(match, Config.STAGE_COUNT)
+	local now = Pause.now(match.clock)
+	match.phaseEndsAt = now
+	model(match):SetAttribute("PhaseEndsAt", now)
 end
 
 -- Studio dev command: jump to the start of stage `n`.

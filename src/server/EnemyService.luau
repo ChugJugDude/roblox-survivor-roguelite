@@ -111,7 +111,13 @@ local function remove(state: State, enemy: Enemy)
 	state.kindCounts[enemy.kind] -= 1
 	NetBatch.push(state.net, Remotes.EnemyDespawned, enemy.id)
 	if enemy == state.boss then
+		-- Fall back to another living boss, if any, so the bar keeps tracking someone.
 		state.boss = nil
+		for _, other in state.enemies do
+			if other.def.isBoss and (not state.boss or other.def.boss) then
+				state.boss = other
+			end
+		end
 		publishBoss(state)
 	end
 end
@@ -203,7 +209,12 @@ function EnemyService.spawn(state: State, kind: string, x: number, z: number, sc
 	})
 	updateCounters(state)
 	if def.isBoss then
-		state.boss = enemy
+		-- The bar shows the newest boss, except that a real boss (one with attacks, like the Ogre)
+		-- outranks a mini-boss.
+		local current = state.boss
+		if not current or def.boss or not current.def.boss then
+			state.boss = enemy
+		end
 		publishBoss(state)
 	end
 	return enemy

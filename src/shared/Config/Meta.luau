@@ -39,7 +39,7 @@ return table.freeze({
 	SHARDS_PER_MINUTE = 6,
 	KILLS_PER_SHARD = 25,
 	SHARDS_PER_STAGE_CLEARED = 20,
-	SHARDS_PER_BOSS = 15, -- each Goblin Giant (any isBoss enemy) the party killed
+	SHARDS_PER_BOSS = 15, -- each boss (Goblin Giant, Ogre: any isBoss enemy) the party killed
 	SHARDS_FOR_VICTORY = 40,
 
 	DEFAULT_HERO = "Knight",

@@ -20,6 +20,11 @@ export type Line = {
 
 local ShardReward = {}
 
+-- "1 kill", "2 kills".
+local function count(n: number, singular: string, plural: string): string
+	return `{n} {if n == 1 then singular else plural}`
+end
+
 -- Returns the total and its breakdown. `greed` is the player's Greed bonus (0.1 = +10%).
 function ShardReward.compute(result: RunResult, greed: number): (number, { Line })
 	local lines: { Line } = {
@@ -27,12 +32,18 @@ function ShardReward.compute(result: RunResult, greed: number): (number, { Line 
 			label = `Survived {TimeFormat.minutesSeconds(result.time)}`,
 			amount = math.floor(math.max(0, result.time) / 60 * Config.SHARDS_PER_MINUTE),
 		},
-		{ label = `{result.kills} kills`, amount = math.floor(math.max(0, result.kills) / Config.KILLS_PER_SHARD) },
 		{
-			label = `{result.stagesCleared} stages cleared`,
+			label = count(result.kills, "kill", "kills"),
+			amount = math.floor(math.max(0, result.kills) / Config.KILLS_PER_SHARD),
+		},
+		{
+			label = `{count(result.stagesCleared, "stage", "stages")} cleared`,
 			amount = math.max(0, result.stagesCleared) * Config.SHARDS_PER_STAGE_CLEARED,
 		},
-		{ label = `{result.bosses} giants slain`, amount = math.max(0, result.bosses) * Config.SHARDS_PER_BOSS },
+		{
+			label = `{count(result.bosses, "boss", "bosses")} slain`,
+			amount = math.max(0, result.bosses) * Config.SHARDS_PER_BOSS,
+		},
 	}
 	if result.victory then
 		table.insert(lines, { label = "Victory", amount = Config.SHARDS_FOR_VICTORY })

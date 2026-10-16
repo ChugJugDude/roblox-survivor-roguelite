@@ -19,6 +19,9 @@ export type Stage = {
 	segments: { Segment },
 	miniBoss: string?, -- enemy kind spawned once, at miniBossAt seconds into the stage
 	miniBossAt: number?,
+	-- When this stage's timer runs out, this boss arrives instead of the portal, and killing it
+	-- wins the run (server/Match.luau "Boss" phase). Only used on the last stage.
+	finalBoss: string?,
 }
 
 return table.freeze({
@@ -58,6 +61,7 @@ return table.freeze({
 			},
 			miniBoss = "GoblinGiant",
 			miniBossAt = 90,
+			finalBoss = "Ogre",
 		},
 	} :: { Stage },
 
@@ -80,6 +84,10 @@ return table.freeze({
 	CRATE_MAX = 3,
 	CRATE_DISTANCE_MIN = 20,
 	CRATE_DISTANCE_MAX = 35,
+
+	-- The final boss appears this far from a random living player.
+	BOSS_DISTANCE_MIN = 28,
+	BOSS_DISTANCE_MAX = 34,
 
 	-- Enemies appear on a ring around a random living player, near the edge of the screen.
 	SPAWN_DISTANCE_MIN = 35,

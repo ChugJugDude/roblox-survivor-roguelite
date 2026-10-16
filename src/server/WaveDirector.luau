@@ -15,7 +15,7 @@ local RunConfig = require(ReplicatedStorage.Shared.Config.Run)
 
 -- What the wave director needs to know about the run this frame (the match fills it in).
 export type RunView = {
-	fighting: boolean, -- in a stage or its overtime
+	fighting: boolean, -- in a stage, its overtime, or the final boss fight
 	stage: number,
 	stageElapsed: number, -- seconds since the stage started, counting on through overtime
 	overtime: boolean,
@@ -102,6 +102,32 @@ local function pickSpawnPoint(
 	return Arena.clamp(currentArena, x, z, Config.ARENA_MARGIN)
 end
 
+-- Stage and party-size multipliers for anything spawned in this run view.
+local function scalingFor(run: RunView): EnemyService.Scaling
+	local stageDef = Config.STAGES[run.stage]
+	local extraPlayers = math.max(0, run.partySize - 1)
+	return {
+		health = stageDef.healthMultiplier * (1 + PartyConfig.HEALTH_PER_EXTRA_PLAYER * extraPlayers),
+		damage = stageDef.damageMultiplier,
+		xp = stageDef.xpMultiplier,
+	}
+end
+
+-- Spawns a boss near a random living player, scaled like the current stage.
+function WaveDirector.spawnBoss(
+	state: State,
+	kind: string,
+	targets: { Characters.Target },
+	run: RunView
+): EnemyService.Enemy?
+	if #targets == 0 then
+		return nil
+	end
+	local target = targets[random:NextInteger(1, #targets)]
+	local x, z = pickSpawnPoint(state.arena, target, Config.BOSS_DISTANCE_MIN, Config.BOSS_DISTANCE_MAX)
+	return EnemyService.spawn(state.enemies, kind, x, z, scalingFor(run))
+end
+
 function WaveDirector.new(arena: Arena.Arena, enemies: EnemyService.State): State
 	return {
 		arena = arena,
@@ -133,16 +159,13 @@ function WaveDirector.step(state: State, now: number, targets: { Characters.Targ
 	maxAlive = math.floor(maxAlive * (1 + PartyConfig.MAX_ALIVE_PER_EXTRA_PLAYER * extraPlayers))
 	maxAlive = math.min(maxAlive, Config.HARD_CAP)
 
-	local scaling: EnemyService.Scaling = {
-		health = stageDef.healthMultiplier * (1 + PartyConfig.HEALTH_PER_EXTRA_PLAYER * extraPlayers),
-		damage = stageDef.damageMultiplier,
-		xp = stageDef.xpMultiplier,
-	}
+	local scaling = scalingFor(run)
 
 	-- The mini-boss arrives once per stage. Before its time comes around (including after a stage
 	-- restarts), it's due again.
 	local miniBossAt = stageDef.miniBossAt
-	if stageDef.miniBoss and miniBossAt then
+	-- It doesn't arrive late: once the stage timer is up (overtime, a boss fight), it's skipped.
+	if stageDef.miniBoss and miniBossAt and run.stageElapsed < RunConfig.STAGE_DURATION then
 		if run.stageElapsed < miniBossAt then
 			state.miniBossSpawned = false
 		elseif not state.miniBossSpawned then
