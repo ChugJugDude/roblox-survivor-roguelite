@@ -112,7 +112,8 @@ local Enemies = {
 		-- The final boss, guarding the end of the run (Config.Waves finalBoss). Slow, huge, and
 		-- dangerous through its attacks rather than its walk.
 		Ogre = table.freeze({
-			maxHealth = 3000,
+			-- x3 on stage 3. A maxed triple-evolution build kills it in ~25s; a typical one takes longer.
+			maxHealth = 4000,
 			speed = 5,
 			radius = 4.5,
 			contactDamage = 20,

@@ -32,7 +32,7 @@ A fantasy survivor-like roguelite for Roblox. Drop into a cursed arena alone or 
 4. A **Goblin Giant mini-boss** appears mid-stage and drops a chest (bonus upgrade).
    - **Supply crates** appear near the player every ~35s; weapons break them and they drop an item: **meat** (heal 30%), a **bomb** (clears the screen, hurts bosses), or a **magnet** (pulls in every gem). Regular enemies rarely (0.5%) drop one too. This is how a player recovers when low.
 5. When a stage's timer runs out, **overtime** starts: a portal opens and spawns ramp up hard. Stand in the portal to charge it; a full charge moves the party to the next stage.
-6. Charging the portal after stage 3 wins the run. (M4: the **Ogre boss** guards the end of stage 3.)
+6. Stage 3 has no final portal: when its timer runs out, the **Ogre boss** arrives, and killing it wins the run. Normal stage-3 spawns keep coming (no overtime ramp) along with the Ogre's own adds.
 7. Win or die → earn **Shards** based on time survived, kills, stages cleared, giants slain, and a victory bonus (×Greed). Only players still in the run when it ends are paid.
 
 Why stages instead of one long timer: short goals every few minutes keep the payoff coming, which suits Roblox players better than one 10–15 minute stretch.
@@ -85,16 +85,18 @@ Design rules:
 | Goblin | Walks straight at nearest player | Filler / XP source |
 | Bat swarm | Fast, low HP, moves in groups | Pressure movement |
 | Skeleton archer | Keeps distance, shoots slow projectiles | Forces dodging |
-| Elite (any type) | Larger, glowing, more HP | Drops a chest |
+| Elite (goblin or archer) | 1.6x size, gold glow, x8 HP, x1.5 damage, x5 XP; one every 45s of a stage | Drops a chest |
 | Supply crate | Doesn't move or attack; breakable | Drops meat, a bomb, or a magnet |
 | **Mini-boss: Goblin Giant** | Slow, tanky, big hitbox; appears mid-stage | Drops a chest |
-| **Boss: Ogre** | Phases: summons adds, ring of projectiles, charge | End-of-run climax (M4) |
+| **Boss: Ogre** | Cycles attacks: ring of 16 crimson shots, summons 6 goblins, and a charge down a red ground lane (1.1s warning). Below 33% HP it enrages: faster attacks, double rings | End-of-run climax: replaces stage 3's portal |
 
 A **wave director** controls spawns over time: which enemy types are allowed, spawn rate, max alive count, and elite/boss timings. All of it lives in config so runs can be tuned without code changes.
 
 Per-kind caps keep any one threat from taking over: at most **8 skeleton archers** alive at once, so overtime can't ring the player with shooters they can't reach.
 
-Readability rule: **enemy shots are solid crimson orbs drawn above everything the player has** (no player effect uses red), so they stay visible even inside evolved weapons.
+Readability rule: **enemy shots are solid crimson orbs drawn above everything the player has** (no player effect uses red), so they stay visible even inside evolved weapons. Boss warnings are solid red ground lanes.
+
+Skeleton archers face the player they're aiming at.
 
 ## 8. Co-op
 
