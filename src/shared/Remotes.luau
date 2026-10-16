@@ -112,4 +112,13 @@ return table.freeze({
 	-- Client -> server. No arguments. Leave a finished run for the lobby. Ignored unless the
 	-- sender's match has ended; rate-limited per player.
 	ReturnToLobby = remote("RemoteEvent", "ReturnToLobby") :: RemoteEvent,
+
+	-- Client -> server. Payload: (heroId: string). Select an unlocked hero for the next run.
+	-- Ignored unless it's a known, unlocked hero and the sender is in the lobby; rate-limited.
+	SelectHero = remote("RemoteEvent", "SelectHero") :: RemoteEvent,
+
+	-- Client -> server. Payload: (heroId: string). Buy a locked hero with Shards (and select it).
+	-- Ignored unless it's a known, locked hero the sender can afford and they're in the lobby;
+	-- rate-limited. The result arrives through DataChanged.
+	UnlockHero = remote("RemoteEvent", "UnlockHero") :: RemoteEvent,
 })

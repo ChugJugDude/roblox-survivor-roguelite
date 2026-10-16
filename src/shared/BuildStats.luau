@@ -1,15 +1,18 @@
 --!strict
--- Turns a build (weapon and passive levels) into the numbers weapons and characters use. Shared, so
--- the server's hit checks and the client's visuals always agree.
+-- Turns a build (weapon and passive levels, plus permanent hero and Altar bonuses) into the numbers
+-- weapons and characters use. Shared, so the server's hit checks and the client's visuals always
+-- agree.
 
 local Config = require(script.Parent.Config.Upgrades)
+local MetaStats = require(script.Parent.MetaStats)
 
 export type Build = {
 	weapons: { [string]: number },
 	passives: { [string]: number },
+	bonus: MetaStats.Totals?, -- permanent bonuses from the hero and the Altar (shared/MetaStats)
 }
 
--- Multipliers (1 = no change) and flat bonuses from passives.
+-- Multipliers (1 = no change) and flat bonuses from passives and permanent bonuses.
 export type Modifiers = {
 	damage: number,
 	cooldown: number,
@@ -57,14 +60,15 @@ end
 
 function BuildStats.modifiers(build: Build): Modifiers
 	local haste = passiveValue(build, "Haste")
+	local bonus = build.bonus or MetaStats.NONE
 	return {
-		damage = 1 + passiveValue(build, "Might"),
+		damage = 1 + passiveValue(build, "Might") + bonus.damage,
 		cooldown = 1 - haste,
 		spin = 1 + haste,
-		area = 1 + passiveValue(build, "Reach"),
-		moveSpeed = 1 + passiveValue(build, "Swiftness"),
-		pickupRadius = 1 + passiveValue(build, "Magnet"),
-		maxHealthBonus = passiveValue(build, "Vitality"),
+		area = 1 + passiveValue(build, "Reach") + bonus.area,
+		moveSpeed = 1 + passiveValue(build, "Swiftness") + bonus.moveSpeed,
+		pickupRadius = 1 + passiveValue(build, "Magnet") + bonus.pickupRadius,
+		maxHealthBonus = passiveValue(build, "Vitality") + bonus.maxHealth,
 	}
 end
 
@@ -128,7 +132,8 @@ function BuildStats.fireball(build: Build): Config.FireballStats?
 	}
 end
 
--- Reads a build from a Player's W_<weapon> / P_<passive> attributes (published by server/Upgrades).
+-- Reads a build from a Player's W_<weapon> / P_<passive> / B_<bonus> attributes (published by
+-- server/Upgrades).
 function BuildStats.fromAttributes(player: Player): Build
 	local build: Build = { weapons = {}, passives = {} }
 	for id in Config.WEAPONS do
@@ -143,6 +148,14 @@ function BuildStats.fromAttributes(player: Player): Build
 			build.passives[id] = level
 		end
 	end
+	local bonus: { [string]: number } = {}
+	for _, field in MetaStats.FIELDS do
+		local value = player:GetAttribute("B_" .. field)
+		if typeof(value) == "number" then
+			bonus[field] = value
+		end
+	end
+	build.bonus = MetaStats.fromMap(bonus)
 	return build
 end
 

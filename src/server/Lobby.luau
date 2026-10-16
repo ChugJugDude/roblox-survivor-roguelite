@@ -1,6 +1,7 @@
 --!strict
 --[[
-	The lobby: where players spawn, and the portal pad that turns whoever stands on it into a party.
+	The lobby: where players spawn, the Hero stand and Altar (server/LobbyStands), and the portal pad
+	that turns whoever stands on it into a party.
 
 	The first living lobby player to step on the pad starts a PARTY_COUNTDOWN; anyone else who steps
 	on joins (up to MAX_PARTY_SIZE), and stepping off leaves. When the countdown ends, or someone on
@@ -19,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Characters = require(script.Parent.Characters)
+local LobbyStands = require(script.Parent.LobbyStands)
 local Match = require(script.Parent.Match)
 local Config = require(ReplicatedStorage.Shared.Config.Lobby)
 local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
@@ -135,6 +137,7 @@ local function build()
 	label.Parent = billboard
 	padLabel = label
 
+	LobbyStands.build(lobby)
 	lobby.Parent = workspace
 	model = lobby
 end

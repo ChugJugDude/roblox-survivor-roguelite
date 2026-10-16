@@ -6,23 +6,58 @@
 	Each player's Shards and selected Hero are mirrored as Player attributes for the HUD (and
 	playtest tooling). When a run ends, awardRun grants its Shards (shared/ShardReward) and
 	publishes ResultShards and ResultGreed on the player for the results screen.
+
+	loadout() is what a player brings into a run: their hero's starting weapon and the permanent
+	bonuses (shared/MetaStats). Heroes are chosen and bought in the lobby only (SelectHero,
+	UnlockHero); a purchase checks and spends Shards inside one PlayerData.update.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerData = require(script.Parent.PlayerData)
+local Config = require(ReplicatedStorage.Shared.Config.Meta)
 local MetaStats = require(ReplicatedStorage.Shared.MetaStats)
 local PlayerDataConfig = require(ReplicatedStorage.Shared.Config.PlayerData)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local ShardReward = require(ReplicatedStorage.Shared.ShardReward)
 
 type Data = PlayerDataConfig.Data
 
+export type Loadout = {
+	hero: string,
+	weapon: string, -- starting weapon id
+	bonus: MetaStats.Totals,
+}
+
+-- Minimum seconds between menu requests (select, unlock, buy) from one player.
+local REQUEST_COOLDOWN = 0.25
+
+local lastRequest: { [Player]: number } = {}
+local loadoutListeners: { (Player) -> () } = {}
 local started = false
 
 local Meta = {}
 
 local function totalsFor(data: Data): MetaStats.Totals
 	return MetaStats.totals(MetaStats.validHero(data.hero, data.heroes), data.altar)
+end
+
+-- What `player` brings into a run. Before their data loads, the default hero with no Altar.
+function Meta.loadout(player: Player): Loadout
+	local data = PlayerData.get(player)
+	local hero = if data then MetaStats.validHero(data.hero, data.heroes) else Config.DEFAULT_HERO
+	return {
+		hero = hero,
+		weapon = Config.HEROES[hero].weapon,
+		bonus = MetaStats.totals(hero, if data then data.altar else {}),
+	}
+end
+
+-- Calls `listener(player)` whenever a player's loadout may have changed (data loaded, hero
+-- picked, Altar upgrade bought).
+function Meta.onLoadoutChanged(listener: (Player) -> ())
+	table.insert(loadoutListeners, listener)
 end
 
 -- Grants the Shards `result` earned (with the player's Greed) and counts the run in their stats.
@@ -66,6 +101,49 @@ function Meta.devReset(player: Player)
 	end)
 end
 
+-- Checks the common rules for a menu request: a string id, sent from the lobby (not a run), and
+-- not too soon after the last one. Returns the id if the request may go ahead.
+local function acceptRequest(player: Player, id: unknown): string?
+	if typeof(id) ~= "string" or player:GetAttribute("ArenaName") ~= nil then
+		return nil
+	end
+	local clock = os.clock()
+	local last = lastRequest[player]
+	if last and clock - last < REQUEST_COOLDOWN then
+		return nil
+	end
+	lastRequest[player] = clock
+	return id
+end
+
+local function onSelectHero(player: Player, rawId: unknown)
+	local id = acceptRequest(player, rawId)
+	if not id or not Config.HEROES[id] then
+		return
+	end
+	PlayerData.update(player, function(data)
+		if MetaStats.validHero(id, data.heroes) == id then
+			data.hero = id
+		end
+	end)
+end
+
+local function onUnlockHero(player: Player, rawId: unknown)
+	local id = acceptRequest(player, rawId)
+	local def = if id then Config.HEROES[id] else nil
+	if not id or not def or def.cost <= 0 then
+		return
+	end
+	PlayerData.update(player, function(data)
+		if data.heroes[id] or data.shards < def.cost then
+			return
+		end
+		data.shards -= def.cost
+		data.heroes[id] = true
+		data.hero = id
+	end)
+end
+
 function Meta.start()
 	assert(not started, "Meta.start() was called twice")
 	started = true
@@ -73,6 +151,15 @@ function Meta.start()
 	PlayerData.onChanged(function(player, data)
 		player:SetAttribute("Shards", data.shards)
 		player:SetAttribute("Hero", MetaStats.validHero(data.hero, data.heroes))
+		for _, listener in loadoutListeners do
+			task.spawn(listener, player)
+		end
+	end)
+
+	Remotes.SelectHero.OnServerEvent:Connect(onSelectHero)
+	Remotes.UnlockHero.OnServerEvent:Connect(onUnlockHero)
+	Players.PlayerRemoving:Connect(function(player)
+		lastRequest[player] = nil
 	end)
 end
 

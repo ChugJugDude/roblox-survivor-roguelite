@@ -19,6 +19,37 @@ export type Totals = {
 
 local MetaStats = {}
 
+-- Every field of Totals, for code that copies them generically (e.g. into B_<field> attributes).
+MetaStats.FIELDS = table.freeze({
+	"damage",
+	"area",
+	"moveSpeed",
+	"pickupRadius",
+	"maxHealth",
+	"greed",
+	"rerolls",
+	"reviveSpeed",
+	"headStart",
+})
+
+-- Totals from a map of field -> value; missing fields are 0.
+function MetaStats.fromMap(sums: { [string]: number }): Totals
+	return {
+		damage = sums.damage or 0,
+		area = sums.area or 0,
+		moveSpeed = sums.moveSpeed or 0,
+		pickupRadius = sums.pickupRadius or 0,
+		maxHealth = sums.maxHealth or 0,
+		greed = sums.greed or 0,
+		rerolls = sums.rerolls or 0,
+		reviveSpeed = sums.reviveSpeed or 0,
+		headStart = sums.headStart or 0,
+	}
+end
+
+-- No bonuses at all.
+MetaStats.NONE = table.freeze(MetaStats.fromMap({}))
+
 -- Shards to buy `level` of an Altar upgrade (level 1 costs baseCost), rounded to a multiple of 5.
 function MetaStats.altarCost(id: string, level: number): number
 	local def = Config.ALTAR[id]
@@ -49,17 +80,7 @@ function MetaStats.totals(hero: string, altar: { [string]: number }): Totals
 			sums[def.stat] = (sums[def.stat] or 0) + def.perLevel * levels
 		end
 	end
-	return {
-		damage = sums.damage or 0,
-		area = sums.area or 0,
-		moveSpeed = sums.moveSpeed or 0,
-		pickupRadius = sums.pickupRadius or 0,
-		maxHealth = sums.maxHealth or 0,
-		greed = sums.greed or 0,
-		rerolls = sums.rerolls or 0,
-		reviveSpeed = sums.reviveSpeed or 0,
-		headStart = sums.headStart or 0,
-	}
+	return MetaStats.fromMap(sums)
 end
 
 return MetaStats

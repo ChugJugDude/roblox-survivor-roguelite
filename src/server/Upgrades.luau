@@ -12,17 +12,21 @@
 	One offer is open per player at a time. The server generates the options and only accepts an
 	index into the open offer.
 
-	Builds replicate as Player attributes, W_<weapon> and P_<passive> = level, so the client can
-	use shared/BuildStats too (e.g. to draw the right number of blades).
+	Builds replicate as Player attributes, W_<weapon> and P_<passive> = level, and B_<bonus> for
+	the permanent bonuses, so the client can use shared/BuildStats too (e.g. to draw the right
+	number of blades). A fresh build starts from the player's loadout (server/Meta): their hero's
+	weapon plus hero and Altar bonuses.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Characters = require(script.Parent.Characters)
+local Meta = require(script.Parent.Meta)
 local Pause = require(script.Parent.Pause)
 local Progression = require(script.Parent.Progression)
 local BuildStats = require(ReplicatedStorage.Shared.BuildStats)
+local MetaStats = require(ReplicatedStorage.Shared.MetaStats)
 local Config = require(ReplicatedStorage.Shared.Config.Upgrades)
 local PlayerConfig = require(ReplicatedStorage.Shared.Config.Player)
 local ProgressionConfig = require(ReplicatedStorage.Shared.Config.Progression)
@@ -85,11 +89,16 @@ local function publishBuild(player: Player, state: State)
 	for id in Config.PASSIVES do
 		player:SetAttribute("P_" .. id, state.build.passives[id])
 	end
+	local bonus = state.build.bonus or MetaStats.NONE
+	for _, field in MetaStats.FIELDS do
+		local value = (bonus :: any)[field]
+		player:SetAttribute("B_" .. field, if value ~= 0 then value else nil)
+	end
 end
 
-local function newState(party: Party?): State
+local function newState(party: Party?, loadout: Meta.Loadout): State
 	return {
-		build = { weapons = { [Config.STARTING_WEAPON] = 1 }, passives = {} },
+		build = { weapons = { [loadout.weapon] = 1 }, passives = {}, bonus = loadout.bonus },
 		party = party,
 		levelPicks = 0,
 		chestPicks = 0,
@@ -102,7 +111,7 @@ end
 local function getState(player: Player): State
 	local state = states[player]
 	if not state then
-		state = newState()
+		state = newState(nil, Meta.loadout(player))
 		states[player] = state
 		publishBuild(player, state)
 	end
@@ -407,14 +416,13 @@ local function onReroll(player: Player)
 	sendOffer(player, state)
 end
 
--- Takes a player out of their party (they went back to the lobby): closes any open choice.
+-- Takes a player out of their party (they went back to the lobby): closes any open choice and
+-- puts them back on their starting build.
 function Upgrades.leaveParty(player: Player)
-	local state = states[player]
-	if state then
-		state.party = nil
-		state.offer = nil
-		state.levelPicks = 0
-		state.chestPicks = 0
+	if states[player] then
+		local state = newState(nil, Meta.loadout(player))
+		states[player] = state
+		publishBuild(player, state)
 		sendOffer(player, state)
 	end
 end
@@ -521,7 +529,7 @@ function Upgrades.reset(party: Party)
 	Pause.resume(party.clock)
 	party.lastResumedAt = -math.huge
 	for _, player in party.members do
-		local state = newState(party)
+		local state = newState(party, Meta.loadout(player))
 		states[player] = state
 		publishBuild(player, state)
 		sendOffer(player, state)
@@ -555,6 +563,19 @@ function Upgrades.start()
 	end)
 	Remotes.ChooseUpgrade.OnServerEvent:Connect(onChoose)
 	Remotes.RerollUpgrade.OnServerEvent:Connect(onReroll)
+
+	-- A new hero or Altar upgrade changes a lobby player's starting build right away. Mid-run
+	-- builds keep the loadout they started with.
+	Meta.onLoadoutChanged(function(player)
+		local old = states[player]
+		if old and old.party then
+			return
+		end
+		local state = newState(nil, Meta.loadout(player))
+		states[player] = state
+		publishBuild(player, state)
+		applyStats(player)
+	end)
 
 	-- Everyone has a build (the starting one) from the moment they join.
 	Players.PlayerAdded:Connect(getState)

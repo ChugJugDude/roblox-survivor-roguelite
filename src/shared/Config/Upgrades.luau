@@ -108,7 +108,7 @@ return table.freeze({
 	RESUME_GRACE = 1.5,
 	-- The filler option when there aren't enough upgrades left: heal this fraction of max health.
 	HEAL_FRACTION = 0.3,
-	STARTING_WEAPON = "SpinningBlade",
+	-- (Starting weapons come from the hero: Config.Meta.HEROES.)
 
 	-- Relative chance of each kind of option. Levels for weapons you own come up often, so a build can
 	-- reach an evolution even with six passives competing for the cards.
