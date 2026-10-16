@@ -103,7 +103,7 @@ local function newState(party: Party?, loadout: Meta.Loadout): State
 		levelPicks = 0,
 		chestPicks = 0,
 		offer = nil,
-		rerolls = Config.REROLLS_PER_RUN,
+		rerolls = Config.REROLLS_PER_RUN + loadout.bonus.rerolls,
 		lastRequest = 0,
 	}
 end
@@ -525,14 +525,21 @@ function Upgrades.newParty(clock: Pause.Clock, members: { Player }, progression:
 end
 
 -- Fresh starting builds for the party's members, for a new run. Call before characters spawn.
+-- Head Start (an Altar upgrade) opens its free picks right away, like chest picks.
 function Upgrades.reset(party: Party)
 	Pause.resume(party.clock)
 	party.lastResumedAt = -math.huge
 	for _, player in party.members do
-		local state = newState(party, Meta.loadout(player))
+		local loadout = Meta.loadout(player)
+		local state = newState(party, loadout)
 		states[player] = state
 		publishBuild(player, state)
-		sendOffer(player, state)
+		state.chestPicks = loadout.bonus.headStart
+		if state.chestPicks > 0 then
+			openOffer(player, state)
+		else
+			sendOffer(player, state)
+		end
 	end
 	party.active = true
 end

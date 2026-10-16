@@ -163,16 +163,22 @@ function Characters.stepRevives(members: { Player }, targets: { Target }, dt: nu
 		if not root or not root:IsA("BasePart") then
 			continue
 		end
+		-- The fastest helper in range sets the pace (the Altar's Rescue upgrade, B_reviveSpeed).
 		local helped = false
+		local speedBonus = 0
 		for _, target in targets do
 			local dx, dz = target.x - root.Position.X, target.z - root.Position.Z
 			if dx * dx + dz * dz <= radiusSq then
 				helped = true
-				break
+				local bonus = target.player:GetAttribute("B_reviveSpeed")
+				if typeof(bonus) == "number" then
+					speedBonus = math.max(speedBonus, bonus)
+				end
 			end
 		end
 		if helped then
-			local progress = (player:GetAttribute("ReviveProgress") or 0) + dt / PartyConfig.REVIVE_TIME
+			local reviveTime = PartyConfig.REVIVE_TIME * (1 - math.clamp(speedBonus, 0, 0.9))
+			local progress = (player:GetAttribute("ReviveProgress") or 0) + dt / reviveTime
 			if progress >= 1 then
 				revive(player, now)
 			else

@@ -121,4 +121,9 @@ return table.freeze({
 	-- Ignored unless it's a known, locked hero the sender can afford and they're in the lobby;
 	-- rate-limited. The result arrives through DataChanged.
 	UnlockHero = remote("RemoteEvent", "UnlockHero") :: RemoteEvent,
+
+	-- Client -> server. Payload: (upgradeId: string). Buy the next level of an Altar upgrade.
+	-- Ignored unless it's a known upgrade below max level, the sender can afford it, and they're
+	-- in the lobby; rate-limited. The result arrives through DataChanged.
+	BuyAltarUpgrade = remote("RemoteEvent", "BuyAltarUpgrade") :: RemoteEvent,
 })

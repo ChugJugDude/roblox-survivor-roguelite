@@ -8,8 +8,9 @@
 	publishes ResultShards and ResultGreed on the player for the results screen.
 
 	loadout() is what a player brings into a run: their hero's starting weapon and the permanent
-	bonuses (shared/MetaStats). Heroes are chosen and bought in the lobby only (SelectHero,
-	UnlockHero); a purchase checks and spends Shards inside one PlayerData.update.
+	bonuses (shared/MetaStats). Heroes and Altar upgrades are chosen and bought in the lobby only
+	(SelectHero, UnlockHero, BuyAltarUpgrade); a purchase checks and spends Shards inside one
+	PlayerData.update.
 ]]
 
 local Players = game:GetService("Players")
@@ -144,6 +145,26 @@ local function onUnlockHero(player: Player, rawId: unknown)
 	end)
 end
 
+local function onBuyAltarUpgrade(player: Player, rawId: unknown)
+	local id = acceptRequest(player, rawId)
+	local def = if id then Config.ALTAR[id] else nil
+	if not id or not def then
+		return
+	end
+	PlayerData.update(player, function(data)
+		local level = data.altar[id] or 0
+		if level >= def.maxLevel then
+			return
+		end
+		local cost = MetaStats.altarCost(id, level + 1)
+		if data.shards < cost then
+			return
+		end
+		data.shards -= cost
+		data.altar[id] = level + 1
+	end)
+end
+
 function Meta.start()
 	assert(not started, "Meta.start() was called twice")
 	started = true
@@ -158,6 +179,7 @@ function Meta.start()
 
 	Remotes.SelectHero.OnServerEvent:Connect(onSelectHero)
 	Remotes.UnlockHero.OnServerEvent:Connect(onUnlockHero)
+	Remotes.BuyAltarUpgrade.OnServerEvent:Connect(onBuyAltarUpgrade)
 	Players.PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil
 	end)

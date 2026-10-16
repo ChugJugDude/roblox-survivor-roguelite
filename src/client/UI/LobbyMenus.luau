@@ -8,6 +8,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local AltarMenu = require(script.Parent.AltarMenu)
 local CurrentArena = require(script.Parent.Parent.CurrentArena)
 local HeroMenu = require(script.Parent.HeroMenu)
 local LobbyConfig = require(ReplicatedStorage.Shared.Config.Lobby)
@@ -18,6 +19,7 @@ function LobbyMenus.start()
 	local player = Players.LocalPlayer
 	local menus: { [string]: ScreenGui } = {
 		Heroes = HeroMenu.create().panel.gui,
+		Altar = AltarMenu.create().panel.gui,
 	}
 	local openPrompt: ProximityPrompt? = nil
 
