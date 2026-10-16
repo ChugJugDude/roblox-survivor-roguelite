@@ -13,6 +13,12 @@ export type Visual = {
 	colors: { Color3 },
 }
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
+
+local ELITE_GLOW = Color3.fromRGB(255, 200, 60)
+
 local EnemyModels = {}
 
 local function newVisual(name: string): Visual
@@ -155,13 +161,36 @@ local function buildFallback(kind: string): Visual
 	return visual
 end
 
-function EnemyModels.create(kind: string): Visual
-	local build = builders[kind]
-	if build then
-		return build()
+-- Grows a visual about its root and gives it a gold glow, for elites.
+local function makeElite(visual: Visual)
+	local scale = EnemyConfig.ELITE.scale
+	for i, part in visual.parts do
+		part.Size *= scale
+		local offset = visual.offsets[i]
+		visual.offsets[i] = offset - offset.Position + offset.Position * scale
 	end
-	warn(`[EnemyModels] No model for enemy kind "{kind}"; using a placeholder block.`)
-	return buildFallback(kind)
+	local glow = Instance.new("Highlight")
+	glow.FillTransparency = 0.75
+	glow.FillColor = ELITE_GLOW
+	glow.OutlineColor = ELITE_GLOW
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.Parent = visual.model
+end
+
+-- A new visual for `kind`; elites come out bigger and glowing.
+function EnemyModels.create(kind: string, elite: boolean?): Visual
+	local build = builders[kind]
+	local visual
+	if build then
+		visual = build()
+	else
+		warn(`[EnemyModels] No model for enemy kind "{kind}"; using a placeholder block.`)
+		visual = buildFallback(kind)
+	end
+	if elite then
+		makeElite(visual)
+	end
+	return visual
 end
 
 return EnemyModels

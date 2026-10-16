@@ -279,7 +279,7 @@ function Pickups.new(
 		items = {},
 	}
 	EnemyService.onKilled(enemies, function(enemy)
-		if enemy.def.dropsChest then
+		if enemy.def.dropsChest or enemy.elite then
 			Pickups.drop(state, "Chest", enemy.x, enemy.z)
 		elseif EnemyService.isProp(enemy) or random:NextNumber() < Config.ENEMY_DROP_CHANCE then
 			Pickups.drop(state, randomItemKind(), enemy.x, enemy.z)

@@ -69,6 +69,11 @@ return table.freeze({
 		SkeletonArcher = 8,
 	} :: { [string]: number },
 
+	-- Elites (Config.Enemies.ELITE): one every ELITE_INTERVAL seconds of a stage, of a random kind
+	-- from ELITE_KINDS (respecting KIND_CAPS), on the enemy spawn ring.
+	ELITE_INTERVAL = 45,
+	ELITE_KINDS = { "Goblin", "SkeletonArcher" },
+
 	-- Supply crates: one every CRATE_INTERVAL seconds of a stage, at most CRATE_MAX on the floor,
 	-- placed on a ring around a random living player so they're on or near the screen.
 	CRATE_INTERVAL = 35,

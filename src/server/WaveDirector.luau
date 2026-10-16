@@ -1,7 +1,7 @@
 --!strict
 -- Spawns one match's enemies during stages and overtime, following the current stage's timeline in
--- Config.Waves, with Config.Run's overtime ramp on top, plus each stage's mini-boss and supply
--- crates.
+-- Config.Waves, with Config.Run's overtime ramp on top, plus each stage's mini-boss, elites, and
+-- supply crates.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,6 +29,7 @@ export type State = {
 	nextSpawnAt: number,
 	miniBossSpawned: boolean,
 	cratesSpawned: number, -- crates due so far this stage
+	elitesSpawned: number, -- elites due so far this stage
 }
 
 local random = Random.new()
@@ -102,7 +103,14 @@ local function pickSpawnPoint(
 end
 
 function WaveDirector.new(arena: Arena.Arena, enemies: EnemyService.State): State
-	return { arena = arena, enemies = enemies, nextSpawnAt = 0, miniBossSpawned = false, cratesSpawned = 0 }
+	return {
+		arena = arena,
+		enemies = enemies,
+		nextSpawnAt = 0,
+		miniBossSpawned = false,
+		cratesSpawned = 0,
+		elitesSpawned = 0,
+	}
 end
 
 function WaveDirector.step(state: State, now: number, targets: { Characters.Target }, run: RunView)
@@ -155,6 +163,24 @@ function WaveDirector.step(state: State, now: number, targets: { Characters.Targ
 			local target = targets[random:NextInteger(1, #targets)]
 			local x, z = pickSpawnPoint(currentArena, target, Config.CRATE_DISTANCE_MIN, Config.CRATE_DISTANCE_MAX)
 			EnemyService.spawn(enemies, "Crate", x, z)
+		end
+	end
+
+	-- An elite every ELITE_INTERVAL seconds of the stage (counting resets each stage).
+	local elitesDue = math.floor(run.stageElapsed / Config.ELITE_INTERVAL)
+	if elitesDue < state.elitesSpawned then
+		state.elitesSpawned = elitesDue -- a new stage started
+	elseif elitesDue > state.elitesSpawned then
+		state.elitesSpawned = elitesDue
+		local eliteMix: { [string]: number } = {}
+		for _, kind in Config.ELITE_KINDS do
+			eliteMix[kind] = 1
+		end
+		local kind = pickKind(enemies, eliteMix)
+		if kind then
+			local target = targets[random:NextInteger(1, #targets)]
+			local x, z = pickSpawnPoint(currentArena, target)
+			EnemyService.spawn(enemies, kind, x, z, scaling, true)
 		end
 	end
 

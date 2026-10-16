@@ -4,8 +4,12 @@
 	server/EnemyReplicator). This keeps a pool of models and draws each enemy
 	INTERPOLATION_DELAY seconds in the past, blending between the two snapshots around that time,
 	so movement looks smooth at any frame rate even though snapshots arrive ~20 times a second.
+
+	Enemies face where they're going, except ranged ones, which face the nearest player in the
+	arena so they visibly aim at their target.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -25,6 +29,8 @@ type Sample = {
 
 type Entry = {
 	kind: string,
+	poolKey: string, -- kind, or kind + "#Elite"
+	facesTarget: boolean, -- ranged enemies aim at the nearest player
 	visual: EnemyModels.Visual,
 	samples: { Sample }, -- oldest first
 	yaw: number,
@@ -43,25 +49,28 @@ local started = false
 -- Reused every frame for BulkMoveTo.
 local moveParts: { BasePart } = {}
 local moveCFrames: { CFrame } = {}
+-- Ground positions of the players in the current arena, refreshed every frame.
+local playerXs: { number } = {}
+local playerZs: { number } = {}
 
 local EnemyRenderer = {}
 
-local function acquire(kind: string): EnemyModels.Visual
-	local pool = pools[kind]
+local function acquire(poolKey: string, kind: string, elite: boolean): EnemyModels.Visual
+	local pool = pools[poolKey]
 	local visual = if pool then table.remove(pool) else nil
 	if not visual then
-		visual = EnemyModels.create(kind)
+		visual = EnemyModels.create(kind, elite)
 	end
 	visual.model.Parent = folder
 	return visual
 end
 
-local function release(kind: string, visual: EnemyModels.Visual)
+local function release(poolKey: string, visual: EnemyModels.Visual)
 	visual.model.Parent = nil
-	local pool = pools[kind]
+	local pool = pools[poolKey]
 	if not pool then
 		pool = {}
-		pools[kind] = pool
+		pools[poolKey] = pool
 	end
 	table.insert(pool, visual)
 end
@@ -74,9 +83,14 @@ local function onSpawned(list: any)
 		if typeof(info) ~= "table" or entries[info.id] then
 			continue
 		end
+		local elite = info.elite == true
+		local poolKey = if elite then info.kind .. "#Elite" else info.kind
+		local def = Config.TYPES[info.kind]
 		entries[info.id] = {
 			kind = info.kind,
-			visual = acquire(info.kind),
+			poolKey = poolKey,
+			facesTarget = def ~= nil and def.behavior == "ranged",
+			visual = acquire(poolKey, info.kind, elite),
 			-- Time 0 counts as older than any snapshot, so the enemy shows at its spawn point until
 			-- snapshots arrive.
 			samples = { { t = 0, x = info.x, z = info.z } },
@@ -108,7 +122,7 @@ local function onDespawned(ids: any)
 			if entry.flashing then
 				setFlash(entry, false) -- pooled models must go back in their normal colors
 			end
-			release(entry.kind, entry.visual)
+			release(entry.poolKey, entry.visual)
 		end
 	end
 end
@@ -176,6 +190,16 @@ local function render()
 	local renderTime = GameClock.read(currentArena) - Config.INTERPOLATION_DELAY
 	table.clear(moveParts)
 	table.clear(moveCFrames)
+	table.clear(playerXs)
+	table.clear(playerZs)
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") and player:GetAttribute("ArenaName") == currentArena.Name then
+			table.insert(playerXs, root.Position.X)
+			table.insert(playerZs, root.Position.Z)
+		end
+	end
 
 	local clock = os.clock()
 	for _, entry in entries do
@@ -184,6 +208,17 @@ local function render()
 			setFlash(entry, shouldFlash)
 		end
 		local x, z, dirX, dirZ = samplePosition(entry, renderTime)
+		if entry.facesTarget and #playerXs > 0 then
+			-- Aim at the nearest player.
+			local bestDistSq = math.huge
+			for i, px in playerXs do
+				local dx, dz = px - x, playerZs[i] - z
+				local distSq = dx * dx + dz * dz
+				if distSq < bestDistSq then
+					bestDistSq, dirX, dirZ = distSq, dx, dz
+				end
+			end
+		end
 		if dirX * dirX + dirZ * dirZ > 1e-4 then
 			-- Face the direction of travel. A yaw of 0 faces -Z.
 			entry.yaw = math.atan2(-dirX, -dirZ)
@@ -207,7 +242,7 @@ local function reset()
 		if entry.flashing then
 			setFlash(entry, false)
 		end
-		release(entry.kind, entry.visual)
+		release(entry.poolKey, entry.visual)
 		entries[id] = nil
 	end
 end

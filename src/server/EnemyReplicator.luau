@@ -53,7 +53,13 @@ end
 function EnemyReplicator.syncTo(state: State, player: Player)
 	local current: { EnemySnapshot.SpawnInfo } = {}
 	for id, enemy in EnemyService.getAll(state.enemies) do
-		table.insert(current, { id = id, kind = enemy.kind, x = enemy.x, z = enemy.z })
+		table.insert(current, {
+			id = id,
+			kind = enemy.kind,
+			x = enemy.x,
+			z = enemy.z,
+			elite = if enemy.elite then true else nil,
+		})
 	end
 	if #current > 0 then
 		Remotes.EnemySpawned:FireClient(player, current)

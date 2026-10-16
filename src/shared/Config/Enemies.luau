@@ -94,6 +94,15 @@ local Enemies = {
 		}),
 	}) :: { [string]: EnemyDef },
 
+	-- Elites: a tougher, bigger, glowing version of a regular enemy that drops a chest. Multipliers
+	-- apply on top of stage scaling. When they appear: Config.Waves ELITE_*.
+	ELITE = table.freeze({
+		health = 8,
+		damage = 1.5,
+		xp = 5,
+		scale = 1.6, -- body size (hit radius and model)
+	}),
+
 	-- Treat players as circles this wide for contact. Enemies stop at the edge of it.
 	PLAYER_RADIUS = 1.5,
 	-- Extra reach beyond touching, so lag between the server and client positions doesn't stop hits.

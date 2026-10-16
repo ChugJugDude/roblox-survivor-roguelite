@@ -15,6 +15,7 @@ export type SpawnInfo = {
 	kind: string,
 	x: number,
 	z: number,
+	elite: boolean?, -- drawn bigger, with a glow
 }
 
 local HEADER_SIZE = 10

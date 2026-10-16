@@ -31,6 +31,8 @@ export type Enemy = {
 	def: Config.EnemyDef,
 	x: number,
 	z: number,
+	radius: number, -- body size (bigger for elites)
+	elite: boolean,
 	health: number,
 	maxHealth: number, -- after scaling
 	contactDamage: number, -- after scaling
@@ -150,10 +152,16 @@ function EnemyService.onKilled(state: State, listener: (Enemy) -> ())
 	table.insert(state.killedListeners, listener)
 end
 
-function EnemyService.spawn(state: State, kind: string, x: number, z: number, scaling: Scaling?): Enemy
+-- Spawns an enemy. `elite` makes it a bigger, tougher version that drops a chest
+-- (Config.Enemies.ELITE).
+function EnemyService.spawn(state: State, kind: string, x: number, z: number, scaling: Scaling?, elite: boolean?): Enemy
 	local def = Config.TYPES[kind]
 	assert(def, `Unknown enemy kind "{kind}"`)
 	local scale = scaling or NO_SCALING
+	local isElite = elite == true
+	local health = def.maxHealth * scale.health * (if isElite then Config.ELITE.health else 1)
+	local radius = def.radius * (if isElite then Config.ELITE.scale else 1)
+	maxRadius = math.max(maxRadius, radius)
 
 	-- Wrap around instead of reusing freed ids right away, so a client never confuses a new enemy
 	-- with one that just died.
@@ -167,10 +175,12 @@ function EnemyService.spawn(state: State, kind: string, x: number, z: number, sc
 		def = def,
 		x = x,
 		z = z,
-		health = def.maxHealth * scale.health,
-		maxHealth = def.maxHealth * scale.health,
-		contactDamage = def.contactDamage * scale.damage,
-		xp = def.xp * scale.xp,
+		radius = radius,
+		elite = isElite,
+		health = health,
+		maxHealth = health,
+		contactDamage = def.contactDamage * scale.damage * (if isElite then Config.ELITE.damage else 1),
+		xp = def.xp * scale.xp * (if isElite then Config.ELITE.xp else 1),
 		attackReadyAt = 0,
 		shotReadyAt = 0,
 		hitReadyAt = {},
@@ -180,7 +190,13 @@ function EnemyService.spawn(state: State, kind: string, x: number, z: number, sc
 		state.aliveCount += 1
 	end
 	state.kindCounts[kind] = (state.kindCounts[kind] or 0) + 1
-	NetBatch.push(state.net, Remotes.EnemySpawned, { id = enemy.id, kind = kind, x = x, z = z })
+	NetBatch.push(state.net, Remotes.EnemySpawned, {
+		id = enemy.id,
+		kind = kind,
+		x = x,
+		z = z,
+		elite = if isElite then true else nil,
+	})
 	updateCounters(state)
 	if def.isBoss then
 		state.boss = enemy
@@ -279,7 +295,7 @@ function EnemyService.queryRadius(state: State, x: number, z: number, radius: nu
 		local enemy = state.enemies[id]
 		if enemy then
 			local dx, dz = enemy.x - x, enemy.z - z
-			local reach = radius + enemy.def.radius
+			local reach = radius + enemy.radius
 			if dx * dx + dz * dz <= reach * reach then
 				table.insert(out, enemy)
 			end
@@ -361,7 +377,7 @@ function EnemyService.move(state: State, dt: number, targets: { Target })
 				moveZ = (target.z - enemy.z) / dist * step
 			else
 				-- Chase, stopping when touching.
-				local stopAt = def.radius + Config.PLAYER_RADIUS
+				local stopAt = enemy.radius + Config.PLAYER_RADIUS
 				if dist > stopAt then
 					local step = math.min(def.speed * dt, dist - stopAt)
 					moveX = (target.x - enemy.x) / dist * step
@@ -374,14 +390,14 @@ function EnemyService.move(state: State, dt: number, targets: { Target })
 		-- in a pair moves itself, so each takes up to half the overlap.
 		local pushX, pushZ = 0, 0
 		table.clear(candidates)
-		SpatialHash.query(state.hash, enemy.x, enemy.z, def.radius + maxRadius, candidates)
+		SpatialHash.query(state.hash, enemy.x, enemy.z, enemy.radius + maxRadius, candidates)
 		for _, otherId in candidates do
 			local other = enemies[otherId]
 			if not other or other == enemy then
 				continue
 			end
 			local dx, dz = enemy.x - other.x, enemy.z - other.z
-			local minDist = def.radius + other.def.radius
+			local minDist = enemy.radius + other.radius
 			local distSqToOther = dx * dx + dz * dz
 			if distSqToOther < minDist * minDist then
 				local d = math.sqrt(distSqToOther)
@@ -401,7 +417,7 @@ function EnemyService.move(state: State, dt: number, targets: { Target })
 			state.arena,
 			enemy.x + moveX + pushX * separation,
 			enemy.z + moveZ + pushZ * separation,
-			def.radius
+			enemy.radius
 		)
 	end
 
@@ -420,7 +436,7 @@ function EnemyService.attack(state: State, now: number, targets: { Target })
 			continue
 		end
 		local def = enemy.def
-		local reach = def.radius + Config.PLAYER_RADIUS + Config.CONTACT_TOLERANCE
+		local reach = enemy.radius + Config.PLAYER_RADIUS + Config.CONTACT_TOLERANCE
 		for _, target in targets do
 			local dx, dz = target.x - enemy.x, target.z - enemy.z
 			if dx * dx + dz * dz <= reach * reach and target.humanoid.Health > 0 then

@@ -14,6 +14,7 @@
 		freezexp on|off   stop or restart XP gain everywhere (no level-ups or pauses; for benchmarks).
 		                  Lasts across runs until turned off.
 		spawn <kind>   spawn one enemy 25 studs from the first living player, e.g. "spawn GoblinGiant"
+		elite <kind>   the same, as an elite (bigger, tougher, drops a chest)
 		drop <kind>    put a Chest, Meat, Bomb, or Magnet 6 studs from the first living player
 		give <id> <level>   set a weapon or passive for every player, e.g. "give Fireball 3" (0 removes)
 		party       start the party on the lobby's portal pad now
@@ -123,6 +124,16 @@ local function execute(command: string)
 			return
 		end
 		local ok, err = pcall(EnemyService.spawn, match.enemies, argument, target.x + 25, target.z)
+		if not ok then
+			warn(`[Dev] {err}`)
+			return
+		end
+	elseif name == "elite" and argument ~= "" then
+		if not target then
+			warn("[Dev] No living player to spawn near")
+			return
+		end
+		local ok, err = pcall(EnemyService.spawn, match.enemies, argument, target.x + 25, target.z, nil, true)
 		if not ok then
 			warn(`[Dev] {err}`)
 			return

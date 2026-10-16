@@ -40,7 +40,7 @@ function SpinningBlade.step(enemies: EnemyService.State, now: number, targets: {
 				local relX, relZ = enemy.x - target.x, enemy.z - target.z
 				local along = math.clamp(relX * dirX + relZ * dirZ, stats.innerRadius, stats.outerRadius)
 				local offX, offZ = relX - dirX * along, relZ - dirZ * along
-				local reach = halfWidth + enemy.def.radius
+				local reach = halfWidth + enemy.radius
 				if
 					offX * offX + offZ * offZ <= reach * reach
 					and EnemyService.tryHit(enemy, target.player, now, stats.hitCooldown)
