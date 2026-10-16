@@ -5,7 +5,14 @@
 -- Everything that's saved for a player. Values must be DataStore-safe: numbers, strings, booleans,
 -- and plain tables (arrays or string-keyed). No Instances, Vector3s, or mixed tables.
 export type Data = {
-	coins: number,
+	shards: number,
+	hero: string, -- the selected hero (Config.Meta.HEROES)
+	heroes: { [string]: boolean }, -- heroes bought with Shards (free ones aren't listed)
+	altar: { [string]: number }, -- Altar upgrade id -> level
+	stats: {
+		runs: number,
+		wins: number,
+	},
 }
 
 local PlayerDataConfig = {
@@ -13,9 +20,14 @@ local PlayerDataConfig = {
 	STORE_NAME = "PlayerData_v1",
 
 	-- Starting data for new players. Saves that are missing a field (or have the wrong type for
-	-- it) get it filled in from here, so new fields can be added without a migration.
+	-- it) get it filled in from here, so new fields can be added without a migration. Nested
+	-- tables are filled in the same way.
 	DEFAULT_DATA = table.freeze({
-		coins = 0,
+		shards = 0,
+		hero = "Knight",
+		heroes = table.freeze({}),
+		altar = table.freeze({}),
+		stats = table.freeze({ runs = 0, wins = 0 }),
 	}) :: Data,
 
 	-- Seconds between autosaves. This also refreshes the session lock.

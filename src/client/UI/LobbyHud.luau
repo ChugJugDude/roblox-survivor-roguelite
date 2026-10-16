@@ -1,5 +1,6 @@
 --!strict
--- The lobby's HUD: a hint to step on the portal pad, and a Start now button for whoever is on it.
+-- The lobby's HUD: the player's Shards and hero, a hint to step on the portal pad, and a Start now
+-- button for whoever is on it.
 -- Hidden in a match. Placeholder look; polish comes in M4.
 
 local Players = game:GetService("Players")
@@ -12,6 +13,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local FONT = Enum.Font.GothamBold
 local PORTAL_COLOR = Color3.fromRGB(190, 120, 255)
+local SHARD_COLOR = Color3.fromRGB(120, 220, 255)
 
 local LobbyHud = {}
 
@@ -32,6 +34,20 @@ function LobbyHud.start()
 		TextSize = 22,
 		TextColor3 = PORTAL_COLOR,
 		TextStrokeTransparency = 0.3,
+		Text = "",
+		Parent = gui,
+	})
+	local wallet = Create("TextLabel", {
+		Name = "Wallet",
+		Size = UDim2.fromOffset(260, 56),
+		Position = UDim2.fromOffset(16, 52),
+		BackgroundTransparency = 1,
+		Font = FONT,
+		TextSize = 22,
+		TextColor3 = SHARD_COLOR,
+		TextStrokeTransparency = 0.3,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
 		Text = "",
 		Parent = gui,
 	})
@@ -66,6 +82,10 @@ function LobbyHud.start()
 			else "Step onto the glowing portal to start a run"
 		if hint.Text ~= text then
 			hint.Text = text
+		end
+		local walletText = `SHARDS {player:GetAttribute("Shards") or 0}\nHero: {player:GetAttribute("Hero") or "-"}`
+		if wallet.Text ~= walletText then
+			wallet.Text = walletText
 		end
 	end)
 end

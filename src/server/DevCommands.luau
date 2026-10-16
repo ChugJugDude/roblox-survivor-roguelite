@@ -19,6 +19,9 @@
 		party       start the party on the lobby's portal pad now
 		down        down the first player (as if a hit would have killed them)
 		lobby       send every player back to the lobby
+		shards <n>  give the first player n Shards (negative takes them away)
+		resetmeta   reset the first player's Shards, heroes, Altar, and stats. With Studio API access
+		            on, this overwrites their real saved data.
 
 	A client can set the attribute on its own copy of Workspace, but that never reaches the server,
 	so clients can't trigger these.
@@ -31,6 +34,7 @@ local Characters = require(script.Parent.Characters)
 local EnemyService = require(script.Parent.EnemyService)
 local Lobby = require(script.Parent.Lobby)
 local Match = require(script.Parent.Match)
+local Meta = require(script.Parent.Meta)
 local Pickups = require(script.Parent.Pickups)
 local Progression = require(script.Parent.Progression)
 local Upgrades = require(script.Parent.Upgrades)
@@ -57,6 +61,20 @@ local function execute(command: string)
 		local first = Players:GetPlayers()[1]
 		if first then
 			Characters.down(first)
+		end
+		print(`[Dev] {command}`)
+		return
+	elseif name == "shards" and tonumber(argument) then
+		local first = Players:GetPlayers()[1]
+		if first then
+			Meta.devAddShards(first, tonumber(argument) :: number)
+		end
+		print(`[Dev] {command}`)
+		return
+	elseif name == "resetmeta" then
+		local first = Players:GetPlayers()[1]
+		if first then
+			Meta.devReset(first)
 		end
 		print(`[Dev] {command}`)
 		return

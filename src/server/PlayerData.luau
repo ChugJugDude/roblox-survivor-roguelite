@@ -7,13 +7,14 @@
 	  its lock taken stops saving and kicks the player, so two servers never overwrite each other.
 	- DataStore calls retry with exponential backoff.
 	- Autosaves on an interval, and saves on PlayerRemoving and game:BindToClose.
-	- Sends a snapshot to the owning client through Remotes.DataChanged.
+	- Sends a snapshot to the owning client through Remotes.DataChanged, and tells onChanged
+	  listeners on the server.
 
 	Usage (server only):
 		PlayerData.start() -- once, from the server entry script
 		local data = PlayerData.waitForData(player) -- nil if the player left or loading failed
 		PlayerData.update(player, function(data)
-			data.coins += 10
+			data.shards += 10
 		end)
 
 	Treat tables returned by get/waitForData as read-only. All writes go through update so they
@@ -63,6 +64,7 @@ local loading: { [Player]: true } = {}
 local failed: { [Player]: true } = {}
 local waiters: { [Player]: { thread } } = {}
 local lastGetData: { [Player]: number } = {}
+local changedListeners: { (Player, Data) -> () } = {}
 local started = false
 
 local PlayerData = {}
@@ -82,15 +84,22 @@ local function deepCopy<T>(value: T): T
 	return copy :: any
 end
 
--- Fills in fields that are missing from older saves, or that have the wrong type.
-local function reconcile(saved: any): Data
+-- Fills in fields that are missing from older saves, or that have the wrong type, recursing into
+-- nested tables. Keys the defaults don't mention (like an empty map's entries) are kept.
+local function fill(saved: any, defaults: any): any
 	local data = if typeof(saved) == "table" then saved else {}
-	for key, default in Config.DEFAULT_DATA :: any do
+	for key, default in defaults do
 		if typeof(data[key]) ~= typeof(default) then
 			data[key] = deepCopy(default)
+		elseif typeof(default) == "table" then
+			data[key] = fill(data[key], default)
 		end
 	end
 	return data
+end
+
+local function reconcile(saved: any): Data
+	return fill(saved, Config.DEFAULT_DATA)
 end
 
 -- UpdateAsync with retries. The transform can run more than once, so its only side effects
@@ -234,6 +243,9 @@ local function queueReplicate(session: Session)
 		session.replicateQueued = false
 		if session.player.Parent == Players then
 			Remotes.DataChanged:FireClient(session.player, session.data)
+			for _, listener in changedListeners do
+				task.spawn(listener, session.player, session.data)
+			end
 		end
 	end)
 end
@@ -349,6 +361,12 @@ function PlayerData.update(player: Player, mutate: (Data) -> ()): boolean
 	mutate(session.data)
 	queueReplicate(session)
 	return true
+end
+
+-- Calls `listener(player, data)` after a player's data loads and after each batch of changes.
+-- `data` is read-only.
+function PlayerData.onChanged(listener: (Player, Data) -> ())
+	table.insert(changedListeners, listener)
 end
 
 function PlayerData.start()

@@ -54,6 +54,7 @@ export type State = {
 	aliveCount: number, -- props excluded
 	kindCounts: { [string]: number },
 	kills: number,
+	bossKills: number,
 	nextId: number,
 	hash: SpatialHash.SpatialHash,
 	killedListeners: { (Enemy) -> () },
@@ -132,6 +133,7 @@ function EnemyService.new(arena: Arena.Arena, net: NetBatch.Batch): State
 		aliveCount = 0,
 		kindCounts = {},
 		kills = 0,
+		bossKills = 0,
 		nextId = 0,
 		hash = SpatialHash.new(Config.SPATIAL_CELL_SIZE),
 		killedListeners = {},
@@ -207,6 +209,9 @@ function EnemyService.damage(state: State, enemy: Enemy, amount: number): boolea
 	if not isProp(enemy) then
 		state.kills += 1
 	end
+	if enemy.def.isBoss then
+		state.bossKills += 1
+	end
 	updateCounters(state)
 	for _, listener in state.killedListeners do
 		listener(enemy)
@@ -240,9 +245,15 @@ function EnemyService.getKills(state: State): number
 	return state.kills
 end
 
--- Zeroes the kill counter, for a new run.
+-- Bosses (isBoss enemies, like the Goblin Giant) killed this run.
+function EnemyService.getBossKills(state: State): number
+	return state.bossKills
+end
+
+-- Zeroes the kill counters, for a new run.
 function EnemyService.resetKills(state: State)
 	state.kills = 0
+	state.bossKills = 0
 	updateCounters(state)
 end
 

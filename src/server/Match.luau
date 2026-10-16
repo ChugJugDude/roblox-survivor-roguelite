@@ -12,7 +12,8 @@
 		Phase        "Countdown" | "Stage" | "Overtime" | "Transition" | "Victory" | "Defeat"
 		Stage        current stage number
 		PhaseEndsAt  game time (shared/GameClock) the timed phases end (0 when not timed)
-		ResultTime, ResultStage, ResultKills, ResultLevel   set when the run ends
+		ResultTime, ResultStage, ResultKills, ResultLevel, ResultStagesCleared, ResultBosses
+		             set when the run ends (each member's Shards go on the player; see server/Meta)
 		EndedAt      server time the run ended (the lobby sends everyone back a while after)
 ]]
 
@@ -23,6 +24,7 @@ local Characters = require(script.Parent.Characters)
 local EnemyReplicator = require(script.Parent.EnemyReplicator)
 local EnemyService = require(script.Parent.EnemyService)
 local EnemyShooter = require(script.Parent.EnemyShooter)
+local Meta = require(script.Parent.Meta)
 local NetBatch = require(script.Parent.NetBatch)
 local Pause = require(script.Parent.Pause)
 local Pickups = require(script.Parent.Pickups)
@@ -35,6 +37,7 @@ local WeaponService = require(script.Parent.Weapons.WeaponService)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local ShardReward = require(ReplicatedStorage.Shared.ShardReward)
 
 export type Phase = "Countdown" | "Stage" | "Overtime" | "Transition" | "Victory" | "Defeat"
 
@@ -102,12 +105,26 @@ local function endRun(match: Match, result: Phase, now: number)
 	Upgrades.stop(match.party)
 	clearField(match)
 	Portal.close(match.portal)
+	local victory = result == "Victory"
+	local runResult: ShardReward.RunResult = {
+		time = math.max(0, now - match.runStartedAt),
+		kills = EnemyService.getKills(match.enemies),
+		stagesCleared = if victory then Config.STAGE_COUNT else match.stage - 1,
+		bosses = EnemyService.getBossKills(match.enemies),
+		victory = victory,
+	}
 	local arenaModel = model(match)
-	arenaModel:SetAttribute("ResultTime", math.max(0, now - match.runStartedAt))
+	arenaModel:SetAttribute("ResultTime", runResult.time)
 	arenaModel:SetAttribute("ResultStage", match.stage)
-	arenaModel:SetAttribute("ResultKills", EnemyService.getKills(match.enemies))
+	arenaModel:SetAttribute("ResultKills", runResult.kills)
 	arenaModel:SetAttribute("ResultLevel", Progression.getLevel(match.progression))
+	arenaModel:SetAttribute("ResultStagesCleared", runResult.stagesCleared)
+	arenaModel:SetAttribute("ResultBosses", runResult.bosses)
 	arenaModel:SetAttribute("EndedAt", workspace:GetServerTimeNow())
+	-- Everyone still in the match is paid; leaving mid-run forfeits the reward.
+	for _, player in match.members do
+		Meta.awardRun(player, runResult)
+	end
 	setPhase(match, result, now)
 end
 
@@ -228,6 +245,7 @@ function Match.startRun(match: Match)
 	match.partySize = math.max(1, #match.members)
 	match.runStartedAt = now + Config.COUNTDOWN
 	for _, player in match.members do
+		Meta.clearResult(player)
 		Characters.spawn(player, Arena.spawnCFrame(match.arena))
 	end
 	setPhase(match, "Countdown", now, Config.COUNTDOWN)
