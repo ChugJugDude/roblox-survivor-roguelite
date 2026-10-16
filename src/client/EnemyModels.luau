@@ -144,6 +144,52 @@ local builders: { [string]: () -> Visual } = {
 	end,
 }
 
+-- The final boss: a huge, hunched grey-olive brute with tusks and a spiked club.
+builders.Ogre = function()
+	local visual = newVisual("Ogre")
+	local skin = Color3.fromRGB(125, 135, 95)
+	local dark = Color3.fromRGB(95, 100, 70)
+	local cloth = Color3.fromRGB(110, 75, 45)
+	local tusk = Color3.fromRGB(240, 230, 200)
+	local wood = Color3.fromRGB(90, 60, 35)
+	local eye = Color3.fromRGB(255, 60, 40)
+	-- Legs, loincloth, belly, shoulders.
+	addPart(visual, Vector3.new(2, 3, 2), CFrame.new(-1.6, 1.5, 0), dark)
+	addPart(visual, Vector3.new(2, 3, 2), CFrame.new(1.6, 1.5, 0), dark)
+	addPart(visual, Vector3.new(5.4, 1.6, 3.6), CFrame.new(0, 3.4, 0), cloth)
+	addPart(visual, Vector3.new(6, 4.2, 4.4), CFrame.new(0, 6, 0.2), skin)
+	addPart(visual, Vector3.new(7.2, 2, 3.6), CFrame.new(0, 8.4, 0.6) * CFrame.Angles(math.rad(-10), 0, 0), skin)
+	-- Head, hunched forward, with eyes and tusks.
+	addPart(visual, Vector3.new(2.8, 2.4, 2.6), CFrame.new(0, 8.6, -1.6), skin)
+	addPart(visual, Vector3.new(0.5, 0.4, 0.2), CFrame.new(-0.6, 9.1, -2.95), eye, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.5, 0.4, 0.2), CFrame.new(0.6, 9.1, -2.95), eye, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.4, 1, 0.4), CFrame.new(-0.8, 7.9, -2.9) * CFrame.Angles(math.rad(-20), 0, 0), tusk)
+	addPart(visual, Vector3.new(0.4, 1, 0.4), CFrame.new(0.8, 7.9, -2.9) * CFrame.Angles(math.rad(-20), 0, 0), tusk)
+	-- Arms: the left hangs, the right holds the club forward.
+	addPart(visual, Vector3.new(1.8, 5, 1.8), CFrame.new(-4.2, 5.6, 0) * CFrame.Angles(0, 0, math.rad(-8)), skin)
+	addPart(
+		visual,
+		Vector3.new(1.8, 5, 1.8),
+		CFrame.new(4.2, 5.8, -1) * CFrame.Angles(math.rad(35), 0, math.rad(8)),
+		skin
+	)
+	addPart(
+		visual,
+		Vector3.new(1, 6, 1),
+		CFrame.new(4.6, 4.6, -3.6) * CFrame.Angles(math.rad(70), 0, 0),
+		wood,
+		Enum.Material.Wood
+	)
+	addPart(
+		visual,
+		Vector3.new(2.2, 3, 2.2),
+		CFrame.new(4.6, 3.6, -6.2) * CFrame.Angles(math.rad(70), 0, 0),
+		wood,
+		Enum.Material.Wood
+	)
+	return visual
+end
+
 -- Wooden supply crate with metal bands; breaks into an item.
 builders.Crate = function()
 	local visual = newVisual("Crate")

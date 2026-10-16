@@ -87,6 +87,10 @@ return table.freeze({
 	-- Server -> client. Payload: { EntityNet.ExplosionInfo }, batched per frame. Visual only.
 	Explosions = remote("RemoteEvent", "Explosions") :: RemoteEvent,
 
+	-- Server -> client. Payload: { EntityNet.TelegraphInfo }, batched per frame. Visual only: the
+	-- ground warning before a boss charge.
+	EnemyTelegraph = remote("RemoteEvent", "EnemyTelegraph") :: RemoteEvent,
+
 	-- Server -> client. Payload: the player's open level-up choice, or nil to close it:
 	-- { options: { Upgrades.Option }, pending: number (picks queued, including this one),
 	--   rerolls: number }. Re-sent with the same options when more picks queue up.

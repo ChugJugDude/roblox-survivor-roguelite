@@ -10,13 +10,40 @@ export type EnemyDef = {
 	xp: number, -- XP in the gem it drops
 	-- "chase" walks straight at the nearest player; "ranged" keeps a distance band and shoots;
 	-- "prop" is a breakable object (crates): never moves or attacks, isn't counted as an enemy or a
-	-- kill, and auto-aim ignores it.
-	behavior: "chase" | "ranged" | "prop",
+	-- kill, and auto-aim ignores it. "boss" chases like "chase" between the attacks in `boss`
+	-- (server/BossBrain.luau).
+	behavior: "chase" | "ranged" | "prop" | "boss",
 	groupSize: number?, -- spawns this many together (bats)
 	ranged: RangedDef?,
+	boss: BossDef?,
 	isBoss: boolean?, -- shown on the boss health bar
 	dropsChest: boolean?,
 	displayName: string?, -- for the boss bar
+}
+
+-- A boss's attacks (server/BossBrain.luau). Every attackInterval seconds it does the next attack
+-- in `pattern`. Below enrageAt of its health it attacks every enragedInterval seconds and its
+-- rings come in pairs. Damage values are scaled by the stage like contact damage.
+export type BossDef = {
+	pattern: { "Ring" | "Charge" | "Summon" },
+	firstAttackDelay: number,
+	attackInterval: number,
+	enragedInterval: number,
+	enrageAt: number, -- health fraction
+	-- Ring: shots in every direction at once.
+	ringShots: number,
+	ringSpeed: number,
+	ringDamage: number,
+	ringRange: number,
+	-- Summon: a circle of adds around the boss.
+	summonKind: string,
+	summonCount: number,
+	summonRadius: number,
+	-- Charge: stops, shows a red lane for chargeWindup seconds, then dashes down it.
+	chargeWindup: number,
+	chargeSpeed: number,
+	chargeDistance: number,
+	chargeDamage: number,
 }
 
 export type RangedDef = {
@@ -81,6 +108,37 @@ local Enemies = {
 			isBoss = true,
 			dropsChest = true,
 			displayName = "Goblin Giant",
+		}),
+		-- The final boss, guarding the end of the run (Config.Waves finalBoss). Slow, huge, and
+		-- dangerous through its attacks rather than its walk.
+		Ogre = table.freeze({
+			maxHealth = 3000,
+			speed = 5,
+			radius = 4.5,
+			contactDamage = 20,
+			attackCooldown = 1.2,
+			xp = 0,
+			behavior = "boss",
+			isBoss = true,
+			displayName = "Ogre",
+			boss = table.freeze({
+				pattern = { "Ring", "Charge", "Summon", "Ring", "Charge" },
+				firstAttackDelay = 2.5,
+				attackInterval = 4,
+				enragedInterval = 2.6,
+				enrageAt = 0.33,
+				ringShots = 16,
+				ringSpeed = 16,
+				ringDamage = 6,
+				ringRange = 60,
+				summonKind = "Goblin",
+				summonCount = 6,
+				summonRadius = 8,
+				chargeWindup = 1.1,
+				chargeSpeed = 45,
+				chargeDistance = 45,
+				chargeDamage = 22,
+			}),
 		}),
 		-- Breakable supply crate. Weapons that touch it break it; it always drops an item.
 		Crate = table.freeze({

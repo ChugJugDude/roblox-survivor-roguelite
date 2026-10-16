@@ -2,7 +2,7 @@
 -- Payload shapes for projectile and explosion events (server/ProjectileService ->
 -- client/ProjectileRenderer). Enemy and gem payloads are documented in Remotes and EnemySnapshot.
 
-export type ProjectileKind = "Arrow" | "Fireball" | "Meteor" | "EnemyArrow"
+export type ProjectileKind = "Arrow" | "Fireball" | "Meteor" | "EnemyArrow" | "BossOrb"
 
 export type ProjectileInfo = {
 	id: number,
@@ -21,6 +21,17 @@ export type ExplosionInfo = {
 	z: number,
 	radius: number,
 	kind: "Bomb"?, -- a bomb pickup draws a wide flat shockwave instead of a fireball blast
+}
+
+-- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer).
+export type TelegraphInfo = {
+	x: number, -- where the lane starts
+	z: number,
+	dirX: number, -- unit direction
+	dirZ: number,
+	length: number,
+	width: number,
+	duration: number, -- seconds until the attack lands
 }
 
 return nil

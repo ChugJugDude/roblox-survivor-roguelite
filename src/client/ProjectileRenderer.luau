@@ -49,6 +49,14 @@ local LOOKS: { [string]: Look } = {
 		height = 4.5,
 		material = Enum.Material.SmoothPlastic,
 	},
+	-- A boss's ring shot: the same crimson orb, bigger.
+	BossOrb = {
+		size = Vector3.new(2.6, 2.6, 2.6),
+		color = Color3.fromRGB(190, 0, 35),
+		shape = Enum.PartType.Ball,
+		height = 4.5,
+		material = Enum.Material.SmoothPlastic,
+	},
 }
 local EXPLOSION_COLOR = Color3.fromRGB(255, 140, 40)
 local EXPLOSION_TIME = 0.3

@@ -20,6 +20,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Arena = require(script.Parent.Arena)
+local BossBrain = require(script.Parent.BossBrain)
 local Characters = require(script.Parent.Characters)
 local EnemyReplicator = require(script.Parent.EnemyReplicator)
 local EnemyService = require(script.Parent.EnemyService)
@@ -55,6 +56,7 @@ export type Match = {
 	pickups: Pickups.State,
 	waves: WaveDirector.State,
 	portal: Portal.State,
+	bosses: BossBrain.State,
 	partySize: number, -- members when the run started, for scaling
 	phase: Phase,
 	stage: number,
@@ -182,6 +184,7 @@ function Match.create(slot: number): Match
 	local enemies = EnemyService.new(arena, net)
 	local progression = Progression.new(arena, net, enemies)
 	local party = Upgrades.newParty(clock, members, progression)
+	local projectiles = ProjectileService.new(enemies, net, clock)
 	local match: Match = {
 		slot = slot,
 		arena = arena,
@@ -192,10 +195,11 @@ function Match.create(slot: number): Match
 		replicator = EnemyReplicator.new(enemies),
 		progression = progression,
 		party = party,
-		projectiles = ProjectileService.new(enemies, net, clock),
+		projectiles = projectiles,
 		pickups = Pickups.new(arena, enemies, progression, party, net),
 		waves = WaveDirector.new(arena, enemies),
 		portal = Portal.new(arena),
+		bosses = BossBrain.new(arena, enemies, projectiles, net),
 		partySize = 1,
 		phase = "Countdown",
 		stage = 0,
@@ -273,6 +277,7 @@ function Match.step(match: Match, dt: number)
 	Characters.stepRevives(match.members, targets, step, now)
 	stepRun(match, now, step, targets)
 	WaveDirector.step(match.waves, now, targets, runView(match, now))
+	BossBrain.step(match.bosses, now, step, targets)
 	EnemyService.move(match.enemies, step, targets)
 	WeaponService.step(match.enemies, match.projectiles, now, targets)
 	ProjectileService.step(match.projectiles, step, now, targets)

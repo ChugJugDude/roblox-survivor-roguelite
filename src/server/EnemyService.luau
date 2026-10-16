@@ -33,12 +33,14 @@ export type Enemy = {
 	z: number,
 	radius: number, -- body size (bigger for elites)
 	elite: boolean,
+	scaling: Scaling, -- what it spawned with (a boss's adds use the same)
 	health: number,
 	maxHealth: number, -- after scaling
 	contactDamage: number, -- after scaling
 	xp: number, -- after scaling
 	attackReadyAt: number,
 	shotReadyAt: number, -- ranged enemies
+	locked: boolean, -- moved by someone else (a boss mid-attack, see BossBrain); move() leaves it be
 	hitReadyAt: { [any]: number }, -- per attacker, when they can hit this enemy again
 }
 
@@ -177,12 +179,14 @@ function EnemyService.spawn(state: State, kind: string, x: number, z: number, sc
 		z = z,
 		radius = radius,
 		elite = isElite,
+		scaling = scale,
 		health = health,
 		maxHealth = health,
 		contactDamage = def.contactDamage * scale.damage * (if isElite then Config.ELITE.damage else 1),
 		xp = def.xp * scale.xp * (if isElite then Config.ELITE.xp else 1),
 		attackReadyAt = 0,
 		shotReadyAt = 0,
+		locked = false,
 		hitReadyAt = {},
 	}
 	state.enemies[enemy.id] = enemy
@@ -360,8 +364,8 @@ function EnemyService.move(state: State, dt: number, targets: { Target })
 
 	for _, enemy in enemies do
 		local def = enemy.def
-		if def.behavior == "prop" then
-			continue -- stays put; others still push away from it
+		if def.behavior == "prop" or enemy.locked then
+			continue -- stays put (or is moved elsewhere); others still push away from it
 		end
 
 		local moveX, moveZ = 0, 0
