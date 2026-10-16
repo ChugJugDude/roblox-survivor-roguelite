@@ -33,7 +33,7 @@ A fantasy survivor-like roguelite for Roblox. Drop into a cursed arena alone or 
    - **Supply crates** appear near the player every ~35s; weapons break them and they drop an item: **meat** (heal 30%), a **bomb** (clears the screen, hurts bosses), or a **magnet** (pulls in every gem). Regular enemies rarely (0.5%) drop one too. This is how a player recovers when low.
 5. When a stage's timer runs out, **overtime** starts: a portal opens and spawns ramp up hard. Stand in the portal to charge it; a full charge moves the party to the next stage.
 6. Charging the portal after stage 3 wins the run. (M4: the **Ogre boss** guards the end of stage 3.)
-7. Win or die → earn **Shards** based on time survived, kills, and bosses.
+7. Win or die → earn **Shards** based on time survived, kills, stages cleared, giants slain, and a victory bonus (×Greed). Only players still in the run when it ends are paid.
 
 Why stages instead of one long timer: short goals every few minutes keep the payoff coming, which suits Roblox players better than one 10–15 minute stretch.
 
@@ -57,7 +57,7 @@ All weapons auto-fire and auto-target (nearest enemy unless the weapon says othe
 | Ranger | Volley arrows (nearest target) | +Move speed | Default |
 | Pyromancer | Fireball (AoE on impact) | +Area size | Shards |
 
-Heroes differ in starting kit and passive only. All upgrades are available to every hero.
+Heroes differ in starting kit and passive only. All upgrades are available to every hero. A hero's passive is an **innate bonus**: it doesn't take one of the 4 passive slots and doesn't count toward evolutions. Heroes are picked at the **Hero stand** in the lobby.
 
 ## 6. Upgrades (v1 target: ~20)
 
@@ -109,9 +109,10 @@ Readability rule: **enemy shots are solid crimson orbs drawn above everything th
 ## 9. Meta progression
 
 - **Shards:** earned every run (win or lose). Saved per player.
-- **Permanent upgrades (the "Altar"):** small stat boosts bought with Shards, with increasing costs. ~8 in v1 (Might, Vitality, Swiftness, Magnet, Greed, Reroll +1, Revive speed, Starting XP).
-- **Hero unlocks:** Pyromancer purchasable with Shards.
-- **Collection log:** tracks weapons, evolutions, and enemies discovered. Cheap to build and gives completionists a goal.
+- **Permanent upgrades (the "Altar"):** small stat boosts bought with Shards at the Altar in the lobby, cost ×1.5 per level. 8 in v1: Might, Vitality, Swiftness, Magnet, Greed (+Shards), Reroll (+1 per run), Rescue (revive teammates faster), and **Head Start** (free upgrade picks during the run's countdown; replaces "Starting XP", which doesn't fit shared party XP). Maxing everything costs ~4,900 Shards (~20 winning runs).
+- **Hero unlocks:** Pyromancer for 400 Shards.
+- Tuning lives in `Config/Meta.luau` (Shard formula, heroes, Altar costs and effects).
+- **Collection log (moved to M4):** tracks weapons, evolutions, and enemies discovered. Cheap to build and gives completionists a goal.
 
 Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty tiers, cosmetic unlocks from achievements.
 
