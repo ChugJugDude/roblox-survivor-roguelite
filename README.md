@@ -4,7 +4,7 @@
 
 A fantasy survivor-like roguelite for Roblox, played solo or in co-op with up to 4 players. You move with one thumb while your weapons fire on their own. You collect XP gems, choose 1 of 3 upgrades at each level-up, and combine them into evolved weapons. A run is three short stages that ends in a boss fight. Between runs you spend Shards on permanent upgrades and new heroes.
 
-<!-- TODO: add a gameplay GIF or screenshots here, e.g. ![Gameplay](docs/media/gameplay.gif) -->
+![Gameplay](docs/media/gameplay.gif)
 
 **Status:** in active development. Milestones M0–M3 are done (solo loop, co-op, meta progression), and M4 (content and polish) is in progress. Full design: [`docs/design.md`](docs/design.md).
 
@@ -28,7 +28,7 @@ The game has to keep **100–200 enemies** alive at once and still run on phones
 - **Per-match state objects.** Every run system is created with `Module.new(...)` per match, so several parties can play in separate arenas on one server.
 - **Batched, ordered networking.** Each frame's events for a match are collected and sent once per remote, in a fixed order, so a "spawned" event always arrives before its matching "despawned" event (`src/server/NetBatch.luau`).
 - **Shared stat math.** One module turns a build into stats for both server hit logic and client visuals, so they never drift apart (`src/shared/BuildStats.luau`).
-- **Server-Side Validation.** Every remote handler validates argument types and ranges and is rate-limited. Purchases check the price and spend inside a single atomic data update.
+- **Server-side Validation.** Every remote handler validates argument types and ranges and is rate-limited. Purchases check the price and spend inside a single atomic data update.
 - **Safe persistence.** `src/server/PlayerData.luau` handles session locking, retries with exponential backoff, autosave, and saving on `PlayerRemoving` and `BindToClose`.
 - **Data-driven tuning.** Weapons, enemies, waves, scaling and costs all live in `src/shared/Config/`.
 
