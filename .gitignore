@@ -1,8 +1,28 @@
-# Project place file
-/Roblox Game (Claude).rbxlx
+# Place and model files (code lives in src/; Rojo rebuilds the place)
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
 
 # Roblox Studio lock files
-/*.rbxlx.lock
-/*.rbxl.lock
+*.rbxl.lock
+*.rbxlx.lock
 
+# Rojo
 sourcemap.json
+
+# Wally packages (restored with `wally install`)
+/Packages/
+/ServerPackages/
+/DevPackages/
+
+# Secrets (Open Cloud API keys, env files)
+.env
+.env.*
+*.key
+
+# OS / editor junk
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
