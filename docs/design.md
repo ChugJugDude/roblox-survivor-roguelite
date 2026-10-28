@@ -20,6 +20,8 @@ A fantasy survivor-like roguelite for Roblox. Drop into a cursed arena alone or 
 - Players keep their own Roblox avatars (blocky or not); the world and enemies are low-poly so both read well together.
 - **Readability over detail:** enemies, projectiles, and pickups must be identifiable at a glance on a small screen, even with 100+ things on screen.
 - Asset sources: primitive parts, Creator Store low-poly packs (check licenses), and Studio's mesh/material generation for one-offs.
+- **Feel (M4):** every hit sparks and shows a damage number (big hits gold), kills puff, elites and bosses burst in gold. Weapons look like what they are: swords with swing trails, fletched arrows, fireballs trailing flame, lightning that sparks where it strikes, ice that encases frozen enemies, Holy Ground as a consecrated circle cast up rune by rune. Getting hurt flashes the screen edges red and shakes the camera. Sound: licensed Creator Store effects and music (lobby, run, boss), with mute buttons and per-weapon volume sliders.
+- **UI:** one shared theme (dark rounded panels, kind colors: weapons orange, passives blue, evolutions gold). Mobile-first placement: build tiles and health top left (the bottom left is the thumbstick), objectives on the right, only the stage panel and boss bar top middle.
 
 ## 3. Core loop
 
@@ -126,6 +128,7 @@ Skeleton archers face the player they're aiming at.
 Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty tiers, cosmetic unlocks from achievements.
 
 **Backlog ideas (from playtests):**
+- **Pause menu with the build:** a pause button (and Escape / gamepad) that shows the player's weapons and passives with levels and evolution pairs; hover or tap one to read what it does (reuse the card text and icons). Solo pauses the game; in co-op it can't freeze the shared world, so it likely opens the build view without pausing.
 - ~~Warding rings~~: built in M4 as the **Warding** passive (§6).
 
 ## 10. Structure and flow
