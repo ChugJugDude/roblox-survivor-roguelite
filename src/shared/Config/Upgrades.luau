@@ -53,6 +53,17 @@ export type FrostNovaStats = {
 	slowDuration: number, -- seconds
 }
 
+export type HolyGroundStats = {
+	cooldown: number,
+	zones: number, -- zones per cast: one at the player's feet, the rest close by
+	radius: number,
+	damage: number, -- per tick, to every enemy in the zone
+	tick: number, -- seconds between a zone's hits on the same enemy
+	duration: number, -- seconds a zone lasts
+	heal: number, -- health per second for players standing in a zone (Sanctuary only)
+	range: number, -- only casts when an enemy is this close
+}
+
 -- A max-level weapon plus its paired passive (any level) unlocks the evolution, offered as a
 -- level-up choice. An evolved weapon is stored as level MAX_LEVEL + 1.
 export type EvolutionDef = {
@@ -125,6 +136,16 @@ local FROST_NOVA_LEVELS: { FrostNovaStats } = {
 	{ cooldown = 3, radius = 11, damage = 18, slow = 0.5, slowDuration = 2 },
 	{ cooldown = 2.7, radius = 12, damage = 22, slow = 0.5, slowDuration = 2 },
 	{ cooldown = 2.4, radius = 13, damage = 26, slow = 0.55, slowDuration = 2.5 },
+}
+
+-- Same one-row-per-level layout.
+-- stylua: ignore
+local HOLY_GROUND_LEVELS: { HolyGroundStats } = {
+	{ cooldown = 4, zones = 1, radius = 5, damage = 8, tick = 0.5, duration = 3, heal = 0, range = 25 },
+	{ cooldown = 4, zones = 1, radius = 6, damage = 10, tick = 0.5, duration = 3, heal = 0, range = 25 },
+	{ cooldown = 4, zones = 2, radius = 6, damage = 10, tick = 0.5, duration = 3.5, heal = 0, range = 25 },
+	{ cooldown = 3.6, zones = 2, radius = 7, damage = 12, tick = 0.5, duration = 3.5, heal = 0, range = 25 },
+	{ cooldown = 3.2, zones = 2, radius = 7, damage = 14, tick = 0.5, duration = 4, heal = 0, range = 25 },
 }
 
 return table.freeze({
@@ -281,6 +302,32 @@ return table.freeze({
 				}) :: FrostNovaStats,
 			}),
 		}),
+		HolyGround = table.freeze({
+			name = "Holy Ground",
+			descriptions = {
+				"Blesses the ground at your feet, burning enemies that walk in.",
+				"+25% damage. Bigger zone.",
+				"+1 zone. Zones last longer.",
+				"+20% damage. Bigger zone. Casts faster.",
+				"+17% damage. Zones last longer. Casts faster.",
+			},
+			levels = HOLY_GROUND_LEVELS,
+			evolution = table.freeze({
+				name = "Sanctuary",
+				passive = "Regen",
+				description = "Three wide, lasting zones that also heal you and your allies.",
+				stats = table.freeze({
+					cooldown = 3,
+					zones = 3,
+					radius = 9,
+					damage = 20,
+					tick = 0.4,
+					duration = 5,
+					heal = 4,
+					range = 25,
+				}) :: HolyGroundStats,
+			}),
+		}),
 	}) :: { [string]: WeaponDef },
 
 	PASSIVES = table.freeze({
@@ -325,6 +372,12 @@ return table.freeze({
 			description = "%d%% less damage taken",
 			percent = true,
 			values = { 0.06, 0.12, 0.18, 0.24, 0.3 },
+		}),
+		Regen = table.freeze({
+			name = "Regen",
+			description = "Heal %d health per second",
+			percent = false,
+			values = { 1, 2, 3, 4, 5 },
 		}),
 	}) :: { [string]: PassiveDef },
 })

@@ -22,6 +22,7 @@ export type Modifiers = {
 	pickupRadius: number,
 	maxHealthBonus: number,
 	damageTaken: number,
+	regen: number, -- health per second
 }
 
 local BuildStats = {}
@@ -71,6 +72,7 @@ function BuildStats.modifiers(build: Build): Modifiers
 		pickupRadius = 1 + passiveValue(build, "Magnet") + bonus.pickupRadius,
 		maxHealthBonus = passiveValue(build, "Vitality") + bonus.maxHealth,
 		damageTaken = 1 - passiveValue(build, "Armor"),
+		regen = passiveValue(build, "Regen"),
 	}
 end
 
@@ -167,6 +169,26 @@ function BuildStats.frostNova(build: Build): Config.FrostNovaStats?
 		damage = base.damage * modifiers.damage,
 		slow = base.slow,
 		slowDuration = base.slowDuration,
+	}
+end
+
+-- The player's Holy Ground after passives, or nil if they don't have it.
+function BuildStats.holyGround(build: Build): Config.HolyGroundStats?
+	local level = build.weapons.HolyGround
+	if not level then
+		return nil
+	end
+	local base: Config.HolyGroundStats = weaponBase("HolyGround", level)
+	local modifiers = BuildStats.modifiers(build)
+	return {
+		cooldown = base.cooldown * modifiers.cooldown,
+		zones = base.zones,
+		radius = base.radius * modifiers.area,
+		damage = base.damage * modifiers.damage,
+		tick = base.tick,
+		duration = base.duration,
+		heal = base.heal,
+		range = base.range,
 	}
 end
 

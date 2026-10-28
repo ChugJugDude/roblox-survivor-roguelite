@@ -55,6 +55,7 @@ export type Match = {
 	progression: Progression.State,
 	party: Upgrades.Party,
 	projectiles: ProjectileService.State,
+	weapons: WeaponService.State,
 	pickups: Pickups.State,
 	waves: WaveDirector.State,
 	portal: Portal.State,
@@ -105,6 +106,7 @@ end
 local function clearField(match: Match)
 	EnemyService.clear(match.enemies)
 	ProjectileService.clear(match.projectiles)
+	WeaponService.clear(match.weapons)
 end
 
 local function startStage(match: Match, now: number)
@@ -219,6 +221,7 @@ function Match.create(slot: number): Match
 		progression = progression,
 		party = party,
 		projectiles = projectiles,
+		weapons = WeaponService.new(enemies, projectiles),
 		pickups = Pickups.new(arena, enemies, progression, party, net),
 		waves = WaveDirector.new(arena, enemies),
 		portal = Portal.new(arena),
@@ -299,11 +302,12 @@ function Match.step(match: Match, dt: number)
 	local step = math.min(dt, MAX_STEP)
 
 	Characters.stepRevives(match.members, targets, step, now)
+	Characters.stepRegen(targets, step)
 	stepRun(match, now, step, targets)
 	WaveDirector.step(match.waves, now, targets, runView(match, now))
 	BossBrain.step(match.bosses, now, step, targets)
 	EnemyService.move(match.enemies, now, step, targets)
-	WeaponService.step(match.enemies, match.projectiles, now, targets)
+	WeaponService.step(match.weapons, now, step, targets)
 	ProjectileService.step(match.projectiles, step, now, targets)
 	EnemyService.attack(match.enemies, now, targets)
 	EnemyShooter.step(match.enemies, match.projectiles, now, targets)

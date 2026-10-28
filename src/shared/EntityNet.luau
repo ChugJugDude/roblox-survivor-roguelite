@@ -39,7 +39,18 @@ export type ChillEffect = {
 	duration: number,
 }
 
-export type EffectInfo = LightningEffect | ChillEffect
+-- A Holy Ground zone on the floor until startedAt + duration (game time, shared/GameClock).
+export type HolyGroundEffect = {
+	kind: "HolyGround",
+	evolved: boolean, -- Sanctuary
+	x: number,
+	z: number,
+	radius: number,
+	startedAt: number,
+	duration: number,
+}
+
+export type EffectInfo = LightningEffect | ChillEffect | HolyGroundEffect
 
 -- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer).
 export type TelegraphInfo = {

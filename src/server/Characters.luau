@@ -37,6 +37,11 @@ local damageTakenFor: (Player) -> number = function(_player: Player)
 	return 1
 end
 
+-- Health per second a player regenerates. Upgrades replaces this so Regen applies.
+local regenFor: (Player) -> number = function(_player: Player)
+	return 0
+end
+
 local function onCharacterAdded(character: Model)
 	character:WaitForChild("HumanoidRootPart")
 	local player = Players:GetPlayerFromCharacter(character)
@@ -104,6 +109,10 @@ end
 
 function Characters.setDamageTakenProvider(provider: (Player) -> number)
 	damageTakenFor = provider
+end
+
+function Characters.setRegenProvider(provider: (Player) -> number)
+	regenFor = provider
 end
 
 -- Spawns (or respawns) the player's character at `cframe`. Doesn't yield.
@@ -211,6 +220,22 @@ function Characters.damage(target: Target, amount: number, now: number)
 		Characters.down(player)
 	else
 		target.humanoid:TakeDamage(amount)
+	end
+end
+
+-- Heals a standing player, up to their max health.
+function Characters.heal(target: Target, amount: number)
+	local humanoid = target.humanoid
+	humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + amount)
+end
+
+-- Regen for everyone standing. Downed players aren't targets, so they don't regenerate.
+function Characters.stepRegen(targets: { Target }, dt: number)
+	for _, target in targets do
+		local perSecond = regenFor(target.player)
+		if perSecond > 0 and target.humanoid.Health < target.humanoid.MaxHealth then
+			Characters.heal(target, perSecond * dt)
+		end
 	end
 end
 
