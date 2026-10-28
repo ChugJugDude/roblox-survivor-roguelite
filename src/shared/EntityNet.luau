@@ -20,7 +20,9 @@ export type ExplosionInfo = {
 	x: number,
 	z: number,
 	radius: number,
-	kind: "Bomb"?, -- a bomb pickup draws a wide flat shockwave instead of a fireball blast
+	-- A bomb pickup or Frost Nova (Blizzard evolved) draws a flat shockwave instead of a fireball
+	-- blast.
+	kind: ("Bomb" | "Frost" | "Blizzard")?,
 }
 
 -- A visual-only weapon effect (server/Weapons -> client/EffectRenderer).
@@ -30,7 +32,14 @@ export type LightningEffect = {
 	points: { number }, -- x, z pairs: where the bolt started, then each enemy it hit in order
 }
 
-export type EffectInfo = LightningEffect
+-- Enemies a Frost Nova just slowed, tinted icy for `duration` seconds.
+export type ChillEffect = {
+	kind: "Chill",
+	ids: { number },
+	duration: number,
+}
+
+export type EffectInfo = LightningEffect | ChillEffect
 
 -- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer).
 export type TelegraphInfo = {

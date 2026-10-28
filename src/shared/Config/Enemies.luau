@@ -162,6 +162,9 @@ local Enemies = {
 		scale = 1.6, -- body size (hit radius and model)
 	}),
 
+	-- Bosses and mini-bosses take this fraction of any slow (Frost Nova), so they can't be pinned.
+	BOSS_SLOW_MULTIPLIER = 0.5,
+
 	-- Treat players as circles this wide for contact. Enemies stop at the edge of it.
 	PLAYER_RADIUS = 1.5,
 	-- Extra reach beyond touching, so lag between the server and client positions doesn't stop hits.

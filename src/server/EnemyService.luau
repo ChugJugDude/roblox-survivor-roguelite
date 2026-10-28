@@ -40,6 +40,8 @@ export type Enemy = {
 	xp: number, -- after scaling
 	attackReadyAt: number,
 	shotReadyAt: number, -- ranged enemies
+	slow: number, -- fraction of move speed taken away until slowUntil
+	slowUntil: number,
 	locked: boolean, -- moved by someone else (a boss mid-attack, see BossBrain); move() leaves it be
 	hitReadyAt: { [any]: number }, -- per attacker, when they can hit this enemy again
 }
@@ -192,6 +194,8 @@ function EnemyService.spawn(state: State, kind: string, x: number, z: number, sc
 		xp = def.xp * scale.xp * (if isElite then Config.ELITE.xp else 1),
 		attackReadyAt = 0,
 		shotReadyAt = 0,
+		slow = 0,
+		slowUntil = 0,
 		locked = false,
 		hitReadyAt = {},
 	}
@@ -262,6 +266,19 @@ function EnemyService.tryHit(enemy: Enemy, attacker: any, now: number, cooldown:
 	end
 	enemy.hitReadyAt[attacker] = now + cooldown
 	return true
+end
+
+-- Slows the enemy by `amount` (fraction of move speed) for `duration` seconds. A weaker slow
+-- doesn't replace a stronger one that's still running. Bosses take only part of it
+-- (Config.BOSS_SLOW_MULTIPLIER).
+function EnemyService.slow(enemy: Enemy, amount: number, now: number, duration: number)
+	if enemy.def.isBoss then
+		amount *= Config.BOSS_SLOW_MULTIPLIER
+	end
+	if now >= enemy.slowUntil or amount >= enemy.slow then
+		enemy.slow = amount
+		enemy.slowUntil = now + duration
+	end
 end
 
 -- Removes every enemy without counting kills.
@@ -367,7 +384,7 @@ function EnemyService.nearestN(
 	return out
 end
 
-function EnemyService.move(state: State, dt: number, targets: { Target })
+function EnemyService.move(state: State, now: number, dt: number, targets: { Target })
 	local enemies = state.enemies
 	local separation = math.min(0.5, Config.SEPARATION_STIFFNESS * dt)
 	-- A new frame: enemies can flash again.
@@ -379,6 +396,7 @@ function EnemyService.move(state: State, dt: number, targets: { Target })
 			continue -- stays put (or is moved elsewhere); others still push away from it
 		end
 
+		local speed = if now < enemy.slowUntil then def.speed * (1 - enemy.slow) else def.speed
 		local moveX, moveZ = 0, 0
 		local target, distSq = nearestTarget(targets, enemy.x, enemy.z)
 		if target then
@@ -387,14 +405,14 @@ function EnemyService.move(state: State, dt: number, targets: { Target })
 			if def.behavior == "ranged" and ranged and dist > 1e-3 then
 				-- Keep within the preferred distance band: close in when far, back off when near.
 				local direction = if dist > ranged.preferredMax then 1 elseif dist < ranged.preferredMin then -1 else 0
-				local step = def.speed * dt * direction
+				local step = speed * dt * direction
 				moveX = (target.x - enemy.x) / dist * step
 				moveZ = (target.z - enemy.z) / dist * step
 			else
 				-- Chase, stopping when touching.
 				local stopAt = enemy.radius + Config.PLAYER_RADIUS
 				if dist > stopAt then
-					local step = math.min(def.speed * dt, dist - stopAt)
+					local step = math.min(speed * dt, dist - stopAt)
 					moveX = (target.x - enemy.x) / dist * step
 					moveZ = (target.z - enemy.z) / dist * step
 				end

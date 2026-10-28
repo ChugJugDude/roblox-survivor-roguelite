@@ -32,6 +32,11 @@ local statsFor: (Player) -> (number, number) = function(_player: Player)
 	return Config.MAX_HEALTH, Config.WALK_SPEED
 end
 
+-- Multiplier on damage a player takes. Upgrades replaces this so Armor applies.
+local damageTakenFor: (Player) -> number = function(_player: Player)
+	return 1
+end
+
 local function onCharacterAdded(character: Model)
 	character:WaitForChild("HumanoidRootPart")
 	local player = Players:GetPlayerFromCharacter(character)
@@ -95,6 +100,10 @@ end
 
 function Characters.setStatsProvider(provider: (Player) -> (number, number))
 	statsFor = provider
+end
+
+function Characters.setDamageTakenProvider(provider: (Player) -> number)
+	damageTakenFor = provider
 end
 
 -- Spawns (or respawns) the player's character at `cframe`. Doesn't yield.
@@ -188,7 +197,7 @@ function Characters.stepRevives(members: { Player }, targets: { Target }, dt: nu
 	end
 end
 
--- The one way to hurt a player. Skips the hit while they're invulnerable: until the game time in
+-- The one way to hurt a player (Armor reduces it). Skips the hit while they're invulnerable: until the game time in
 -- their InvulnerableUntil attribute, or always with the Studio-only Dev_God attribute. A hit
 -- that would kill downs them instead.
 function Characters.damage(target: Target, amount: number, now: number)
@@ -197,6 +206,7 @@ function Characters.damage(target: Target, amount: number, now: number)
 	if player:GetAttribute("Dev_God") or (typeof(invulnerableUntil) == "number" and now < invulnerableUntil) then
 		return
 	end
+	amount *= damageTakenFor(player)
 	if target.humanoid.Health - amount <= 0 then
 		Characters.down(player)
 	else

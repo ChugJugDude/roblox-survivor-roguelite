@@ -8,6 +8,7 @@ local EnemyService = require(script.Parent.Parent.EnemyService)
 local ProjectileService = require(script.Parent.Parent.ProjectileService)
 local ChainLightning = require(script.Parent.ChainLightning)
 local Fireball = require(script.Parent.Fireball)
+local FrostNova = require(script.Parent.FrostNova)
 local SpinningBlade = require(script.Parent.SpinningBlade)
 local VolleyArrows = require(script.Parent.VolleyArrows)
 
@@ -25,6 +26,7 @@ function WeaponService.step(
 	VolleyArrows.step(enemies, projectiles, now, targets)
 	Fireball.step(enemies, projectiles, now, targets)
 	ChainLightning.step(enemies, now, targets)
+	FrostNova.step(enemies, now, targets)
 end
 
 function WeaponService.start()
@@ -34,6 +36,7 @@ function WeaponService.start()
 		VolleyArrows.forget(player)
 		Fireball.forget(player)
 		ChainLightning.forget(player)
+		FrostNova.forget(player)
 	end)
 end
 

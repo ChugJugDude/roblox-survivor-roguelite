@@ -45,6 +45,14 @@ export type ChainLightningStats = {
 	range: number, -- only casts at enemies this close
 }
 
+export type FrostNovaStats = {
+	cooldown: number,
+	radius: number, -- around the player
+	damage: number, -- dealt to every enemy in the radius
+	slow: number, -- fraction of move speed taken away (bosses take half)
+	slowDuration: number, -- seconds
+}
+
 -- A max-level weapon plus its paired passive (any level) unlocks the evolution, offered as a
 -- level-up choice. An evolved weapon is stored as level MAX_LEVEL + 1.
 export type EvolutionDef = {
@@ -107,6 +115,16 @@ local CHAIN_LIGHTNING_LEVELS: { ChainLightningStats } = {
 	{ cooldown = 1.6, bolts = 1, chains = 4, jumpRange = 13, damage = 24, range = 40 },
 	{ cooldown = 1.6, bolts = 2, chains = 5, jumpRange = 13, damage = 24, range = 40 },
 	{ cooldown = 1.3, bolts = 2, chains = 6, jumpRange = 14, damage = 28, range = 40 },
+}
+
+-- Same one-row-per-level layout.
+-- stylua: ignore
+local FROST_NOVA_LEVELS: { FrostNovaStats } = {
+	{ cooldown = 3, radius = 9, damage = 14, slow = 0.4, slowDuration = 1.5 },
+	{ cooldown = 3, radius = 10, damage = 18, slow = 0.4, slowDuration = 1.5 },
+	{ cooldown = 3, radius = 11, damage = 18, slow = 0.5, slowDuration = 2 },
+	{ cooldown = 2.7, radius = 12, damage = 22, slow = 0.5, slowDuration = 2 },
+	{ cooldown = 2.4, radius = 13, damage = 26, slow = 0.55, slowDuration = 2.5 },
 }
 
 return table.freeze({
@@ -240,6 +258,29 @@ return table.freeze({
 				}) :: ChainLightningStats,
 			}),
 		}),
+		FrostNova = table.freeze({
+			name = "Frost Nova",
+			descriptions = {
+				"A freezing burst around you that slows enemies.",
+				"+29% damage. Bigger burst.",
+				"Stronger, longer slow. Bigger burst.",
+				"+22% damage. Bigger burst. Bursts faster.",
+				"+18% damage. Stronger, longer slow. Bursts faster.",
+			},
+			levels = FROST_NOVA_LEVELS,
+			evolution = table.freeze({
+				name = "Blizzard",
+				passive = "Armor",
+				description = "A huge, rapid freeze that nearly stops enemies in their tracks.",
+				stats = table.freeze({
+					cooldown = 2,
+					radius = 18,
+					damage = 40,
+					slow = 0.8,
+					slowDuration = 3,
+				}) :: FrostNovaStats,
+			}),
+		}),
 	}) :: { [string]: WeaponDef },
 
 	PASSIVES = table.freeze({
@@ -278,6 +319,12 @@ return table.freeze({
 			description = "+%d%% pickup range",
 			percent = true,
 			values = { 0.4, 0.8, 1.2, 1.6, 2 },
+		}),
+		Armor = table.freeze({
+			name = "Armor",
+			description = "%d%% less damage taken",
+			percent = true,
+			values = { 0.06, 0.12, 0.18, 0.24, 0.3 },
 		}),
 	}) :: { [string]: PassiveDef },
 })

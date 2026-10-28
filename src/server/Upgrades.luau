@@ -565,6 +565,9 @@ function Upgrades.start()
 	started = true
 
 	Characters.setStatsProvider(statsFor)
+	Characters.setDamageTakenProvider(function(player)
+		return BuildStats.modifiers(getState(player).build).damageTaken
+	end)
 	Progression.setPickupRadiusProvider(function(player)
 		return ProgressionConfig.PICKUP_RADIUS * BuildStats.modifiers(getState(player).build).pickupRadius
 	end)

@@ -27,6 +27,8 @@ type Sample = {
 	z: number,
 }
 
+type Look = "Normal" | "Flash" | "Chill"
+
 type Entry = {
 	kind: string,
 	poolKey: string, -- kind, or kind + "#Elite"
@@ -35,7 +37,8 @@ type Entry = {
 	samples: { Sample }, -- oldest first
 	yaw: number,
 	flashUntil: number, -- os.clock time
-	flashing: boolean,
+	chillUntil: number, -- os.clock time; slowed by Frost Nova
+	look: Look, -- the colors the model has now
 }
 
 local MAX_SAMPLES = 10
@@ -96,18 +99,24 @@ local function onSpawned(list: any)
 			samples = { { t = 0, x = info.x, z = info.z } },
 			yaw = 0,
 			flashUntil = 0,
-			flashing = false,
+			chillUntil = 0,
+			look = "Normal",
 		}
 	end
 end
 
 local FLASH_COLOR = Color3.new(1, 1, 1)
+local CHILL_COLOR = Color3.fromRGB(150, 215, 255)
+local CHILL_TINT = 0.55 -- how far a chilled enemy's colors blend toward CHILL_COLOR
 
-local function setFlash(entry: Entry, on: boolean)
-	entry.flashing = on
+local function setLook(entry: Entry, look: Look)
+	entry.look = look
 	local visual = entry.visual
 	for i, part in visual.parts do
-		part.Color = if on then FLASH_COLOR else visual.colors[i]
+		part.Color = if look == "Flash"
+			then FLASH_COLOR
+			elseif look == "Chill" then visual.colors[i]:Lerp(CHILL_COLOR, CHILL_TINT)
+			else visual.colors[i]
 	end
 end
 
@@ -119,8 +128,8 @@ local function onDespawned(ids: any)
 		local entry = entries[id]
 		if entry then
 			entries[id] = nil
-			if entry.flashing then
-				setFlash(entry, false) -- pooled models must go back in their normal colors
+			if entry.look ~= "Normal" then
+				setLook(entry, "Normal") -- pooled models must go back in their normal colors
 			end
 			release(entry.poolKey, entry.visual)
 		end
@@ -136,6 +145,25 @@ local function onHit(ids: any)
 		local entry = entries[id]
 		if entry then
 			entry.flashUntil = flashUntil
+		end
+	end
+end
+
+local function onEffects(list: any)
+	if typeof(list) ~= "table" then
+		return
+	end
+	for _, info in list do
+		if typeof(info) ~= "table" or info.kind ~= "Chill" or typeof(info.ids) ~= "table" then
+			continue
+		end
+		local duration = if typeof(info.duration) == "number" then info.duration else 0
+		local chillUntil = os.clock() + duration
+		for _, id in info.ids do
+			local entry = entries[id]
+			if entry then
+				entry.chillUntil = math.max(entry.chillUntil, chillUntil)
+			end
 		end
 	end
 end
@@ -203,9 +231,12 @@ local function render()
 
 	local clock = os.clock()
 	for _, entry in entries do
-		local shouldFlash = clock < entry.flashUntil
-		if shouldFlash ~= entry.flashing then
-			setFlash(entry, shouldFlash)
+		local look: Look = if clock < entry.flashUntil
+			then "Flash"
+			elseif clock < entry.chillUntil then "Chill"
+			else "Normal"
+		if look ~= entry.look then
+			setLook(entry, look)
 		end
 		local x, z, dirX, dirZ = samplePosition(entry, renderTime)
 		if entry.facesTarget and #playerXs > 0 then
@@ -239,8 +270,8 @@ end
 -- Drops every enemy (the player moved to another world).
 local function reset()
 	for id, entry in entries do
-		if entry.flashing then
-			setFlash(entry, false)
+		if entry.look ~= "Normal" then
+			setLook(entry, "Normal")
 		end
 		release(entry.poolKey, entry.visual)
 		entries[id] = nil
@@ -261,6 +292,7 @@ function EnemyRenderer.start()
 	Remotes.EnemyDespawned.OnClientEvent:Connect(onDespawned)
 	Remotes.EnemySnapshot.OnClientEvent:Connect(onSnapshot)
 	Remotes.EnemiesHit.OnClientEvent:Connect(onHit)
+	Remotes.WeaponEffects.OnClientEvent:Connect(onEffects)
 	RunService.RenderStepped:Connect(render)
 end
 
