@@ -6,14 +6,15 @@ A fantasy survivor-like roguelite for Roblox, played solo or in co-op with up to
 
 ![Gameplay](docs/media/gameplay.gif)
 
-**Status:** in active development. Milestones M0–M3 are done (solo loop, co-op, meta progression), and M4 (content and polish) is in progress. Full design: [`docs/design.md`](docs/design.md).
+**Status:** in active development. Milestones M0–M3 are done (solo loop, co-op, meta progression), and M4 (content and polish) is nearly done: the full weapon roster, the boss, sound, effects and the UI pass are in, with a collection log and phone performance testing left. Full design: [`docs/design.md`](docs/design.md).
 
 ## Features
 
 - **Run loop:** 3 stages of about 3 minutes each. Each stage ends in overtime, where a portal opens and the party has to stand in it to charge it while spawns ramp up. Stage 3 ends with an **Ogre boss** that has telegraphed attacks: shot rings, summons, and a charge down a marked lane. It enrages at low HP.
-- **Build crafting:** weapons (Spinning Blade, Volley Arrows, Fireball) and passives (Might, Haste, Swiftness, Reach, Vitality, Magnet), each with 5 levels. A maxed weapon plus its paired passive evolves into **Bladestorm**, **Arrow Storm** or **Meteor**.
+- **Build crafting:** 6 weapons (Spinning Blade, Volley Arrows, Fireball, Chain Lightning, Frost Nova, Holy Ground) and 9 passives (Might, Haste, Swiftness, Reach, Vitality, Magnet, Armor, Regen, Warding), each with 5 levels. A maxed weapon plus its paired passive evolves: **Bladestorm**, **Arrow Storm**, **Meteor**, **Thunderstorm**, **Blizzard** (freezes enemies solid) or **Sanctuary** (zones that heal the whole party). Warding's orbiting rings destroy enemy shots.
 - **Enemies:** goblins, bat swarms, skeleton archers that keep their distance and shoot, a Goblin Giant mini-boss, elite variants that drop chests, and breakable supply crates.
 - **Co-op for 1–4 players:** parties form on a lobby portal pad, and each party gets its own arena instance. XP is shared, and level-ups pause the whole party so everyone picks at once. A 15-second limit auto-picks for idle players. Players get downed instead of dying and can be revived by teammates. Difficulty scales with party size.
+- **Game feel:** licensed sound effects and music (lobby, run and boss tracks) with mute buttons and per-weapon volume sliders; hit sparks, death puffs and damage numbers; weapons that look like what they are (swords with swing trails, flaming fireballs, lightning that sparks where it strikes, frozen enemies encased in ice, Holy Ground as a rune circle cast up from the ground); a themed, mobile-first UI with build tiles, health bars and upgrade cards.
 - **Meta progression:** Shards are earned on every run, win or lose. You spend them at the Altar on 8 permanent upgrades or on unlocking heroes (Knight, Ranger, Pyromancer, each with its own starting weapon and passive). Saves use session-locked DataStores.
 
 ## Technical highlights
@@ -27,6 +28,7 @@ The game has to keep **100–200 enemies** alive at once and still run on phones
 - **Pausable game clock.** All gameplay timing reads a clock that subtracts time spent paused (`src/shared/GameClock.luau`). That covers stage timers, cooldowns, projectile flight and weapon orbits. Pausing for a co-op level-up freezes everything consistently on the server and every client.
 - **Per-match state objects.** Every run system is created with `Module.new(...)` per match, so several parties can play in separate arenas on one server.
 - **Batched, ordered networking.** Each frame's events for a match are collected and sent once per remote, in a fixed order, so a "spawned" event always arrives before its matching "despawned" event (`src/server/NetBatch.luau`).
+- **Effects that scale with the crowd.** Visuals are client-only and driven by events the client already gets. Particle bursts reuse one emitter per effect, moved and `Emit`ted in place; damage numbers come from a fixed pool and merge per enemy; each sound plays at most once per minimum interval, so 50 hits in a frame make one sound (`src/client/Particles.luau`, `HitEffects.luau`, `SoundPlayer.luau`). With every evolution running against ~180 enemies, Studio holds 60 fps on the client and 60 Hz on the server.
 - **Shared stat math.** One module turns a build into stats for both server hit logic and client visuals, so they never drift apart (`src/shared/BuildStats.luau`).
 - **Server-side Validation.** Every remote handler validates argument types and ranges and is rate-limited. Purchases check the price and spend inside a single atomic data update.
 - **Safe persistence.** `src/server/PlayerData.luau` handles session locking, retries with exponential backoff, autosave, and saving on `PlayerRemoving` and `BindToClose`.
@@ -46,7 +48,7 @@ docs/
 default.project.json                           Rojo project (how src/ maps onto the DataModel)
 ```
 
-All code is `--!strict` Luau (about 9,300 lines), formatted with StyLua and linted with Selene.
+All code is `--!strict` Luau (about 13,000 lines), formatted with StyLua and linted with Selene.
 
 ## Building and running
 
