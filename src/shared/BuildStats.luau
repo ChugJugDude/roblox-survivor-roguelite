@@ -132,6 +132,25 @@ function BuildStats.fireball(build: Build): Config.FireballStats?
 	}
 end
 
+-- The player's Chain Lightning after passives, or nil if they don't have it.
+function BuildStats.chainLightning(build: Build): Config.ChainLightningStats?
+	local level = build.weapons.ChainLightning
+	if not level then
+		return nil
+	end
+	local base: Config.ChainLightningStats = weaponBase("ChainLightning", level)
+	local modifiers = BuildStats.modifiers(build)
+	return {
+		cooldown = base.cooldown * modifiers.cooldown,
+		bolts = base.bolts,
+		chains = base.chains,
+		-- Reach lets bolts jump farther between enemies.
+		jumpRange = base.jumpRange * modifiers.area,
+		damage = base.damage * modifiers.damage,
+		range = base.range,
+	}
+end
+
 -- Reads a build from a Player's W_<weapon> / P_<passive> / B_<bonus> attributes (published by
 -- server/Upgrades).
 function BuildStats.fromAttributes(player: Player): Build

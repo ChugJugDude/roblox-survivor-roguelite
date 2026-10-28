@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local Characters = require(script.Parent.Parent.Characters)
 local EnemyService = require(script.Parent.Parent.EnemyService)
 local ProjectileService = require(script.Parent.Parent.ProjectileService)
+local ChainLightning = require(script.Parent.ChainLightning)
 local Fireball = require(script.Parent.Fireball)
 local SpinningBlade = require(script.Parent.SpinningBlade)
 local VolleyArrows = require(script.Parent.VolleyArrows)
@@ -23,6 +24,7 @@ function WeaponService.step(
 	SpinningBlade.step(enemies, now, targets)
 	VolleyArrows.step(enemies, projectiles, now, targets)
 	Fireball.step(enemies, projectiles, now, targets)
+	ChainLightning.step(enemies, now, targets)
 end
 
 function WeaponService.start()
@@ -31,6 +33,7 @@ function WeaponService.start()
 	Players.PlayerRemoving:Connect(function(player)
 		VolleyArrows.forget(player)
 		Fireball.forget(player)
+		ChainLightning.forget(player)
 	end)
 end
 

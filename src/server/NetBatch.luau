@@ -21,6 +21,7 @@ local ORDER: { RemoteEvent } = {
 	Remotes.ProjectilesSpawned,
 	Remotes.ProjectilesRemoved,
 	Remotes.Explosions,
+	Remotes.WeaponEffects,
 	Remotes.EnemyTelegraph,
 }
 

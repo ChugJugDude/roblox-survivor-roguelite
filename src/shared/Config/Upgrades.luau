@@ -36,6 +36,15 @@ export type FireballStats = {
 	radius: number, -- hit radius of the fireball itself
 }
 
+export type ChainLightningStats = {
+	cooldown: number,
+	bolts: number, -- bolts per cast, each starting on a different enemy
+	chains: number, -- enemies one bolt hits, jumping to the nearest one it hasn't hit yet
+	jumpRange: number, -- farthest a bolt jumps between enemies
+	damage: number, -- dealt to every enemy in the chain
+	range: number, -- only casts at enemies this close
+}
+
 -- A max-level weapon plus its paired passive (any level) unlocks the evolution, offered as a
 -- level-up choice. An evolved weapon is stored as level MAX_LEVEL + 1.
 export type EvolutionDef = {
@@ -88,6 +97,16 @@ local FIREBALL_LEVELS: { FireballStats } = {
 	{ cooldown = 2.2, count = 2, speed = 40, damage = 26, blastRadius = 6, range = 45, radius = 1 },
 	{ cooldown = 2.2, count = 2, speed = 40, damage = 34, blastRadius = 7, range = 45, radius = 1 },
 	{ cooldown = 1.8, count = 3, speed = 40, damage = 34, blastRadius = 7, range = 45, radius = 1 },
+}
+
+-- Same one-row-per-level layout.
+-- stylua: ignore
+local CHAIN_LIGHTNING_LEVELS: { ChainLightningStats } = {
+	{ cooldown = 1.6, bolts = 1, chains = 3, jumpRange = 12, damage = 18, range = 40 },
+	{ cooldown = 1.6, bolts = 1, chains = 4, jumpRange = 12, damage = 18, range = 40 },
+	{ cooldown = 1.6, bolts = 1, chains = 4, jumpRange = 13, damage = 24, range = 40 },
+	{ cooldown = 1.6, bolts = 2, chains = 5, jumpRange = 13, damage = 24, range = 40 },
+	{ cooldown = 1.3, bolts = 2, chains = 6, jumpRange = 14, damage = 28, range = 40 },
 }
 
 return table.freeze({
@@ -195,6 +214,30 @@ return table.freeze({
 					range = 50,
 					radius = 1.5,
 				}) :: FireballStats,
+			}),
+		}),
+		ChainLightning = table.freeze({
+			name = "Chain Lightning",
+			descriptions = {
+				"Lightning strikes the nearest enemy and jumps to others.",
+				"Jumps to 1 more enemy.",
+				"+33% damage. Jumps farther.",
+				"+1 bolt. Jumps to 1 more enemy.",
+				"+17% damage. Jumps to 1 more. Casts faster.",
+			},
+			levels = CHAIN_LIGHTNING_LEVELS,
+			evolution = table.freeze({
+				name = "Thunderstorm",
+				passive = "Haste",
+				description = "Four rapid bolts that arc through whole crowds.",
+				stats = table.freeze({
+					cooldown = 0.9,
+					bolts = 4,
+					chains = 8,
+					jumpRange = 16,
+					damage = 34,
+					range = 45,
+				}) :: ChainLightningStats,
 			}),
 		}),
 	}) :: { [string]: WeaponDef },

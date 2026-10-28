@@ -87,6 +87,10 @@ return table.freeze({
 	-- Server -> client. Payload: { EntityNet.ExplosionInfo }, batched per frame. Visual only.
 	Explosions = remote("RemoteEvent", "Explosions") :: RemoteEvent,
 
+	-- Server -> client. Payload: { EntityNet.EffectInfo }, batched per frame. Visual only: lightning
+	-- bolts and other weapon effects that aren't projectiles.
+	WeaponEffects = remote("RemoteEvent", "WeaponEffects") :: RemoteEvent,
+
 	-- Server -> client. Payload: { EntityNet.TelegraphInfo }, batched per frame. Visual only: the
 	-- ground warning before a boss charge.
 	EnemyTelegraph = remote("RemoteEvent", "EnemyTelegraph") :: RemoteEvent,
