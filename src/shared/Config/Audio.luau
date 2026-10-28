@@ -10,6 +10,9 @@ export type SoundDef = {
 	minInterval: number,
 	pitch: number?, -- default 1
 	pitchJitter: number?, -- random +/- this much pitch per play, so repeats don't sound identical
+	-- Fades the sound out after this many seconds, cutting off a long tail (e.g. explosion reverb
+	-- that would pile up when many play close together).
+	maxDuration: number?,
 }
 
 export type MusicDef = {
@@ -17,13 +20,21 @@ export type MusicDef = {
 	volume: number,
 }
 
-local function sound(id: number, volume: number, minInterval: number, pitch: number?, pitchJitter: number?): SoundDef
+local function sound(
+	id: number,
+	volume: number,
+	minInterval: number,
+	pitch: number?,
+	pitchJitter: number?,
+	maxDuration: number?
+): SoundDef
 	return table.freeze({
 		id = id,
 		volume = volume,
 		minInterval = minInterval,
 		pitch = pitch,
 		pitchJitter = pitchJitter,
+		maxDuration = maxDuration,
 	})
 end
 
@@ -34,8 +45,9 @@ return table.freeze({
 		Kill = sound(109359226723492, 0.3, 0.05, 1, 0.15),
 		Arrow = sound(123796710194563, 0.25, 0.1, 1.4, 0.1),
 		Fireball = sound(126941244422484, 0.35, 0.15, 1, 0.08),
-		Explosion = sound(126462172690929, 0.35, 0.12, 1, 0.1),
-		Bomb = sound(138533090376585, 0.6, 0.3),
+		-- Meteor drops several at once, so it's quieter, spaced out, and cut short.
+		Explosion = sound(126462172690929, 0.2, 0.25, 1, 0.1, 0.7),
+		Bomb = sound(138533090376585, 0.5, 0.3, 1, 0, 1.5),
 		Frost = sound(9125611419, 0.45, 0.2, 1.2, 0.05),
 		Lightning = sound(9114277757, 0.3, 0.15, 1, 0.1),
 		Holy = sound(9126073001, 0.2, 0.3, 0.8, 0.05),

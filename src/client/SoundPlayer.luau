@@ -7,15 +7,19 @@
 
 local ContentProvider = game:GetService("ContentProvider")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config.Audio)
 
 -- Copies of each sound that can play at once.
 local POOL_SIZE = 3
+-- Seconds to fade a sound out when it reaches its maxDuration.
+local CUT_FADE_TIME = 0.15
 
 type Pool = {
 	def: Config.SoundDef,
 	sounds: { Sound },
+	plays: { number }, -- per copy, counts plays so a delayed cut-off skips a copy that restarted
 	next: number, -- which copy to use next (round robin)
 	lastPlayed: number, -- os.clock time
 }
@@ -53,12 +57,25 @@ function SoundPlayer.play(name: string, pitch: number?)
 	end
 	pool.lastPlayed = now
 
-	local sound = pool.sounds[pool.next]
-	pool.next = pool.next % #pool.sounds + 1
+	local index = pool.next
+	local sound = pool.sounds[index]
+	pool.next = index % #pool.sounds + 1
 	local jitter = pool.def.pitchJitter or 0
 	sound.PlaybackSpeed = (pool.def.pitch or 1) * (pitch or 1) * (1 + random:NextNumber(-jitter, jitter))
+	sound.Volume = pool.def.volume
 	sound.TimePosition = 0
 	sound:Play()
+
+	local maxDuration = pool.def.maxDuration
+	if maxDuration then
+		pool.plays[index] += 1
+		local play = pool.plays[index]
+		task.delay(maxDuration, function()
+			if pool.plays[index] == play and sound.IsPlaying then
+				TweenService:Create(sound, TweenInfo.new(CUT_FADE_TIME), { Volume = 0 }):Play()
+			end
+		end)
+	end
 end
 
 -- The SoundGroup a sound should join (Music uses this for its tracks).
@@ -97,7 +114,8 @@ function SoundPlayer.start()
 			table.insert(sounds, sound)
 		end
 		table.insert(toPreload, sounds[1])
-		pools[name] = { def = def, sounds = sounds, next = 1, lastPlayed = -math.huge }
+		pools[name] =
+			{ def = def, sounds = sounds, plays = table.create(POOL_SIZE, 0), next = 1, lastPlayed = -math.huge }
 	end
 
 	task.spawn(function()
