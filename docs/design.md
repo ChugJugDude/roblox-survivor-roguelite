@@ -64,13 +64,20 @@ Heroes differ in starting kit and passive only. All upgrades are available to ev
 Three kinds, all offered through the level-up choice:
 
 - **Weapons (6):** max 4 equipped per run. Each has 5 levels.
-  - Spinning Blade, Volley Arrows, Fireball, Chain Lightning, Frost Nova, Holy Ground (damage zone).
-- **Passives (~12):** max 4 per run. Each has 5 levels.
-  - Examples: Might (+damage), Haste (−cooldown), Reach (+area), Swiftness (+move speed), Vitality (+max HP), Magnet (+pickup radius), Multishot (+projectiles), Duration, Armor, Regen, Luck, Greed (+Shards).
+  - Spinning Blade, Volley Arrows, Fireball.
+  - **Chain Lightning:** strikes the nearest enemy, then jumps to the nearest enemy it hasn't hit (more jumps and bolts with levels).
+  - **Frost Nova:** when an enemy is close, a burst around the player damages and **slows** everything in range (bosses take half the slow). Slowed enemies are tinted icy.
+  - **Holy Ground:** blesses the ground at the player's feet (plus extra zones nearby at higher levels); enemies walking in burn once per tick until it fades.
+- **Passives (9 in v1):** max 4 per run. Each has 5 levels.
+  - Might (+damage), Haste (−cooldown), Reach (+area), Swiftness (+move speed), Vitality (+max HP), Magnet (+pickup radius), **Armor** (6–30% less damage taken), **Regen** (1–5 HP per second), **Warding** (1–5 orbiting rings that destroy enemy shots they touch and nick enemies).
+  - Later ideas: Multishot, Duration, Luck. (Greed is an Altar upgrade.)
 - **Evolutions (2–4 in v1):** once a weapon is max level and you **own its paired passive (any level)**, the evolution appears as a level-up choice (Survivor.io style), turning the weapon into an upgraded version. This is the main build-crafting payoff.
   - Spinning Blade + Might → Bladestorm
   - Volley Arrows + Swiftness → Arrow Storm (fans at up to 3 enemies in different directions, so it answers threats from all sides)
   - Fireball + Reach → Meteor
+  - Chain Lightning + Haste → Thunderstorm (four bolts at once)
+  - Frost Nova + Armor → Blizzard (huge radius, 80% slow)
+  - Holy Ground + Regen → Sanctuary (three wide zones that also heal any player standing in them, so it helps the whole party)
 - **M1 set (9):** Spinning Blade, Volley Arrows, Fireball; Might, Haste, Swiftness, Reach, Vitality, Magnet; plus the 3 evolutions above.
 
 Design rules:
@@ -119,7 +126,7 @@ Skeleton archers face the player they're aiming at.
 Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty tiers, cosmetic unlocks from achievements.
 
 **Backlog ideas (from playtests):**
-- **Warding rings:** a low-damage orbiting item whose rings delete enemy projectiles they touch (like Survivor.io), so ranged enemies can't whittle down a player who's charging the portal.
+- ~~Warding rings~~: built in M4 as the **Warding** passive (§6).
 
 ## 10. Structure and flow
 
