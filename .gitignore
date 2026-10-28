@@ -26,3 +26,6 @@ Thumbs.db
 desktop.ini
 .DS_Store
 .vscode/
+
+# Raw screen recordings (too big for the repo; GIFs are made from them)
+docs/media/*.mp4

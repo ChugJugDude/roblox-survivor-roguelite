@@ -128,6 +128,7 @@ Skeleton archers face the player they're aiming at.
 Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty tiers, cosmetic unlocks from achievements.
 
 **Backlog ideas (from playtests):**
+- **Chest polish:** chests are still a placeholder box with a tall yellow beam that pulls the eye in busy fights. Give them a proper chest model, a softer beacon, and an opening burst (and maybe a short "rarity" reveal before the TREASURE! cards).
 - **Pause menu with the build:** a pause button (and Escape / gamepad) that shows the player's weapons and passives with levels and evolution pairs; hover or tap one to read what it does (reuse the card text and icons). Solo pauses the game; in co-op it can't freeze the shared world, so it likely opens the build view without pausing.
 - ~~Warding rings~~: built in M4 as the **Warding** passive (§6).
 
