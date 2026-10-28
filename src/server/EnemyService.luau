@@ -64,7 +64,8 @@ export type State = {
 	nextId: number,
 	hash: SpatialHash.SpatialHash,
 	killedListeners: { (Enemy) -> () },
-	flashed: { [Enemy]: boolean }, -- enemies already sent a hit flash this frame
+	-- Damage dealt to each enemy since the last flushHits, sent to clients once per frame.
+	hitDamage: { [Enemy]: number },
 	boss: Enemy?,
 }
 
@@ -149,7 +150,7 @@ function EnemyService.new(arena: Arena.Arena, net: NetBatch.Batch): State
 		nextId = 0,
 		hash = SpatialHash.new(Config.SPATIAL_CELL_SIZE),
 		killedListeners = {},
-		flashed = {},
+		hitDamage = {},
 		boss = nil,
 	}
 	updateCounters(state)
@@ -229,11 +230,10 @@ function EnemyService.damage(state: State, enemy: Enemy, amount: number): boolea
 	if state.enemies[enemy.id] ~= enemy then
 		return false
 	end
+	-- Count only the health it actually had, so an overkill (or a dev killall's math.huge) shows the
+	-- real number.
+	state.hitDamage[enemy] = (state.hitDamage[enemy] or 0) + math.min(amount, math.max(enemy.health, 0))
 	enemy.health -= amount
-	if not state.flashed[enemy] then
-		state.flashed[enemy] = true
-		NetBatch.push(state.net, Remotes.EnemiesHit, enemy.id)
-	end
 	if enemy == state.boss then
 		publishBoss(state)
 	end
@@ -284,6 +284,16 @@ end
 -- Whether the enemy is frozen solid (a full slow): it doesn't move, attack, or shoot.
 function EnemyService.isFrozen(enemy: Enemy, now: number): boolean
 	return enemy.slow >= 1 and now < enemy.slowUntil
+end
+
+-- Sends this frame's hits to clients (Remotes.EnemiesHit: id, damage pairs) and starts counting
+-- again. Call once per frame, before the match's NetBatch flush.
+function EnemyService.flushHits(state: State)
+	for enemy, amount in state.hitDamage do
+		NetBatch.push(state.net, Remotes.EnemiesHit, enemy.id)
+		NetBatch.push(state.net, Remotes.EnemiesHit, math.round(amount))
+	end
+	table.clear(state.hitDamage)
 end
 
 -- Removes every enemy without counting kills.
@@ -392,8 +402,6 @@ end
 function EnemyService.move(state: State, now: number, dt: number, targets: { Target })
 	local enemies = state.enemies
 	local separation = math.min(0.5, Config.SEPARATION_STIFFNESS * dt)
-	-- A new frame: enemies can flash again.
-	table.clear(state.flashed)
 
 	for _, enemy in enemies do
 		local def = enemy.def

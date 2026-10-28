@@ -314,6 +314,7 @@ function Match.step(match: Match, dt: number)
 	Progression.step(match.progression, targets)
 	Pickups.step(match.pickups, targets)
 	EnemyReplicator.step(match.replicator, now, match.members)
+	EnemyService.flushHits(match.enemies)
 	NetBatch.flush(match.net, match.members)
 end
 

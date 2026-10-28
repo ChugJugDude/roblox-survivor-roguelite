@@ -1,8 +1,9 @@
 --!strict
 -- Collects one match's server -> client events during a frame and sends each remote's batch once,
 -- as a list, to that match's members. Every batch sends remotes in the same fixed order, so for
--- example an enemy's "spawned" event always arrives before its "despawned" event from the same
--- frame, and a gem's "spawned" before its "collected".
+-- example an enemy's "spawned" event always arrives before its "hit" and "despawned" events from the
+-- same frame (so a killing hit still finds the enemy on the client), and a gem's "spawned" before
+-- its "collected".
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,8 +15,8 @@ export type Batch = {
 
 local ORDER: { RemoteEvent } = {
 	Remotes.EnemySpawned,
-	Remotes.EnemyDespawned,
 	Remotes.EnemiesHit,
+	Remotes.EnemyDespawned,
 	Remotes.GemsSpawned,
 	Remotes.GemsCollected,
 	Remotes.ProjectilesSpawned,

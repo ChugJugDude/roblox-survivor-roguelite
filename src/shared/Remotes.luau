@@ -72,8 +72,9 @@ return table.freeze({
 	-- player who picked the gem up (so it can fly to them), or 0 if it was just removed.
 	GemsCollected = remote("RemoteEvent", "GemsCollected") :: RemoteEvent,
 
-	-- Server -> client. Payload: { number } of enemy ids that took damage this frame. Visual only
-	-- (hit flash).
+	-- Server -> client. Payload: { number } of pairs, flattened: enemy id, then the damage it took
+	-- this frame (rounded). Visual only (hit flash, damage numbers). Arrives before the frame's
+	-- EnemyDespawned, so a killing hit can still find the enemy.
 	EnemiesHit = remote("RemoteEvent", "EnemiesHit") :: RemoteEvent,
 
 	-- Server -> client. Payload: { EntityNet.ProjectileInfo }, batched per frame. Projectiles fly in

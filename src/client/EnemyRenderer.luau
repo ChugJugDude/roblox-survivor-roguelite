@@ -32,6 +32,9 @@ type Look = "Normal" | "Flash" | "Chill" | "Frozen"
 type Entry = {
 	kind: string,
 	poolKey: string, -- kind, or kind + "#Elite"
+	elite: boolean,
+	x: number, -- where it was last drawn
+	z: number,
 	facesTarget: boolean, -- ranged enemies aim at the nearest player
 	visual: EnemyModels.Visual,
 	samples: { Sample }, -- oldest first
@@ -57,7 +60,27 @@ local moveCFrames: { CFrame } = {}
 local playerXs: { number } = {}
 local playerZs: { number } = {}
 
+-- Called when an enemy dies or is removed (not when the whole world resets), with where it was
+-- last drawn. HitEffects uses this for death puffs.
+local removedListeners: { (id: number, position: Vector3, kind: string, elite: boolean) -> () } = {}
+
 local EnemyRenderer = {}
+
+-- Where an enemy is drawn right now (on the floor), or nil if it isn't known.
+function EnemyRenderer.getPosition(id: number): Vector3?
+	local entry = entries[id]
+	return if entry then Vector3.new(entry.x, GROUND_Y, entry.z) else nil
+end
+
+-- The enemy's kind and whether it's an elite, or nil if it isn't known.
+function EnemyRenderer.getKind(id: number): (string?, boolean)
+	local entry = entries[id]
+	return if entry then entry.kind else nil, if entry then entry.elite else false
+end
+
+function EnemyRenderer.onRemoved(listener: (id: number, position: Vector3, kind: string, elite: boolean) -> ())
+	table.insert(removedListeners, listener)
+end
 
 local function acquire(poolKey: string, kind: string, elite: boolean): EnemyModels.Visual
 	local pool = pools[poolKey]
@@ -93,6 +116,9 @@ local function onSpawned(list: any)
 		entries[info.id] = {
 			kind = info.kind,
 			poolKey = poolKey,
+			elite = elite,
+			x = info.x,
+			z = info.z,
 			facesTarget = def ~= nil and def.behavior == "ranged",
 			visual = acquire(poolKey, info.kind, elite),
 			-- Time 0 counts as older than any snapshot, so the enemy shows at its spawn point until
@@ -135,6 +161,10 @@ local function onDespawned(ids: any)
 			if entry.look ~= "Normal" then
 				setLook(entry, "Normal") -- pooled models must go back in their normal colors
 			end
+			local position = Vector3.new(entry.x, GROUND_Y, entry.z)
+			for _, listener in removedListeners do
+				listener(id, position, entry.kind, entry.elite)
+			end
 			release(entry.poolKey, entry.visual)
 		end
 	end
@@ -145,8 +175,9 @@ local function onHit(ids: any)
 		return
 	end
 	local flashUntil = os.clock() + Config.HIT_FLASH_TIME
-	for _, id in ids do
-		local entry = entries[id]
+	-- Pairs of id, damage.
+	for index = 1, #ids - 1, 2 do
+		local entry = entries[ids[index]]
 		if entry then
 			entry.flashUntil = flashUntil
 		end
@@ -247,6 +278,7 @@ local function render()
 			setLook(entry, look)
 		end
 		local x, z, dirX, dirZ = samplePosition(entry, renderTime)
+		entry.x, entry.z = x, z
 		if entry.facesTarget and #playerXs > 0 then
 			-- Aim at the nearest player.
 			local bestDistSq = math.huge
