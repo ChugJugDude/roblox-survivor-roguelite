@@ -87,6 +87,7 @@ export type EvolutionDef = {
 
 export type WeaponDef = {
 	name: string,
+	icon: string, -- shown on cards and build tiles (an emoji until there's art)
 	descriptions: { string }, -- what each level adds, shown on the card
 	levels: { any }, -- full stats per level; the type depends on the weapon
 	evolution: EvolutionDef,
@@ -94,6 +95,7 @@ export type WeaponDef = {
 
 export type PassiveDef = {
 	name: string,
+	icon: string,
 	-- Shown on the card with this level's total, e.g. "+40% weapon damage".
 	description: string,
 	percent: boolean, -- show values as percentages
@@ -178,6 +180,7 @@ return table.freeze({
 	RESUME_GRACE = 1.5,
 	-- The filler option when there aren't enough upgrades left: heal this fraction of max health.
 	HEAL_FRACTION = 0.3,
+	HEAL_ICON = "💖",
 	-- (Starting weapons come from the hero: Config.Meta.HEROES.)
 
 	-- Everything about Warding rings except their count, which is the passive's value.
@@ -201,6 +204,7 @@ return table.freeze({
 	WEAPONS = table.freeze({
 		SpinningBlade = table.freeze({
 			name = "Spinning Blade",
+			icon = "🗡️",
 			descriptions = {
 				"Blades orbit you, cutting through enemies.",
 				"+1 blade.",
@@ -226,6 +230,7 @@ return table.freeze({
 		}),
 		VolleyArrows = table.freeze({
 			name = "Volley Arrows",
+			icon = "🏹",
 			descriptions = {
 				"Fires arrows at the nearest enemy.",
 				"+1 arrow.",
@@ -253,6 +258,7 @@ return table.freeze({
 		}),
 		Fireball = table.freeze({
 			name = "Fireball",
+			icon = "🔥",
 			descriptions = {
 				"Hurls a fireball that explodes on impact.",
 				"+30% damage. Bigger blast.",
@@ -278,6 +284,7 @@ return table.freeze({
 		}),
 		ChainLightning = table.freeze({
 			name = "Chain Lightning",
+			icon = "⚡",
 			descriptions = {
 				"Lightning strikes the nearest enemy and jumps to others.",
 				"Jumps to 1 more enemy.",
@@ -302,6 +309,7 @@ return table.freeze({
 		}),
 		FrostNova = table.freeze({
 			name = "Frost Nova",
+			icon = "❄️",
 			descriptions = {
 				"A freezing burst around you that slows enemies.",
 				"+29% damage. Bigger burst.",
@@ -325,6 +333,7 @@ return table.freeze({
 		}),
 		HolyGround = table.freeze({
 			name = "Holy Ground",
+			icon = "✨",
 			descriptions = {
 				"Blesses the ground at your feet, burning enemies that walk in.",
 				"+25% damage. Bigger zone.",
@@ -354,54 +363,63 @@ return table.freeze({
 	PASSIVES = table.freeze({
 		Might = table.freeze({
 			name = "Might",
+			icon = "💪",
 			description = "+%d%% weapon damage",
 			percent = true,
 			values = { 0.2, 0.4, 0.6, 0.8, 1 },
 		}),
 		Haste = table.freeze({
 			name = "Haste",
+			icon = "⏱️",
 			description = "%d%% shorter cooldowns, faster blades",
 			percent = true,
 			values = { 0.08, 0.16, 0.24, 0.32, 0.4 },
 		}),
 		Swiftness = table.freeze({
 			name = "Swiftness",
+			icon = "👟",
 			description = "+%d%% move speed",
 			percent = true,
 			values = { 0.08, 0.16, 0.24, 0.32, 0.4 },
 		}),
 		Reach = table.freeze({
 			name = "Reach",
+			icon = "🌀",
 			description = "+%d%% weapon area",
 			percent = true,
 			values = { 0.15, 0.3, 0.45, 0.6, 0.75 },
 		}),
 		Vitality = table.freeze({
 			name = "Vitality",
+			icon = "❤️",
 			description = "+%d max health",
 			percent = false,
 			values = { 20, 40, 60, 80, 100 },
 		}),
 		Magnet = table.freeze({
 			name = "Magnet",
+			icon = "🧲",
 			description = "+%d%% pickup range",
 			percent = true,
 			values = { 0.4, 0.8, 1.2, 1.6, 2 },
 		}),
 		Armor = table.freeze({
 			name = "Armor",
+			icon = "🛡️",
 			description = "%d%% less damage taken",
 			percent = true,
 			values = { 0.06, 0.12, 0.18, 0.24, 0.3 },
 		}),
 		Regen = table.freeze({
 			name = "Regen",
+			icon = "💚",
 			description = "Heal %d health per second",
 			percent = false,
 			values = { 1, 2, 3, 4, 5 },
 		}),
 		Warding = table.freeze({
 			name = "Warding",
+			icon = "💠",
 			description = "Orbiting rings that destroy enemy shots: %d",
 			percent = false,
 			values = { 1, 2, 3, 4, 5 },
