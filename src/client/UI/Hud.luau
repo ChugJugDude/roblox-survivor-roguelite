@@ -1,7 +1,7 @@
 --!strict
--- The in-run HUD: the party XP bar and level, a stage/timer/kills panel, portal-charge and boss
--- bars, a center banner for the countdown and stage transitions, and the local player's build as
--- icon tiles. Everything is read from the Arena's attributes (see server/Match.luau) and the
+-- The in-run HUD: the party XP bar and level, the local player's health, a stage/timer/kills
+-- panel with the boss bar under it, a portal-charge objective on the right, a center banner for the
+-- countdown and stage transitions, and the local player's build as icon tiles. Everything is read from the Arena's attributes (see server/Match.luau) and the
 -- player's W_ / P_ attributes.
 
 local Players = game:GetService("Players")
@@ -17,15 +17,19 @@ local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
 local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 
 local COLORS = Theme.COLORS
--- The stage panel, then the portal and boss bars stacked under it.
+-- The stage panel, with the boss bar under it.
 local TOP_PANEL_Y = 24
 local TOP_PANEL_HEIGHT = 80
-local BARS_TOP = TOP_PANEL_Y + TOP_PANEL_HEIGHT + 8
-local BAR_SPACING = 50
--- Build tiles, top left (the bottom left is the mobile thumbstick).
+local BOSS_BAR_Y = TOP_PANEL_Y + TOP_PANEL_HEIGHT + 8
+-- Health, then the build tiles, top left (the bottom left is the mobile thumbstick).
+local HEALTH_Y = 24
+local HEALTH_WIDTH = 190
 local TILE_SIZE = 40
 local TILE_GAP = 4
 local TILES_TOP = 26
+-- The objective tracker, top right under the audio buttons.
+local OBJECTIVE_Y = 68
+local OBJECTIVE_WIDTH = 220
 
 local Hud = {}
 
@@ -150,7 +154,7 @@ local function captionedBar(gui: Instance, name: string, width: number, color: C
 	local frame = Theme.panel({
 		Name = name,
 		Size = UDim2.fromOffset(width, 42),
-		Position = UDim2.new(0.5, 0, 0, BARS_TOP),
+		Position = UDim2.new(0.5, 0, 0, BOSS_BAR_Y),
 		AnchorPoint = Vector2.new(0.5, 0),
 		Visible = false,
 		Parent = gui,
@@ -228,8 +232,53 @@ function Hud.start()
 		Parent = top,
 	})
 
-	local portal, portalLabel, portalFill = captionedBar(gui, "Portal", 280, COLORS.portal)
 	local boss, bossLabel, bossFill = captionedBar(gui, "Boss", 380, COLORS.boss)
+
+	-- The local player's health, right under the XP bar next to the level badge. (The bar under the
+	-- character gets lost in a crowd.)
+	local health = Theme.bar(gui, UDim2.fromOffset(HEALTH_WIDTH, 16), UDim2.fromOffset(50, HEALTH_Y), COLORS.health)
+	health.back.Name = "Health"
+	local healthLabel = Theme.label({
+		Name = "Amount",
+		Size = UDim2.fromScale(1, 1),
+		Font = Theme.FONTS.heading,
+		TextSize = 12,
+		TextStrokeTransparency = 0.3,
+		ZIndex = 2,
+		Parent = health.back,
+	})
+
+	-- Objectives (charging the portal) sit on the right, like a quest tracker, so the top middle
+	-- doesn't stack into a list.
+	local objective = Theme.panel({
+		Name = "Objective",
+		Size = UDim2.fromOffset(OBJECTIVE_WIDTH, 62),
+		Position = UDim2.new(1, -12, 0, OBJECTIVE_Y),
+		AnchorPoint = Vector2.new(1, 0),
+		Visible = false,
+		Parent = gui,
+	})
+	Theme.label({
+		Name = "Header",
+		Size = UDim2.new(1, -16, 0, 14),
+		Position = UDim2.fromOffset(8, 4),
+		Font = Theme.FONTS.heading,
+		TextSize = 11,
+		TextColor3 = COLORS.dim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "OBJECTIVE",
+		Parent = objective,
+	})
+	local portalLabel = Theme.label({
+		Name = "Task",
+		Size = UDim2.new(1, -16, 0, 18),
+		Position = UDim2.fromOffset(8, 18),
+		TextSize = 15,
+		TextColor3 = COLORS.portal,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = objective,
+	})
+	local portalFill = Theme.bar(objective, UDim2.new(1, -16, 0, 10), UDim2.fromOffset(8, 42), COLORS.portal).fill
 
 	local banner = Theme.label({
 		Name = "Banner",
@@ -245,12 +294,12 @@ function Hud.start()
 	-- The local player's build: weapons on the first row, passives on the second.
 	local build = Create("Frame", {
 		Name = "Build",
-		Size = UDim2.fromOffset((TILE_SIZE + TILE_GAP) * 4 + 10, TILE_SIZE * 2 + TILE_GAP + TILES_TOP),
+		Size = UDim2.fromOffset((TILE_SIZE + TILE_GAP) * 4 + 10, TILE_SIZE * 2 + TILE_GAP + TILES_TOP + 20),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
-	local weaponTiles = tileRow(build, "Weapons", TILES_TOP + 14)
-	local passiveTiles = tileRow(build, "Passives", TILES_TOP + 14 + TILE_SIZE + TILE_GAP)
+	local weaponTiles = tileRow(build, "Weapons", TILES_TOP + 22)
+	local passiveTiles = tileRow(build, "Passives", TILES_TOP + 22 + TILE_SIZE + TILE_GAP)
 	local weaponIds = sortedIds(UpgradesConfig.WEAPONS)
 	local passiveIds = sortedIds(UpgradesConfig.PASSIVES)
 	local localPlayer = Players.LocalPlayer
@@ -305,6 +354,16 @@ function Hud.start()
 		set(build, "Visible", inRun)
 		set(xpBar.back, "Visible", inRun)
 		set(levelBadge, "Visible", inRun)
+		set(health.back, "Visible", inRun)
+		local character = localPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			local maxHealth = math.max(humanoid.MaxHealth, 1)
+			local fraction = math.clamp(humanoid.Health / maxHealth, 0, 1)
+			set(health.fill, "Size", UDim2.fromScale(fraction, 1))
+			set(health.fill, "BackgroundColor3", if fraction < 0.3 then COLORS.lowHealth else COLORS.health)
+			set(healthLabel, "Text", `{math.ceil(humanoid.Health)} / {math.ceil(maxHealth)}`)
+		end
 		local toNext = arena:GetAttribute("XPToNext") or 1
 		set(xpBar.fill, "Size", UDim2.fromScale(math.clamp((arena:GetAttribute("PartyXP") or 0) / toNext, 0, 1), 1))
 		set(levelLabel, "Text", tostring(arena:GetAttribute("PartyLevel") or 1))
@@ -334,21 +393,11 @@ function Hud.start()
 			set(bossFill, "Size", UDim2.fromScale(math.clamp(arena:GetAttribute("BossHealth") or 0, 0, 1), 1))
 		end
 
-		set(portal, "Visible", phase == "Overtime")
+		set(objective, "Visible", phase == "Overtime")
 		if phase == "Overtime" then
 			local charge = arena:GetAttribute("PortalCharge") or 0
-			set(portalLabel, "Text", `CHARGE THE PORTAL  {math.floor(charge * 100)}%`)
+			set(portalLabel, "Text", `Charge the portal  {math.floor(charge * 100)}%`)
 			set(portalFill, "Size", UDim2.fromScale(math.clamp(charge, 0, 1), 1))
-		end
-
-		-- Stack whichever bars are showing right under the stage panel, so they stay near the top on
-		-- short screens instead of covering the player.
-		local barY = BARS_TOP
-		for _, bar in { portal, boss } do
-			if bar.Visible then
-				set(bar, "Position", UDim2.new(0.5, 0, 0, barY))
-				barY += BAR_SPACING
-			end
 		end
 
 		if phase == "Countdown" then

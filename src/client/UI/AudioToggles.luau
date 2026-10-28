@@ -1,9 +1,11 @@
 --!strict
--- Two small buttons at the top right that mute and unmute music and sound effects, in the lobby
--- and in runs. The choice lasts for this session.
+-- Small buttons at the top right that mute and unmute music and sound effects, plus a gear that
+-- opens the volume sliders (UI/AudioSettings), in the lobby and in runs. Settings last for this
+-- session.
 
 local Players = game:GetService("Players")
 
+local AudioSettings = require(script.Parent.AudioSettings)
 local Create = require(script.Parent.Create)
 local SoundPlayer = require(script.Parent.Parent.SoundPlayer)
 
@@ -56,7 +58,7 @@ function AudioToggles.start()
 	})
 	local row = Create("Frame", {
 		Name = "Row",
-		Size = UDim2.fromOffset(BUTTON_SIZE * 2 + 8, BUTTON_SIZE),
+		Size = UDim2.fromOffset(BUTTON_SIZE * 3 + 16, BUTTON_SIZE),
 		Position = UDim2.new(1, -12, 0, 22),
 		AnchorPoint = Vector2.new(1, 0),
 		BackgroundTransparency = 1,
@@ -71,6 +73,22 @@ function AudioToggles.start()
 	})
 	toggle(row, 1, "♪", "Music")
 	toggle(row, 2, "🔊", "SFX")
+
+	local gear = Create("TextButton", {
+		Name = "Settings",
+		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE),
+		LayoutOrder = 3,
+		BackgroundColor3 = ON_COLOR,
+		BackgroundTransparency = 0.2,
+		Font = Enum.Font.GothamBold,
+		TextSize = 18,
+		TextColor3 = Color3.new(1, 1, 1),
+		Text = "⚙",
+		Parent = row,
+	})
+	Create("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = gear })
+	gear.Activated:Connect(AudioSettings.toggle)
+	AudioSettings.start()
 end
 
 return AudioToggles

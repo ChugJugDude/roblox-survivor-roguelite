@@ -110,7 +110,7 @@ Skeleton archers face the player they're aiming at.
 - Parties of 1–4. Solo is the same mode with a party of 1.
 - **XP is shared** across the party, but each player gets their own level-up choice.
 - **Level-ups pause the whole party.** XP is shared, so everyone levels at the same moment: the game pauses and every player picks at once, resuming when all have chosen (with 2+ players, a 15-second limit picks at random for anyone idle). After a pause, the next one waits at least 5 seconds of play; level-ups in between come up together in that next pause. Everyone gets a brief invulnerability grace on resume.
-- **Chest picks don't pause** (they belong to one player): the choice opens right away with ~2 seconds of invulnerability.
+- **Chest picks pause too** (changed after playtesting: an unpaused pick got players hit while reading cards): the pause starts right away, without the cooldown, and in co-op the others wait as with level-ups.
 - **Downed, not dead:** a hit that would kill instead downs the player: they can't move, enemies ignore them, and their weapons stop. A teammate standing within ~5 studs for 3 seconds revives them at 50% HP with a moment of invulnerability (progress holds if the teammate steps away). If the whole party is down, the run ends. Solo is a party of 1, so going down ends the run.
 - **Scaling with party size** (fixed at run start), per player past the first: enemy HP +50%, spawn rate +35%, max enemies alive +35% (still capped). Per-player Shard rewards stay the same, so co-op is never punished.
 - Each player's build is their own; synergies between players (e.g., one slows, one does AoE) are a stretch goal, not v1.

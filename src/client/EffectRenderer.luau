@@ -1,9 +1,10 @@
 --!strict
 -- Draws visual-only weapon effects sent through Remotes.WeaponEffects: Chain Lightning bolts (with
--- sparks and a flash of light where they strike) and Holy Ground zones (a translucent disc with a
--- glowing rim, rising motes of light, and a soft light; Sanctuary zones also sparkle over players
--- they heal). Damage is already dealt on the server by the time these arrive. (Frost Nova's Chill
--- effect is drawn by EnemyRenderer, which owns the enemy models.)
+-- sparks and a flash of light where they strike) and Holy Ground zones: a consecrated circle drawn on
+-- the floor (a SurfaceGui with glowing rings, a turning band of rune marks, and an eight-point star),
+-- rising motes of light, and a soft light. Sanctuary zones are brighter, pulse, and sparkle over
+-- players they heal. Damage is already dealt on the server by the time these arrive. (Frost Nova's
+-- Chill effect is drawn by EnemyRenderer, which owns the enemy models.)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,30 +27,40 @@ local JAG = 0.25
 local LIGHTNING_TIME = 0.2 -- seconds to fade out
 local ZAP_PARTICLES = 5 -- sparks at each enemy a bolt strikes
 
--- Zones are big and flat, so they're plain translucent gold rather than neon, whose glow would
--- bloom to white and wash out the floor.
-local HOLY_GROUND_COLOR = Color3.fromRGB(255, 200, 60)
-local SANCTUARY_COLOR = Color3.fromRGB(255, 225, 120)
-local ZONE_THICKNESS = 0.2
-local ZONE_HEIGHT = 0.15 -- above the floor, under everything else
-local ZONE_TRANSPARENCY = 0.45
+local HOLY_COLOR = Color3.fromRGB(255, 205, 80)
+local SANCTUARY_COLOR = Color3.fromRGB(255, 228, 125)
+local ZONE_HEIGHT = 0.12 -- above the floor, under everything else
+-- The drawing's plate is a bit bigger than the zone so the outer ring's stroke isn't clipped.
+local PLATE_SCALE = 1.15
+local CANVAS = 512 -- pixels across the drawing
+local RUNE_COUNT = 12
+local RUNE_SPEED = 18 -- degrees per second; the star turns the other way at half speed
+local GROW_TIME = 0.25 -- seconds for a new zone to grow to full size
 -- Zones fade out over their last this many seconds, so players see one is about to end.
 local ZONE_FADE_TIME = 0.5
--- The rim is solid gold too: a neon rim (and bright lights) bloomed whole zones to white.
-local RIM_COLOR = Color3.fromRGB(255, 205, 70)
-local RIM_TRANSPARENCY = 0.15
-local RIM_SCALE = 1.08 -- the rim disc's size relative to the zone, so its edge shows as a ring
 local MOTE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 local ZONE_LIGHT_BRIGHTNESS = 0.5
--- Sanctuary sparkles over each player standing in it, this often (seconds).
+-- Sanctuary pulses its glow at this many cycles per second, and sparkles over each player standing
+-- in it this often (seconds).
+local SANCTUARY_PULSE = 1.2
 local HEAL_SPARKLE_INTERVAL = 0.35
 
+-- A piece of the drawing that fades with the zone: its property's value when fully shown.
+type Fadeable = {
+	instance: Instance,
+	property: string,
+	base: number,
+}
+
 type Zone = {
-	disc: BasePart,
-	rim: BasePart,
+	plate: BasePart, -- carries the drawing
 	source: BasePart, -- an invisible flat box the motes rise from
 	motes: ParticleEmitter,
 	light: PointLight,
+	runes: Frame, -- turned each frame
+	star: Frame,
+	glow: Frame, -- pulsed for Sanctuary
+	fadeables: { Fadeable },
 	radius: number,
 	evolved: boolean,
 	endsAt: number, -- game time (shared/GameClock)
@@ -121,6 +132,111 @@ local function drawLightning(points: { any }, evolved: boolean)
 	end
 end
 
+-- A centered circle `size` (fraction of the canvas) across: an optional fill and an optional ring.
+local function circle(
+	parent: Instance,
+	size: number,
+	color: Color3,
+	fill: number?,
+	ring: number?,
+	fadeables: { Fadeable }
+): Frame
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(size, size)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.BackgroundColor3 = color
+	frame.BackgroundTransparency = fill or 1
+	frame.BorderSizePixel = 0
+	frame.Parent = parent
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = frame
+	if fill then
+		table.insert(fadeables, { instance = frame, property = "BackgroundTransparency", base = fill })
+	end
+	if ring then
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = color
+		stroke.Thickness = ring
+		stroke.Parent = frame
+		table.insert(fadeables, { instance = stroke, property = "Transparency", base = 0 })
+	end
+	return frame
+end
+
+-- An outlined square, `size` across and turned `rotation` degrees (two make an eight-point star).
+local function square(parent: Instance, size: number, rotation: number, color: Color3, fadeables: { Fadeable })
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(size, size)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Rotation = rotation
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = 9
+	stroke.Parent = frame
+	table.insert(fadeables, { instance = stroke, property = "Transparency", base = 0.1 })
+end
+
+-- Draws the consecrated circle on a SurfaceGui on the plate's top face.
+local function drawCircle(plate: BasePart, color: Color3, fadeables: { Fadeable }): (Frame, Frame, Frame)
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Top
+	surface.CanvasSize = Vector2.new(CANVAS, CANVAS)
+	surface.LightInfluence = 0
+	surface.Brightness = 1.25
+	surface.Parent = plate
+	local root = Instance.new("Frame")
+	root.Size = UDim2.fromScale(1, 1)
+	root.BackgroundTransparency = 1
+	root.Parent = surface
+	local grow = Instance.new("UIScale")
+	grow.Scale = 0.5
+	grow.Parent = root
+	TweenService:Create(grow, TweenInfo.new(GROW_TIME, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+
+	local zone = 1 / PLATE_SCALE -- the zone's edge, as a fraction of the canvas
+	local glow = circle(root, zone, color, 0.66, nil, fadeables)
+	circle(root, zone, color, nil, 16, fadeables)
+	circle(root, zone * 0.88, color, nil, 6, fadeables)
+	circle(root, zone * 0.5, color, nil, 8, fadeables)
+
+	-- The rune band: diamond marks evenly around a ring between the outer and inner circles.
+	local runes = Instance.new("Frame")
+	runes.Size = UDim2.fromScale(zone * 0.72, zone * 0.72)
+	runes.Position = UDim2.fromScale(0.5, 0.5)
+	runes.AnchorPoint = Vector2.new(0.5, 0.5)
+	runes.BackgroundTransparency = 1
+	runes.Parent = root
+	for index = 1, RUNE_COUNT do
+		local angle = index / RUNE_COUNT * 2 * math.pi
+		local mark = Instance.new("Frame")
+		local markSize = if index % 3 == 0 then 34 else 22
+		mark.Size = UDim2.fromOffset(markSize, markSize)
+		mark.Position = UDim2.fromScale(0.5 + 0.5 * math.cos(angle), 0.5 + 0.5 * math.sin(angle))
+		mark.AnchorPoint = Vector2.new(0.5, 0.5)
+		mark.Rotation = 45
+		mark.BackgroundColor3 = color
+		mark.BorderSizePixel = 0
+		mark.Parent = runes
+		table.insert(fadeables, { instance = mark, property = "BackgroundTransparency", base = 0 })
+	end
+
+	-- The eight-point star in the middle.
+	local star = Instance.new("Frame")
+	star.Size = UDim2.fromScale(zone * 0.42, zone * 0.42)
+	star.Position = UDim2.fromScale(0.5, 0.5)
+	star.AnchorPoint = Vector2.new(0.5, 0.5)
+	star.BackgroundTransparency = 1
+	star.Parent = root
+	square(star, 0.7, 0, color, fadeables)
+	square(star, 0.7, 45, color, fadeables)
+	return runes, star, glow
+end
+
 local function addZone(info: any)
 	if
 		typeof(info.x) ~= "number"
@@ -132,41 +248,32 @@ local function addZone(info: any)
 		return
 	end
 	local evolved = info.evolved == true
+	local color = if evolved then SANCTUARY_COLOR else HOLY_COLOR
 	local radius: number = info.radius
 	local diameter = radius * 2
 	local center = Vector3.new(info.x, ArenaConfig.ORIGIN.Y + ZONE_HEIGHT, info.z)
-	-- A cylinder's axis is its X size; turn it upright so it lies flat as a disc.
-	local flat = CFrame.Angles(0, 0, math.rad(90))
 
-	local disc = newPart("HolyGround", if evolved then SANCTUARY_COLOR else HOLY_GROUND_COLOR)
-	disc.Shape = Enum.PartType.Cylinder
-	disc.Material = Enum.Material.SmoothPlastic
-	disc.Size = Vector3.new(ZONE_THICKNESS, diameter, diameter)
-	disc.CFrame = CFrame.new(center) * flat
-	disc.Transparency = ZONE_TRANSPARENCY
-	disc.Parent = folder
-	-- A slightly bigger glowing disc just underneath shows as a bright rim around the edge.
-	local rim = newPart("HolyGroundRim", RIM_COLOR)
-	rim.Shape = Enum.PartType.Cylinder
-	rim.Material = Enum.Material.SmoothPlastic
-	rim.Size = Vector3.new(ZONE_THICKNESS * 0.5, diameter * RIM_SCALE, diameter * RIM_SCALE)
-	rim.CFrame = CFrame.new(center - Vector3.new(0, 0.05, 0)) * flat
-	rim.Transparency = RIM_TRANSPARENCY
-	rim.Parent = folder
+	local plate = newPart("HolyGround", color)
+	plate.Size = Vector3.new(diameter * PLATE_SCALE, 0.1, diameter * PLATE_SCALE)
+	plate.CFrame = CFrame.new(center)
+	plate.Transparency = 1
+	plate.Parent = folder
+	local fadeables: { Fadeable } = {}
+	local runes, star, glow = drawCircle(plate, color, fadeables)
 	local light = Instance.new("PointLight")
-	light.Color = RIM_COLOR
+	light.Color = color
 	light.Range = radius * 1.2
 	light.Brightness = ZONE_LIGHT_BRIGHTNESS
-	light.Parent = disc
+	light.Parent = plate
 
-	local source = newPart("HolyGroundMotes", RIM_COLOR)
+	local source = newPart("HolyGroundMotes", color)
 	source.Size = Vector3.new(diameter * 0.8, 0.2, diameter * 0.8)
 	source.Transparency = 1
 	source.CFrame = CFrame.new(center)
 	source.Parent = folder
 	local motes = Instance.new("ParticleEmitter")
 	motes.Texture = MOTE_TEXTURE
-	motes.Color = ColorSequence.new(if evolved then Color3.fromRGB(255, 245, 190) else RIM_COLOR)
+	motes.Color = ColorSequence.new(color)
 	motes.LightEmission = 1
 	motes.Shape = Enum.ParticleEmitterShape.Box
 	motes.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
@@ -180,11 +287,14 @@ local function addZone(info: any)
 
 	local owner = if typeof(info.ownerId) == "number" then Players:GetPlayerByUserId(info.ownerId) else nil
 	table.insert(zones, {
-		disc = disc,
-		rim = rim,
+		plate = plate,
 		source = source,
 		motes = motes,
 		light = light,
+		runes = runes,
+		star = star,
+		glow = glow,
+		fadeables = fadeables,
 		radius = radius,
 		evolved = evolved,
 		endsAt = info.startedAt + info.duration,
@@ -209,8 +319,7 @@ local function onEffects(list: any)
 end
 
 local function destroyZone(zone: Zone)
-	zone.disc:Destroy()
-	zone.rim:Destroy()
+	zone.plate:Destroy()
 	zone.source:Destroy()
 end
 
@@ -223,7 +332,7 @@ local function sparkleHealed(currentArena: Instance)
 			continue
 		end
 		for _, zone in zones do
-			local center = zone.disc.Position
+			local center = zone.plate.Position
 			local dx, dz = root.Position.X - center.X, root.Position.Z - center.Z
 			if zone.evolved and dx * dx + dz * dz <= zone.radius * zone.radius then
 				Particles.emit("HolyRise", root.Position - Vector3.new(0, 1.5, 0), 3)
@@ -233,14 +342,15 @@ local function sparkleHealed(currentArena: Instance)
 	end
 end
 
--- Fades zones near their end, moves following zones, and removes zones once over. Uses game time,
--- so zones hold still through a level-up pause like the server's do.
+-- Turns, pulses, fades, and moves zones, and removes them once over. Uses game time, so zones hold
+-- still through a level-up pause like the server's do.
 local function render(dt: number)
 	local currentArena = CurrentArena.get()
 	if not currentArena or #zones == 0 then
 		return
 	end
 	local now = GameClock.read(currentArena)
+	local spin = if GameClock.isPaused(currentArena) then 0 else RUNE_SPEED * dt
 	for index = #zones, 1, -1 do
 		local zone = zones[index]
 		local left = zone.endsAt - now
@@ -249,15 +359,22 @@ local function render(dt: number)
 			table.remove(zones, index)
 			continue
 		end
+		zone.runes.Rotation += spin
+		zone.star.Rotation -= spin * 0.5
 		local fade = 1 - math.min(left / ZONE_FADE_TIME, 1)
-		zone.disc.Transparency = ZONE_TRANSPARENCY + (1 - ZONE_TRANSPARENCY) * fade
-		zone.rim.Transparency = RIM_TRANSPARENCY + (1 - RIM_TRANSPARENCY) * fade
+		for _, piece in zone.fadeables do
+			(piece.instance :: any)[piece.property] = piece.base + (1 - piece.base) * fade
+		end
+		if zone.evolved and fade == 0 then
+			local pulse = 0.5 + 0.5 * math.sin(now * SANCTUARY_PULSE * 2 * math.pi)
+			zone.glow.BackgroundTransparency = 0.62 + 0.15 * pulse
+		end
 		zone.light.Brightness = ZONE_LIGHT_BRIGHTNESS * (1 - fade)
 		zone.motes.Enabled = fade == 0
 		local character = zone.owner and zone.owner.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if root and root:IsA("BasePart") then
-			for _, part in { zone.disc, zone.rim, zone.source } do
+			for _, part in { zone.plate, zone.source } do
 				local position = part.Position
 				part.Position = Vector3.new(root.Position.X, position.Y, root.Position.Z)
 			end

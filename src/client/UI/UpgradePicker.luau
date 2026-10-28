@@ -306,9 +306,12 @@ function UpgradePicker.start()
 			return
 		end
 
-		-- Head Start picks come during the countdown, before any level-up.
+		-- Head Start picks come during the countdown, before any level-up; chest picks say so.
 		local arena = CurrentArena.get()
-		title.Text = if arena and arena:GetAttribute("Phase") == "Countdown" then "HEAD START" else "LEVEL UP!"
+		title.Text = if arena and arena:GetAttribute("Phase") == "Countdown"
+			then "HEAD START"
+			elseif offer.chest == true then "TREASURE!"
+			else "LEVEL UP!"
 
 		optionCount = math.min(#offer.options, MAX_CARDS)
 		for index, card in cards do

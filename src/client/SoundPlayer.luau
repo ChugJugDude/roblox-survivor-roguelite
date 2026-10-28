@@ -30,6 +30,8 @@ local pools: { [string]: Pool } = {}
 local groups: { [Group]: SoundGroup } = {}
 local groupVolumes: { [Group]: number } = { SFX = 1, Music = 1 }
 local muted: { [Group]: boolean } = { SFX = false, Music = false }
+-- Per-kind volume (0 to 1) from the settings sliders; unset means 1.
+local categoryVolumes: { [string]: number } = {}
 local random = Random.new()
 local started = false
 
@@ -62,7 +64,7 @@ function SoundPlayer.play(name: string, pitch: number?)
 	pool.next = index % #pool.sounds + 1
 	local jitter = pool.def.pitchJitter or 0
 	sound.PlaybackSpeed = (pool.def.pitch or 1) * (pitch or 1) * (1 + random:NextNumber(-jitter, jitter))
-	sound.Volume = pool.def.volume
+	sound.Volume = pool.def.volume * (categoryVolumes[pool.def.category] or 1)
 	sound.TimePosition = 0
 	sound:Play()
 
@@ -90,6 +92,27 @@ end
 function SoundPlayer.setMuted(name: Group, isMuted: boolean)
 	muted[name] = isMuted
 	groups[name].Volume = if isMuted then 0 else groupVolumes[name]
+end
+
+-- The overall volume (0 to 1) of music or of all sound effects.
+function SoundPlayer.getGroupVolume(name: Group): number
+	return groupVolumes[name]
+end
+
+function SoundPlayer.setGroupVolume(name: Group, volume: number)
+	groupVolumes[name] = math.clamp(volume, 0, 1)
+	if not muted[name] then
+		groups[name].Volume = groupVolumes[name]
+	end
+end
+
+-- The volume (0 to 1) of one kind of sound effect (Config.Audio.CATEGORIES).
+function SoundPlayer.getCategoryVolume(category: string): number
+	return categoryVolumes[category] or 1
+end
+
+function SoundPlayer.setCategoryVolume(category: string, volume: number)
+	categoryVolumes[category] = math.clamp(volume, 0, 1)
 end
 
 function SoundPlayer.start()

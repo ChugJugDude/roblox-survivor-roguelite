@@ -6,8 +6,10 @@
 	party's shared XP gives each member a pick. Level-up picks wait for a pause: when any member is
 	owed one (and at least PAUSE_COOLDOWN seconds of play have passed since the party's last
 	pause), the match pauses and every member chooses at once. It resumes when they're all done;
-	with 2+ members, PAUSE_TIMEOUT stops one idle player from holding up the party. Chest picks are
-	one player's, so they open right away without pausing, with a moment of invulnerability instead.
+	with 2+ members, PAUSE_TIMEOUT stops one idle player from holding up the party. A chest pick
+	pauses right away (no cooldown), so nobody gets hit while reading cards they didn't expect; in
+	co-op the others wait, as with level-ups. Head Start picks open during the countdown without a
+	pause, with a moment of invulnerability.
 
 	One offer is open per player at a time. The server generates the options and only accepts an
 	index into the open offer.
@@ -264,6 +266,8 @@ local function sendOffer(player: Player, state: State)
 			options = offer,
 			pending = picksOwed(state),
 			rerolls = state.rerolls,
+			-- Chest picks are taken first, so this pick is from a chest while any are owed.
+			chest = state.chestPicks > 0,
 		})
 	else
 		Remotes.UpgradeOffered:FireClient(player, nil)
@@ -433,7 +437,8 @@ function Upgrades.getBuild(player: Player): BuildStats.Build?
 	return if state then state.build else nil
 end
 
--- An extra pick for one player (from a chest), during their party's run.
+-- An extra pick for one player (from a chest), during their party's run. Pauses the party now,
+-- like a level-up but without waiting for the cooldown.
 function Upgrades.grantBonusPick(party: Party, player: Player)
 	local state = states[player]
 	if not party.active or not state or state.party ~= party then
@@ -441,9 +446,11 @@ function Upgrades.grantBonusPick(party: Party, player: Player)
 	end
 	state.chestPicks += 1
 	if state.offer then
-		sendOffer(player, state)
-	else
+		sendOffer(player, state) -- just updates the "+N more" count
+	elseif Pause.isPaused(party.clock) then
 		openOffer(player, state)
+	else
+		pauseForPicks(party)
 	end
 end
 

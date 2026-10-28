@@ -98,7 +98,8 @@ return table.freeze({
 
 	-- Server -> client. Payload: the player's open level-up choice, or nil to close it:
 	-- { options: { Upgrades.Option }, pending: number (picks queued, including this one),
-	--   rerolls: number }. Re-sent with the same options when more picks queue up.
+	--   rerolls: number, chest: boolean (this pick is from a chest or Head Start) }. Re-sent with
+	--   the same options when more picks queue up.
 	UpgradeOffered = remote("RemoteEvent", "UpgradeOffered") :: RemoteEvent,
 
 	-- Client -> server. Payload: (index: number), 1-based into the open offer's options. Ignored
