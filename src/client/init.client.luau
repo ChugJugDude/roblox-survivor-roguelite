@@ -3,6 +3,7 @@
 
 local StarterGui = game:GetService("StarterGui")
 
+local AudioToggles = require(script.UI.AudioToggles)
 local BladeRenderer = require(script.BladeRenderer)
 local CameraController = require(script.CameraController)
 local CurrentArena = require(script.CurrentArena)
@@ -13,10 +14,13 @@ local GemRenderer = require(script.GemRenderer)
 local Hud = require(script.UI.Hud)
 local LobbyHud = require(script.UI.LobbyHud)
 local LobbyMenus = require(script.UI.LobbyMenus)
+local Music = require(script.Music)
 local PlayerDataClient = require(script.PlayerDataClient)
 local PortalPointer = require(script.UI.PortalPointer)
 local ProjectileRenderer = require(script.ProjectileRenderer)
 local Results = require(script.UI.Results)
+local SoundHooks = require(script.SoundHooks)
+local SoundPlayer = require(script.SoundPlayer)
 local TelegraphRenderer = require(script.TelegraphRenderer)
 local UpgradePicker = require(script.UI.UpgradePicker)
 
@@ -27,6 +31,7 @@ StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 -- First, so it's listening before the server's first WorldReset arrives.
 CurrentArena.start()
 PlayerDataClient.start()
+SoundPlayer.start()
 
 CameraController.start()
 EnemyRenderer.start()
@@ -42,3 +47,7 @@ DownedIndicator.start()
 PortalPointer.start()
 Results.start()
 UpgradePicker.start()
+AudioToggles.start()
+Music.start()
+-- Last, so it hooks every button the UI made.
+SoundHooks.start()
