@@ -27,7 +27,7 @@ type Sample = {
 	z: number,
 }
 
-type Look = "Normal" | "Flash" | "Chill"
+type Look = "Normal" | "Flash" | "Chill" | "Frozen"
 
 type Entry = {
 	kind: string,
@@ -38,6 +38,7 @@ type Entry = {
 	yaw: number,
 	flashUntil: number, -- os.clock time
 	chillUntil: number, -- os.clock time; slowed by Frost Nova
+	frozenUntil: number, -- os.clock time; frozen by Blizzard
 	look: Look, -- the colors the model has now
 }
 
@@ -100,6 +101,7 @@ local function onSpawned(list: any)
 			yaw = 0,
 			flashUntil = 0,
 			chillUntil = 0,
+			frozenUntil = 0,
 			look = "Normal",
 		}
 	end
@@ -108,6 +110,7 @@ end
 local FLASH_COLOR = Color3.new(1, 1, 1)
 local CHILL_COLOR = Color3.fromRGB(150, 215, 255)
 local CHILL_TINT = 0.55 -- how far a chilled enemy's colors blend toward CHILL_COLOR
+local FROZEN_TINT = 0.85 -- frozen solid: nearly all ice
 
 local function setLook(entry: Entry, look: Look)
 	entry.look = look
@@ -116,6 +119,7 @@ local function setLook(entry: Entry, look: Look)
 		part.Color = if look == "Flash"
 			then FLASH_COLOR
 			elseif look == "Chill" then visual.colors[i]:Lerp(CHILL_COLOR, CHILL_TINT)
+			elseif look == "Frozen" then visual.colors[i]:Lerp(CHILL_COLOR, FROZEN_TINT)
 			else visual.colors[i]
 	end
 end
@@ -158,11 +162,14 @@ local function onEffects(list: any)
 			continue
 		end
 		local duration = if typeof(info.duration) == "number" then info.duration else 0
-		local chillUntil = os.clock() + duration
+		local untilTime = os.clock() + duration
+		local frozen = info.frozen == true
 		for _, id in info.ids do
 			local entry = entries[id]
-			if entry then
-				entry.chillUntil = math.max(entry.chillUntil, chillUntil)
+			if entry and frozen then
+				entry.frozenUntil = math.max(entry.frozenUntil, untilTime)
+			elseif entry then
+				entry.chillUntil = math.max(entry.chillUntil, untilTime)
 			end
 		end
 	end
@@ -233,6 +240,7 @@ local function render()
 	for _, entry in entries do
 		local look: Look = if clock < entry.flashUntil
 			then "Flash"
+			elseif clock < entry.frozenUntil then "Frozen"
 			elseif clock < entry.chillUntil then "Chill"
 			else "Normal"
 		if look ~= entry.look then

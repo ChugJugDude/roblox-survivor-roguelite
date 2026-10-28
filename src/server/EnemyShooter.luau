@@ -22,7 +22,7 @@ function EnemyShooter.step(
 	end
 	for _, enemy in EnemyService.getAll(enemies) do
 		local ranged = enemy.def.ranged
-		if not ranged or now < enemy.shotReadyAt then
+		if not ranged or now < enemy.shotReadyAt or EnemyService.isFrozen(enemy, now) then
 			continue
 		end
 

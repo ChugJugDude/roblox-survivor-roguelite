@@ -32,11 +32,12 @@ export type LightningEffect = {
 	points: { number }, -- x, z pairs: where the bolt started, then each enemy it hit in order
 }
 
--- Enemies a Frost Nova just slowed, tinted icy for `duration` seconds.
+-- Enemies a Frost Nova just slowed (or Blizzard froze), tinted icy for `duration` seconds.
 export type ChillEffect = {
 	kind: "Chill",
 	ids: { number },
 	duration: number,
+	frozen: boolean,
 }
 
 -- A Holy Ground zone on the floor until startedAt + duration (game time, shared/GameClock).
@@ -48,6 +49,7 @@ export type HolyGroundEffect = {
 	radius: number,
 	startedAt: number,
 	duration: number,
+	ownerId: number?, -- Sanctuary's first zone follows this player (UserId)
 }
 
 export type EffectInfo = LightningEffect | ChillEffect | HolyGroundEffect

@@ -49,7 +49,9 @@ export type FrostNovaStats = {
 	cooldown: number,
 	radius: number, -- around the player
 	damage: number, -- dealt to every enemy in the radius
-	slow: number, -- fraction of move speed taken away (bosses take half)
+	-- Fraction of move speed taken away. 1 freezes: no moving, attacking, or shooting. Bosses take
+	-- half, so they're never frozen.
+	slow: number,
 	slowDuration: number, -- seconds
 }
 
@@ -311,13 +313,13 @@ return table.freeze({
 			evolution = table.freeze({
 				name = "Blizzard",
 				passive = "Armor",
-				description = "A huge, rapid freeze that nearly stops enemies in their tracks.",
+				description = "A huge burst that freezes enemies solid. Frozen enemies can't attack.",
 				stats = table.freeze({
-					cooldown = 1.8,
+					cooldown = 2.5,
 					radius = 18,
-					damage = 55,
-					slow = 0.8,
-					slowDuration = 3,
+					damage = 70,
+					slow = 1,
+					slowDuration = 1.5,
 				}) :: FrostNovaStats,
 			}),
 		}),
@@ -334,7 +336,7 @@ return table.freeze({
 			evolution = table.freeze({
 				name = "Sanctuary",
 				passive = "Regen",
-				description = "Three wide, lasting zones that also heal you and your allies.",
+				description = "Wide, lasting zones that heal you and your allies. One follows you.",
 				stats = table.freeze({
 					cooldown = 3,
 					zones = 3,

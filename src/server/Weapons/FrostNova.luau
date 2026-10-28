@@ -1,7 +1,7 @@
 --!strict
 -- Frost Nova: every cooldown, if an enemy is close, a freezing burst hits everything in a radius
 -- around the player and slows it (EnemyService.slow). Evolved, it's Blizzard: a huge burst that
--- nearly stops enemies.
+-- freezes enemies solid (bosses are only slowed).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -35,10 +35,11 @@ function FrostNova.step(enemies: EnemyService.State, now: number, targets: { Cha
 		table.clear(nearby)
 		EnemyService.queryRadius(enemies, target.x, target.z, stats.radius, nearby)
 		local chilled: { number } = {}
+		local frozen: { number } = {}
 		for _, enemy in nearby do
 			if not EnemyService.isProp(enemy) then
 				EnemyService.slow(enemy, stats.slow, now, stats.slowDuration)
-				table.insert(chilled, enemy.id)
+				table.insert(if EnemyService.isFrozen(enemy, now) then frozen else chilled, enemy.id)
 			end
 			EnemyService.damage(enemies, enemy, stats.damage)
 		end
@@ -50,8 +51,17 @@ function FrostNova.step(enemies: EnemyService.State, now: number, targets: { Cha
 			kind = if evolved then "Blizzard" else "Frost",
 		}
 		NetBatch.push(enemies.net, Remotes.Explosions, explosion)
-		local chill: EntityNet.ChillEffect = { kind = "Chill", ids = chilled, duration = stats.slowDuration }
-		NetBatch.push(enemies.net, Remotes.WeaponEffects, chill)
+		for _, ids in { chilled, frozen } do
+			if #ids > 0 then
+				local chill: EntityNet.ChillEffect = {
+					kind = "Chill",
+					ids = ids,
+					duration = stats.slowDuration,
+					frozen = ids == frozen,
+				}
+				NetBatch.push(enemies.net, Remotes.WeaponEffects, chill)
+			end
+		end
 	end
 end
 

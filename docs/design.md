@@ -76,8 +76,8 @@ Three kinds, all offered through the level-up choice:
   - Volley Arrows + Swiftness → Arrow Storm (fans at up to 3 enemies in different directions, so it answers threats from all sides)
   - Fireball + Reach → Meteor
   - Chain Lightning + Haste → Thunderstorm (four bolts at once)
-  - Frost Nova + Armor → Blizzard (huge radius, 80% slow)
-  - Holy Ground + Regen → Sanctuary (three wide zones that also heal any player standing in them, so it helps the whole party)
+  - Frost Nova + Armor → Blizzard (huge radius; **freezes** enemies for 1.5s: no moving, attacking, or shooting. Bosses are only slowed 50%)
+  - Holy Ground + Regen → Sanctuary (three wide zones that also heal any player standing in them; the first zone of each cast follows its caster, so the caster heals on the move and teammates heal when near them or walking through the others)
 - **M1 set (9):** Spinning Blade, Volley Arrows, Fireball; Might, Haste, Swiftness, Reach, Vitality, Magnet; plus the 3 evolutions above.
 
 Design rules:

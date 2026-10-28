@@ -3,6 +3,7 @@
 -- Holy Ground zones. Damage is already dealt on the server by the time these arrive. (Frost Nova's
 -- Chill effect is drawn by EnemyRenderer, which owns the enemy models.)
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -34,6 +35,7 @@ local ZONE_FADE_TIME = 0.5
 type Zone = {
 	part: BasePart,
 	endsAt: number, -- game time (shared/GameClock)
+	owner: Player?, -- the zone follows this player's character (Sanctuary)
 }
 
 local random = Random.new()
@@ -113,7 +115,8 @@ local function addZone(info: any)
 	part.CFrame = CFrame.new(info.x, ArenaConfig.ORIGIN.Y + ZONE_HEIGHT, info.z) * CFrame.Angles(0, 0, math.rad(90))
 	part.Transparency = ZONE_TRANSPARENCY
 	part.Parent = folder
-	table.insert(zones, { part = part, endsAt = info.startedAt + info.duration })
+	local owner = if typeof(info.ownerId) == "number" then Players:GetPlayerByUserId(info.ownerId) else nil
+	table.insert(zones, { part = part, endsAt = info.startedAt + info.duration, owner = owner })
 end
 
 local function onEffects(list: any)
@@ -149,6 +152,12 @@ local function render()
 		else
 			local fade = 1 - math.min(left / ZONE_FADE_TIME, 1)
 			zone.part.Transparency = ZONE_TRANSPARENCY + (1 - ZONE_TRANSPARENCY) * fade
+			local character = zone.owner and zone.owner.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if root and root:IsA("BasePart") then
+				local position = zone.part.Position
+				zone.part.Position = Vector3.new(root.Position.X, position.Y, root.Position.Z)
+			end
 		end
 	end
 end

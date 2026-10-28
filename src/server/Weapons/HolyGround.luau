@@ -2,7 +2,8 @@
 -- Holy Ground: every cooldown, if an enemy is near, blesses the ground at the player's feet (plus
 -- extra zones close by). Each zone burns enemies inside it once per tick until it fades, so
 -- enemies chasing the player walk through it. Evolved, it's Sanctuary: bigger, longer zones that
--- also heal any player standing in them.
+-- also heal any player standing in them; the first zone of each cast follows its caster, so they
+-- heal too while on the move.
 --
 -- Zones are per match (they live in game time and outlast the cast), so this module has a state
 -- object owned by WeaponService.
@@ -29,6 +30,7 @@ type Zone = {
 	tick: number,
 	heal: number,
 	endsAt: number,
+	owner: Player?, -- follows this player while they're standing (Sanctuary's first zone)
 }
 
 export type State = {
@@ -70,6 +72,7 @@ local function cast(
 			tick = stats.tick,
 			heal = stats.heal,
 			endsAt = now + stats.duration,
+			owner = if evolved and index == 1 then target.player else nil,
 		})
 		local effect: EntityNet.HolyGroundEffect = {
 			kind = "HolyGround",
@@ -79,6 +82,7 @@ local function cast(
 			radius = stats.radius,
 			startedAt = now,
 			duration = stats.duration,
+			ownerId = if evolved and index == 1 then target.player.UserId else nil,
 		}
 		NetBatch.push(state.enemies.net, Remotes.WeaponEffects, effect)
 	end
@@ -108,6 +112,14 @@ function HolyGround.step(state: State, now: number, dt: number, targets: { Chara
 		if now >= zone.endsAt then
 			table.remove(zones, index)
 			continue
+		end
+		if zone.owner then
+			for _, target in targets do
+				if target.player == zone.owner then
+					zone.x, zone.z = target.x, target.z
+					break
+				end
+			end
 		end
 		table.clear(nearby)
 		EnemyService.queryRadius(state.enemies, zone.x, zone.z, zone.radius, nearby)

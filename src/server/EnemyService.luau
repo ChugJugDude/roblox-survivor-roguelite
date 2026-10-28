@@ -281,6 +281,11 @@ function EnemyService.slow(enemy: Enemy, amount: number, now: number, duration: 
 	end
 end
 
+-- Whether the enemy is frozen solid (a full slow): it doesn't move, attack, or shoot.
+function EnemyService.isFrozen(enemy: Enemy, now: number): boolean
+	return enemy.slow >= 1 and now < enemy.slowUntil
+end
+
 -- Removes every enemy without counting kills.
 function EnemyService.clear(state: State)
 	for _, enemy in state.enemies do
@@ -392,7 +397,7 @@ function EnemyService.move(state: State, now: number, dt: number, targets: { Tar
 
 	for _, enemy in enemies do
 		local def = enemy.def
-		if def.behavior == "prop" or enemy.locked then
+		if def.behavior == "prop" or enemy.locked or EnemyService.isFrozen(enemy, now) then
 			continue -- stays put (or is moved elsewhere); others still push away from it
 		end
 
@@ -465,7 +470,7 @@ end
 -- Enemies touching a living player damage them, once per attackCooldown.
 function EnemyService.attack(state: State, now: number, targets: { Target })
 	for _, enemy in state.enemies do
-		if now < enemy.attackReadyAt or isProp(enemy) then
+		if now < enemy.attackReadyAt or isProp(enemy) or EnemyService.isFrozen(enemy, now) then
 			continue
 		end
 		local def = enemy.def
