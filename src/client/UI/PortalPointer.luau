@@ -31,26 +31,36 @@ function PortalPointer.start()
 		Visible = false,
 		Parent = gui,
 	})
-	local arrow = Create("TextLabel", {
-		Name = "Arrow",
-		Size = UDim2.fromOffset(44, 44),
+	-- A round badge with an arrow in it; the arrow turns toward the portal.
+	local badge = Create("Frame", {
+		Name = "Badge",
+		Size = UDim2.fromOffset(46, 46),
 		Position = UDim2.fromScale(0.5, 0),
 		AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundColor3 = COLOR,
+		BackgroundTransparency = 0.15,
+		BorderSizePixel = 0,
+		Parent = pointer,
+	})
+	Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = badge })
+	Create("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2, Transparency = 0.2, Parent = badge })
+	local arrow = Create("TextLabel", {
+		Name = "Arrow",
+		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBlack,
-		TextSize = 40,
-		TextColor3 = COLOR,
-		TextStrokeTransparency = 0.3,
+		TextSize = 30,
+		TextColor3 = Color3.new(1, 1, 1),
 		Text = ">",
-		Parent = pointer,
+		Parent = badge,
 	})
 	Create("TextLabel", {
 		Name = "Label",
 		Size = UDim2.new(1, 0, 0, 20),
 		Position = UDim2.new(0, 0, 1, -20),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		TextSize = 14,
+		Font = Enum.Font.GothamBlack,
+		TextSize = 13,
 		TextColor3 = COLOR,
 		TextStrokeTransparency = 0.3,
 		Text = "PORTAL",

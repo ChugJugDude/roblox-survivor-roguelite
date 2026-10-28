@@ -1,7 +1,7 @@
 --!strict
--- The Hero stand's menu: a card per hero with its starting weapon and bonus, and Select or Unlock.
--- The server decides (server/Meta); this only sends the request and redraws from the data it sends
--- back. Opened by client/UI/LobbyMenus.luau.
+-- The Hero stand's menu: a card per hero with its starting weapon (icon and name), its bonus, and
+-- Select or Unlock. The server decides (server/Meta); this only sends the request and redraws from
+-- the data it sends back. Opened by client/UI/LobbyMenus.luau.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,20 +9,25 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Create = require(script.Parent.Create)
 local MenuPanel = require(script.Parent.MenuPanel)
 local PlayerDataClient = require(script.Parent.Parent.PlayerDataClient)
+local Theme = require(script.Parent.Theme)
 local Config = require(ReplicatedStorage.Shared.Config.Meta)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
 
-local FONT = Enum.Font.GothamBold
+local COLORS = Theme.COLORS
 local CARD_WIDTH = 170
-local SELECTED_COLOR = Color3.fromRGB(70, 120, 80)
 local SELECT_COLOR = Color3.fromRGB(120, 70, 200)
 local UNLOCK_COLOR = Color3.fromRGB(40, 140, 190)
-local DISABLED_COLOR = Color3.fromRGB(75, 75, 85)
 
 export type HeroMenu = {
 	panel: MenuPanel.MenuPanel,
 	refresh: () -> (),
+}
+
+type Card = {
+	stroke: UIStroke,
+	lock: TextLabel,
+	button: TextButton,
 }
 
 local HeroMenu = {}
@@ -40,7 +45,7 @@ end
 
 function HeroMenu.create(): HeroMenu
 	local ids = sortedIds()
-	local panel = MenuPanel("HeroMenu", "HEROES", Vector2.new(40 + #ids * (CARD_WIDTH + 12) - 12, 320))
+	local panel = MenuPanel("HeroMenu", "HEROES", Vector2.new(40 + #ids * (CARD_WIDTH + 12) - 12, 340))
 	Create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		Padding = UDim.new(0, 12),
@@ -48,54 +53,79 @@ function HeroMenu.create(): HeroMenu
 		Parent = panel.content,
 	})
 
-	local buttons: { [string]: TextButton } = {}
+	local cards: { [string]: Card } = {}
 	for index, id in ids do
 		local def = Config.HEROES[id]
-		local card = Create("Frame", {
+		local weapon = UpgradesConfig.WEAPONS[def.weapon]
+		local card = Theme.panel({
 			Name = id,
 			LayoutOrder = index,
 			Size = UDim2.new(0, CARD_WIDTH, 1, 0),
-			BackgroundColor3 = Color3.fromRGB(55, 50, 70),
-			BorderSizePixel = 0,
+			BackgroundColor3 = COLORS.panelLight,
+			BackgroundTransparency = 0,
 			Parent = panel.content,
 		})
-		Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = card })
-		Create("TextLabel", {
-			Name = "HeroName",
-			Size = UDim2.new(1, 0, 0, 34),
+		local stroke = card:FindFirstChildOfClass("UIStroke") :: UIStroke
+		Theme.label({
+			Name = "Icon",
+			Size = UDim2.new(1, 0, 0, 48),
 			Position = UDim2.fromOffset(0, 10),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBlack,
+			TextSize = 40,
+			TextStrokeTransparency = 1,
+			Text = weapon.icon,
+			Parent = card,
+		})
+		local lock = Theme.label({
+			Name = "Lock",
+			Size = UDim2.fromOffset(28, 28),
+			Position = UDim2.new(1, -8, 0, 8),
+			AnchorPoint = Vector2.new(1, 0),
+			TextSize = 20,
+			TextStrokeTransparency = 1,
+			Text = "🔒",
+			Parent = card,
+		})
+		Theme.label({
+			Name = "HeroName",
+			Size = UDim2.new(1, 0, 0, 30),
+			Position = UDim2.fromOffset(0, 62),
+			Font = Theme.FONTS.heading,
 			TextSize = 22,
-			TextColor3 = Color3.new(1, 1, 1),
 			Text = def.name,
 			Parent = card,
 		})
-		Create("TextLabel", {
-			Name = "Details",
-			Size = UDim2.new(1, -16, 0, 100),
-			Position = UDim2.fromOffset(8, 50),
-			BackgroundTransparency = 1,
-			Font = FONT,
-			TextSize = 16,
-			TextColor3 = Color3.fromRGB(210, 210, 225),
+		Theme.label({
+			Name = "Weapon",
+			Size = UDim2.new(1, -16, 0, 36),
+			Position = UDim2.fromOffset(8, 96),
+			TextSize = 14,
+			TextColor3 = COLORS.weapon,
 			TextWrapped = true,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			LineHeight = 1.15,
-			Text = `Starts with\n{UpgradesConfig.WEAPONS[def.weapon].name}\n\n{def.bonusText}`,
+			TextStrokeTransparency = 1,
+			Text = `Starts with\n{weapon.name}`,
 			Parent = card,
 		})
-		local button = Create("TextButton", {
+		Theme.label({
+			Name = "Bonus",
+			Size = UDim2.new(1, -16, 0, 50),
+			Position = UDim2.fromOffset(8, 138),
+			Font = Theme.FONTS.light,
+			TextSize = 14,
+			TextColor3 = COLORS.subtext,
+			TextWrapped = true,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextStrokeTransparency = 1,
+			Text = def.bonusText,
+			Parent = card,
+		})
+		local button = Theme.button(SELECT_COLOR, {
 			Name = "Action",
 			Size = UDim2.new(1, -20, 0, 44),
 			Position = UDim2.new(0.5, 0, 1, -10),
 			AnchorPoint = Vector2.new(0.5, 1),
-			Font = FONT,
-			TextSize = 18,
-			TextColor3 = Color3.new(1, 1, 1),
+			TextSize = 17,
 			Parent = card,
 		})
-		Create("UICorner", { CornerRadius = UDim.new(0, 8), Parent = button })
 		button.Activated:Connect(function()
 			local data = PlayerDataClient.get()
 			if not data then
@@ -107,20 +137,24 @@ function HeroMenu.create(): HeroMenu
 				Remotes.UnlockHero:FireServer(id)
 			end
 		end)
-		buttons[id] = button
+		cards[id] = { stroke = stroke, lock = lock, button = button }
 	end
 
 	local function refresh()
 		local data = PlayerDataClient.get()
 		local shards = if data then data.shards else 0
-		panel.shards.Text = `SHARDS {shards}`
+		panel.shards.Text = `💎 {shards}`
 		local selected = Players.LocalPlayer:GetAttribute("Hero")
-		for id, button in buttons do
+		for id, card in cards do
 			local def = Config.HEROES[id]
 			local unlocked = def.cost == 0 or (data ~= nil and data.heroes[id] == true)
+			local button = card.button
+			card.lock.Visible = not unlocked
+			card.stroke.Color = if selected == id then COLORS.good else COLORS.stroke
+			card.stroke.Thickness = if selected == id then 3 else 1.5
 			if selected == id then
 				button.Text = "SELECTED"
-				button.BackgroundColor3 = SELECTED_COLOR
+				button.BackgroundColor3 = COLORS.good
 				button.AutoButtonColor = false
 			elseif unlocked then
 				button.Text = "SELECT"
@@ -128,8 +162,8 @@ function HeroMenu.create(): HeroMenu
 				button.AutoButtonColor = true
 			else
 				local affordable = shards >= def.cost
-				button.Text = `UNLOCK  {def.cost}`
-				button.BackgroundColor3 = if affordable then UNLOCK_COLOR else DISABLED_COLOR
+				button.Text = `UNLOCK  💎 {def.cost}`
+				button.BackgroundColor3 = if affordable then UNLOCK_COLOR else COLORS.dim
 				button.AutoButtonColor = affordable
 			end
 		end
