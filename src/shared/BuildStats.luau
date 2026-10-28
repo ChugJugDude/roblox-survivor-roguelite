@@ -192,6 +192,23 @@ function BuildStats.holyGround(build: Build): Config.HolyGroundStats?
 	}
 end
 
+-- The player's Warding rings after passives, or nil if they don't have the passive.
+function BuildStats.warding(build: Build): Config.WardingStats?
+	local count = passiveValue(build, "Warding")
+	if count <= 0 then
+		return nil
+	end
+	local base = Config.WARDING
+	return {
+		count = count,
+		orbitRadius = base.orbitRadius,
+		ringRadius = base.ringRadius,
+		spinSpeed = base.spinSpeed,
+		damage = base.damage * BuildStats.modifiers(build).damage,
+		hitCooldown = base.hitCooldown,
+	}
+end
+
 -- Reads a build from a Player's W_<weapon> / P_<passive> / B_<bonus> attributes (published by
 -- server/Upgrades).
 function BuildStats.fromAttributes(player: Player): Build

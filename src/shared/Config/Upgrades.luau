@@ -64,6 +64,16 @@ export type HolyGroundStats = {
 	range: number, -- only casts when an enemy is this close
 }
 
+-- Warding rings (a passive, server/Weapons/Warding.luau): the passive's level is the ring count.
+export type WardingStats = {
+	count: number,
+	orbitRadius: number, -- ring centers' distance from the player
+	ringRadius: number, -- blocks enemy shots and hits enemies within this of a ring's center
+	spinSpeed: number, -- radians per second
+	damage: number,
+	hitCooldown: number, -- seconds before one player's rings can hit the same enemy again
+}
+
 -- A max-level weapon plus its paired passive (any level) unlocks the evolution, offered as a
 -- level-up choice. An evolved weapon is stored as level MAX_LEVEL + 1.
 export type EvolutionDef = {
@@ -167,6 +177,15 @@ return table.freeze({
 	-- The filler option when there aren't enough upgrades left: heal this fraction of max health.
 	HEAL_FRACTION = 0.3,
 	-- (Starting weapons come from the hero: Config.Meta.HEROES.)
+
+	-- Everything about Warding rings except their count, which is the passive's value.
+	WARDING = table.freeze({
+		orbitRadius = 6,
+		ringRadius = 1.6,
+		spinSpeed = 2.5,
+		damage = 6,
+		hitCooldown = 0.5,
+	}),
 
 	-- Relative chance of each kind of option. Levels for weapons you own come up often, so a build can
 	-- reach an evolution even with six passives competing for the cards.
@@ -376,6 +395,12 @@ return table.freeze({
 		Regen = table.freeze({
 			name = "Regen",
 			description = "Heal %d health per second",
+			percent = false,
+			values = { 1, 2, 3, 4, 5 },
+		}),
+		Warding = table.freeze({
+			name = "Warding",
+			description = "Orbiting rings that destroy enemy shots: %d",
 			percent = false,
 			values = { 1, 2, 3, 4, 5 },
 		}),

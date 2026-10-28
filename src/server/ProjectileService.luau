@@ -140,6 +140,23 @@ function ProjectileService.spawn(state: State, spec: Spec)
 	NetBatch.push(state.net, Remotes.ProjectilesSpawned, info)
 end
 
+-- Destroys every enemy shot touching the circle at (x, z). Returns how many.
+function ProjectileService.blockEnemyShots(state: State, x: number, z: number, radius: number): number
+	local blocked = 0
+	for _, projectile in state.projectiles do
+		if not projectile.fromEnemy then
+			continue
+		end
+		local dx, dz = projectile.x - x, projectile.z - z
+		local reach = radius + projectile.radius
+		if dx * dx + dz * dz <= reach * reach then
+			remove(state, projectile, true)
+			blocked += 1
+		end
+	end
+	return blocked
+end
+
 -- Removes every projectile (clients expire them on their own or get removal events).
 function ProjectileService.clear(state: State)
 	for _, projectile in state.projectiles do

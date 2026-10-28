@@ -13,6 +13,7 @@ local FrostNova = require(script.Parent.FrostNova)
 local HolyGround = require(script.Parent.HolyGround)
 local SpinningBlade = require(script.Parent.SpinningBlade)
 local VolleyArrows = require(script.Parent.VolleyArrows)
+local Warding = require(script.Parent.Warding)
 
 export type State = {
 	enemies: EnemyService.State,
@@ -40,6 +41,7 @@ function WeaponService.step(state: State, now: number, dt: number, targets: { Ch
 	ChainLightning.step(enemies, now, targets)
 	FrostNova.step(enemies, now, targets)
 	HolyGround.step(state.holyGround, now, dt, targets)
+	Warding.step(enemies, projectiles, now, targets)
 end
 
 -- Removes lingering weapon effects (the run ended or restarted).
@@ -56,6 +58,7 @@ function WeaponService.start()
 		ChainLightning.forget(player)
 		FrostNova.forget(player)
 		HolyGround.forget(player)
+		Warding.forget(player)
 	end)
 end
 
