@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local CameraController = require(script.Parent.CameraController)
 local CurrentArena = require(script.Parent.CurrentArena)
+local Particles = require(script.Parent.Particles)
 local Create = require(script.Parent.UI.Create)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Effects)
@@ -20,10 +21,8 @@ local HURT_EDGE = 0.18 -- fraction of the screen each red edge covers
 local HURT_MIN = 0.3 -- even a scratch shows this much of the flash
 local LEVEL_COLOR = Color3.fromRGB(90, 180, 255)
 local EVOLVE_COLOR = Color3.fromRGB(255, 210, 70)
-local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 
-local anchor: Part = nil :: any
-local sparkles: ParticleEmitter = nil :: any
+local folder: Folder = nil :: any
 local started = false
 
 local PlayerFeedback = {}
@@ -44,7 +43,7 @@ local function ring(position: Vector3, radius: number, color: Color3)
 	disc.CanQuery = false
 	disc.CanTouch = false
 	disc.CastShadow = false
-	disc.Parent = anchor.Parent
+	disc.Parent = folder
 	local tween = TweenService:Create(disc, TweenInfo.new(Config.RING_TIME, Enum.EasingStyle.Quad), {
 		Size = Vector3.new(0.2, radius * 2, radius * 2),
 		Transparency = 1,
@@ -53,13 +52,6 @@ local function ring(position: Vector3, radius: number, color: Color3)
 		disc:Destroy()
 	end)
 	tween:Play()
-end
-
-local function burst(position: Vector3, color: Color3, count: number)
-	sparkles.Color = ColorSequence.new(color)
-	local attachment = sparkles.Parent :: Attachment
-	attachment.WorldPosition = position
-	sparkles:Emit(count)
 end
 
 -- The ground position of each player in the current arena.
@@ -166,7 +158,7 @@ local function hookLevelUps()
 			if newLevel > level then
 				for _, position in playersInArena(current) do
 					ring(position, Config.LEVEL_RING_RADIUS, LEVEL_COLOR)
-					burst(position, LEVEL_COLOR, 24)
+					Particles.emit("Sparkles", position, 24, LEVEL_COLOR)
 				end
 			end
 		end
@@ -187,7 +179,7 @@ local function hookEvolutions(screenFlash: Frame)
 			return
 		end
 		ring(root.Position, Config.EVOLVE_RING_RADIUS, EVOLVE_COLOR)
-		burst(root.Position, EVOLVE_COLOR, 60)
+		Particles.emit("Sparkles", root.Position, 60, EVOLVE_COLOR)
 		screenFlash.BackgroundTransparency = 0.5
 		TweenService:Create(screenFlash, TweenInfo.new(Config.EVOLVE_FLASH_TIME), { BackgroundTransparency = 1 }):Play()
 	end)
@@ -197,31 +189,9 @@ function PlayerFeedback.start()
 	assert(not started, "PlayerFeedback.start() was called twice")
 	started = true
 
-	local folder = Instance.new("Folder")
+	folder = Instance.new("Folder")
 	folder.Name = "PlayerFeedback"
 	folder.Parent = workspace
-	anchor = Instance.new("Part")
-	anchor.Name = "EffectAnchor"
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	anchor.Transparency = 1
-	anchor.Size = Vector3.one
-	anchor.Parent = folder
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = anchor
-	sparkles = Instance.new("ParticleEmitter")
-	sparkles.Texture = SPARKLE_TEXTURE
-	sparkles.Enabled = false
-	sparkles.LightEmission = 1
-	sparkles.Lifetime = NumberRange.new(0.5, 0.9)
-	sparkles.Speed = NumberRange.new(8, 16)
-	sparkles.SpreadAngle = Vector2.new(180, 180)
-	sparkles.Size = NumberSequence.new(1, 0)
-	sparkles.Drag = 3
-	sparkles.Acceleration = Vector3.new(0, 6, 0)
-	sparkles.Parent = attachment
 
 	hookHurt(buildHurtFlash())
 	hookLevelUps()

@@ -15,6 +15,7 @@ local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local EnemyModels = require(script.Parent.EnemyModels)
+local Particles = require(script.Parent.Particles)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Enemies)
 local EnemySnapshot = require(ReplicatedStorage.Shared.EnemySnapshot)
@@ -42,6 +43,7 @@ type Entry = {
 	flashUntil: number, -- os.clock time
 	chillUntil: number, -- os.clock time; slowed by Frost Nova
 	frozenUntil: number, -- os.clock time; frozen by Blizzard
+	ice: BasePart?, -- an ice block around it while frozen
 	look: Look, -- the colors the model has now
 }
 
@@ -128,6 +130,7 @@ local function onSpawned(list: any)
 			flashUntil = 0,
 			chillUntil = 0,
 			frozenUntil = 0,
+			ice = nil,
 			look = "Normal",
 		}
 	end
@@ -137,6 +140,54 @@ local FLASH_COLOR = Color3.new(1, 1, 1)
 local CHILL_COLOR = Color3.fromRGB(150, 215, 255)
 local CHILL_TINT = 0.55 -- how far a chilled enemy's colors blend toward CHILL_COLOR
 local FROZEN_TINT = 0.85 -- frozen solid: nearly all ice
+local ICE_COLOR = Color3.fromRGB(185, 225, 255)
+local ICE_TRANSPARENCY = 0.4
+
+local freeIce: { BasePart } = {}
+
+-- An enemy's body size (bigger for elites).
+local function radiusOf(entry: Entry): number
+	local def = Config.TYPES[entry.kind]
+	local radius = if def then def.radius else 1.5
+	return if entry.elite then radius * Config.ELITE.scale else radius
+end
+
+-- The ice block's size for an enemy: a little wider than its body and about as tall as it.
+local function iceSize(entry: Entry): Vector3
+	local radius = radiusOf(entry)
+	return Vector3.new(radius * 2.3, radius * 2 + 1.2, radius * 2.3)
+end
+
+local function addIce(entry: Entry)
+	local ice = table.remove(freeIce)
+	if not ice then
+		local part = Instance.new("Part")
+		part.Name = "Ice"
+		part.Material = Enum.Material.Ice
+		part.Color = ICE_COLOR
+		part.Transparency = ICE_TRANSPARENCY
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		ice = part
+	end
+	local block = ice :: BasePart
+	block.Size = iceSize(entry)
+	block.Parent = folder
+	entry.ice = block
+	Particles.emit("IceShards", Vector3.new(entry.x, GROUND_Y + block.Size.Y / 2, entry.z), 6)
+end
+
+local function removeIce(entry: Entry)
+	local ice = entry.ice
+	if ice then
+		entry.ice = nil
+		ice.Parent = nil
+		table.insert(freeIce, ice)
+	end
+end
 
 local function setLook(entry: Entry, look: Look)
 	entry.look = look
@@ -165,6 +216,7 @@ local function onDespawned(ids: any)
 			for _, listener in removedListeners do
 				listener(id, position, entry.kind, entry.elite)
 			end
+			removeIce(entry)
 			release(entry.poolKey, entry.visual)
 		end
 	end
@@ -279,6 +331,18 @@ local function render()
 		end
 		local x, z, dirX, dirZ = samplePosition(entry, renderTime)
 		entry.x, entry.z = x, z
+		-- The ice block follows the freeze itself, not the colors (a hit flash shouldn't melt it).
+		local frozen = clock < entry.frozenUntil
+		if frozen and not entry.ice then
+			addIce(entry)
+		elseif not frozen and entry.ice then
+			removeIce(entry)
+		end
+		local ice = entry.ice
+		if ice then
+			table.insert(moveParts, ice)
+			table.insert(moveCFrames, CFrame.new(x, GROUND_Y + ice.Size.Y / 2, z))
+		end
 		if entry.facesTarget and #playerXs > 0 then
 			-- Aim at the nearest player.
 			local bestDistSq = math.huge
@@ -313,6 +377,7 @@ local function reset()
 		if entry.look ~= "Normal" then
 			setLook(entry, "Normal")
 		end
+		removeIce(entry)
 		release(entry.poolKey, entry.visual)
 		entries[id] = nil
 	end

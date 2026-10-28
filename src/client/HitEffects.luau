@@ -1,21 +1,18 @@
 --!strict
 -- Hit feedback on enemies: spark bursts on hits, a puff when one dies (a gold burst and a flash of
--- light for elites and bosses), and floating damage numbers. Particles come from one emitter per
--- effect, moved into place before each Emit, so a crowd costs no extra instances; damage numbers
--- come from a fixed pool. Caps live in Config.Effects.
+-- light for elites and bosses), and floating damage numbers. Bursts come from client/Particles;
+-- damage numbers come from a fixed pool. Caps live in Config.Effects.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local EnemyRenderer = require(script.Parent.EnemyRenderer)
+local Particles = require(script.Parent.Particles)
 local Config = require(ReplicatedStorage.Shared.Config.Effects)
 local EnemiesConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
-local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
-local SMOKE_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
 local NUMBER_COLOR = Color3.fromRGB(255, 255, 255)
 local BIG_NUMBER_COLOR = Color3.fromRGB(255, 215, 70)
 local NUMBER_HEIGHT = 4 -- studs above the floor, plus the enemy's size
@@ -33,37 +30,15 @@ type Number = {
 }
 
 local random = Random.new()
--- Holds every emitter's and damage number's attachment, and the numbers' billboards. (Not in
--- PlayerGui: it's cleared of everything but ScreenGuis when the character respawns.)
+-- Holds every damage number's attachment and billboard. (Not in PlayerGui: it's cleared of
+-- everything but ScreenGuis when the character respawns.)
 local anchor: Part = nil :: any
-local sparks: ParticleEmitter = nil :: any
-local puffs: ParticleEmitter = nil :: any
-local bursts: ParticleEmitter = nil :: any
-local flashLight: PointLight = nil :: any
+local ELITE_FLASH_COLOR = Color3.fromRGB(255, 220, 120)
 local freeNumbers: { Number } = {}
 local activeNumbers: { Number } = {}
 local started = false
 
 local HitEffects = {}
-
-local function emitter(name: string, props: { [string]: any }): ParticleEmitter
-	local attachment = Instance.new("Attachment")
-	attachment.Name = name
-	attachment.Parent = anchor
-	local particles = Instance.new("ParticleEmitter")
-	particles.Name = name
-	particles.Enabled = false
-	for key, value in props do
-		(particles :: any)[key] = value
-	end
-	particles.Parent = attachment
-	return particles
-end
-
-local function emitAt(particles: ParticleEmitter, position: Vector3, count: number)
-	(particles.Parent :: Attachment).WorldPosition = position
-	particles:Emit(count)
-end
 
 -- An enemy's size, for placing effects on it.
 local function radiusOf(kind: string?, elite: boolean): number
@@ -161,7 +136,7 @@ local function onHit(list: any)
 		local radius = radiusOf(kind, elite)
 		if sparked < Config.SPARK_ENEMIES_PER_BATCH then
 			sparked += 1
-			emitAt(sparks, position + Vector3.new(0, radius + 1, 0), Config.SPARKS_PER_HIT)
+			Particles.emit("Sparks", position + Vector3.new(0, radius + 1, 0), Config.SPARKS_PER_HIT)
 		end
 		showNumber(id, amount, position, radius)
 	end
@@ -176,22 +151,16 @@ local function onRemoved(_id: number, position: Vector3, kind: string, elite: bo
 	puffedThisFrame += 1
 	local def = EnemiesConfig.TYPES[kind]
 	if def and def.behavior == "prop" then
-		emitAt(puffs, position + Vector3.new(0, 1.5, 0), Config.PUFF_PARTICLES)
+		Particles.emit("Puff", position + Vector3.new(0, 1.5, 0), Config.PUFF_PARTICLES)
 		return
 	end
 	local radius = radiusOf(kind, elite)
 	local big = elite or (def ~= nil and def.isBoss == true)
-	emitAt(
-		puffs,
-		position + Vector3.new(0, radius, 0),
-		if big then Config.ELITE_PUFF_PARTICLES else Config.PUFF_PARTICLES
-	)
+	local center = position + Vector3.new(0, radius, 0)
+	Particles.emit("Puff", center, if big then Config.ELITE_PUFF_PARTICLES else Config.PUFF_PARTICLES)
 	if big then
-		emitAt(bursts, position + Vector3.new(0, radius, 0), Config.ELITE_PUFF_PARTICLES)
-		local lightAttachment = flashLight.Parent :: Attachment
-		lightAttachment.WorldPosition = position + Vector3.new(0, radius + 2, 0)
-		flashLight.Brightness = 4
-		TweenService:Create(flashLight, TweenInfo.new(0.4), { Brightness = 0 }):Play()
+		Particles.emit("GoldBurst", center, Config.ELITE_PUFF_PARTICLES)
+		Particles.flash(center + Vector3.new(0, 2, 0), ELITE_FLASH_COLOR, 4, 16, 0.4)
 	end
 end
 
@@ -232,46 +201,6 @@ function HitEffects.start()
 	anchor.Transparency = 1
 	anchor.Size = Vector3.one
 	anchor.Parent = folder
-
-	sparks = emitter("Sparks", {
-		Texture = SPARKLE_TEXTURE,
-		Color = ColorSequence.new(Color3.fromRGB(255, 250, 220), Color3.fromRGB(255, 200, 90)),
-		LightEmission = 1,
-		Lifetime = NumberRange.new(0.15, 0.3),
-		Speed = NumberRange.new(10, 18),
-		SpreadAngle = Vector2.new(180, 180),
-		Size = NumberSequence.new(0.7, 0),
-		Drag = 6,
-	})
-	puffs = emitter("Puffs", {
-		Texture = SMOKE_TEXTURE,
-		Color = ColorSequence.new(Color3.fromRGB(230, 230, 235)),
-		Lifetime = NumberRange.new(0.35, 0.55),
-		Speed = NumberRange.new(3, 6),
-		SpreadAngle = Vector2.new(180, 180),
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.2), NumberSequenceKeypoint.new(1, 3) }),
-		Transparency = NumberSequence.new(0.3, 1),
-		Drag = 4,
-		Rotation = NumberRange.new(0, 360),
-	})
-	bursts = emitter("Bursts", {
-		Texture = SPARKLE_TEXTURE,
-		Color = ColorSequence.new(Color3.fromRGB(255, 220, 90)),
-		LightEmission = 1,
-		Lifetime = NumberRange.new(0.4, 0.7),
-		Speed = NumberRange.new(14, 24),
-		SpreadAngle = Vector2.new(180, 180),
-		Size = NumberSequence.new(1.2, 0),
-		Drag = 4,
-	})
-	local lightAttachment = Instance.new("Attachment")
-	lightAttachment.Name = "Flash"
-	lightAttachment.Parent = anchor
-	flashLight = Instance.new("PointLight")
-	flashLight.Color = Color3.fromRGB(255, 220, 120)
-	flashLight.Range = 16
-	flashLight.Brightness = 0
-	flashLight.Parent = lightAttachment
 
 	for _ = 1, Config.NUMBER_POOL do
 		table.insert(freeNumbers, newNumber())
