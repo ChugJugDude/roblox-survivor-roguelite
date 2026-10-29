@@ -1,6 +1,6 @@
 --!strict
 -- The lobby built by server/Lobby.luau: a square plaza at the world origin with the portal pad,
--- the Hero stand, and the Altar.
+-- the Hero stand, the Altar, and the Codex.
 
 return table.freeze({
 	-- Center of the plaza floor's top surface.
@@ -19,6 +19,7 @@ return table.freeze({
 	-- STAND_PROMPT_DISTANCE shows the prompt that opens their menu.
 	HERO_STAND_OFFSET = Vector3.new(-22, 0, 2),
 	ALTAR_OFFSET = Vector3.new(22, 0, 2),
+	CODEX_OFFSET = Vector3.new(-22, 0, 30),
 	STAND_PROMPT_DISTANCE = 10,
 	-- Menus close when the player walks this far from their stand.
 	MENU_CLOSE_DISTANCE = 16,

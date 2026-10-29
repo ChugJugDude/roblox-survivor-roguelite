@@ -328,8 +328,10 @@ end
 local function apply(player: Player, state: State, option: Option)
 	if option.kind == "weapon" or option.kind == "evolution" then
 		state.build.weapons[option.id] = option.level
+		Meta.discover(player, `{if option.kind == "evolution" then "V" else "W"}:{option.id}`)
 	elseif option.kind == "passive" then
 		state.build.passives[option.id] = option.level
+		Meta.discover(player, `P:{option.id}`)
 	else
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -571,6 +573,10 @@ function Upgrades.reset(party: Party)
 		local state = newState(party, loadout)
 		states[player] = state
 		publishBuild(player, state)
+		-- The hero's starting weapon counts as discovered.
+		for id in state.build.weapons do
+			Meta.discover(player, `W:{id}`)
+		end
 		state.chestPicks = loadout.bonus.headStart
 		if state.chestPicks > 0 then
 			openOffer(player, state)

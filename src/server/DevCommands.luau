@@ -22,6 +22,7 @@
 		down        down the first player (as if a hit would have killed them)
 		lobby       send every player back to the lobby
 		shards <n>  give the first player n Shards (negative takes them away)
+		codex all|reset   discover every Codex entry, or forget them all (first player; saved data)
 		resetmeta   reset the first player's Shards, heroes, Altar, and stats. With Studio API access
 		            on, this overwrites their real saved data.
 
@@ -70,6 +71,13 @@ local function execute(command: string)
 		local first = Players:GetPlayers()[1]
 		if first then
 			Meta.devAddShards(first, tonumber(argument) :: number)
+		end
+		print(`[Dev] {command}`)
+		return
+	elseif name == "codex" and (argument == "all" or argument == "reset") then
+		local first = Players:GetPlayers()[1]
+		if first then
+			Meta.devCodex(first, argument == "all")
 		end
 		print(`[Dev] {command}`)
 		return

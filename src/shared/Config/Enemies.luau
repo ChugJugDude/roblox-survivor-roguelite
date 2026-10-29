@@ -19,6 +19,14 @@ export type EnemyDef = {
 	isBoss: boolean?, -- shown on the boss health bar
 	dropsChest: boolean?,
 	displayName: string?, -- for the boss bar
+	codex: CodexEntry?, -- its page in the lobby's Codex (shared/Codex.luau)
+}
+
+export type CodexEntry = {
+	order: number,
+	name: string,
+	icon: string, -- an emoji until there's art
+	description: string,
 }
 
 -- A boss's attacks (server/BossBrain.luau). Every attackInterval seconds it does the next attack
@@ -58,6 +66,12 @@ export type RangedDef = {
 local Enemies = {
 	TYPES = table.freeze({
 		Goblin = table.freeze({
+			codex = table.freeze({
+				order = 1,
+				name = "Goblin",
+				icon = "👺",
+				description = "Runs straight at the nearest player. Weak alone, dangerous in a crowd.",
+			}),
 			maxHealth = 30,
 			speed = 9,
 			radius = 1.5,
@@ -68,6 +82,12 @@ local Enemies = {
 		}),
 		-- Fast and fragile, in packs. Pressures the player to keep moving.
 		Bat = table.freeze({
+			codex = table.freeze({
+				order = 2,
+				name = "Bat swarm",
+				icon = "🦇",
+				description = "Fast and fragile, and always comes in a group.",
+			}),
 			maxHealth = 12,
 			speed = 15,
 			radius = 1,
@@ -80,6 +100,12 @@ local Enemies = {
 		-- Hangs back and fires slow arrows the player has to dodge. Each hit stings less than a goblin's:
 		-- archers are dangerous because several shoot at once, not per shot.
 		SkeletonArcher = table.freeze({
+			codex = table.freeze({
+				order = 3,
+				name = "Skeleton archer",
+				icon = "💀",
+				description = "Keeps its distance and shoots slow crimson orbs. Dodge them.",
+			}),
 			maxHealth = 25,
 			speed = 8,
 			radius = 1.4,
@@ -98,6 +124,12 @@ local Enemies = {
 		}),
 		-- Mid-stage mini-boss. Slow, tanky, hits hard, drops a chest.
 		GoblinGiant = table.freeze({
+			codex = table.freeze({
+				order = 4,
+				name = "Goblin Giant",
+				icon = "🗿",
+				description = "A slow, tanky mini-boss that hits hard. Drops a chest.",
+			}),
 			maxHealth = 600,
 			speed = 6,
 			radius = 3.5,
@@ -112,6 +144,12 @@ local Enemies = {
 		-- The final boss, guarding the end of the run (Config.Waves finalBoss). Slow, huge, and
 		-- dangerous through its attacks rather than its walk.
 		Ogre = table.freeze({
+			codex = table.freeze({
+				order = 5,
+				name = "Ogre",
+				icon = "👹",
+				description = "Guards the end of the run. Fires rings of shots, summons goblins, and charges down a red lane. Enrages when hurt.",
+			}),
 			-- x3 on stage 3. A maxed triple-evolution build kills it in ~25s; a typical one takes longer.
 			maxHealth = 4000,
 			speed = 5,
@@ -155,6 +193,7 @@ local Enemies = {
 
 	-- Elites: a tougher, bigger, glowing version of a regular enemy that drops a chest. Multipliers
 	-- apply on top of stage scaling. When they appear: Config.Waves ELITE_*.
+	ELITE_DESCRIPTION = "A bigger, golden version of a regular enemy: much tougher, hits harder, and drops a chest.",
 	ELITE = table.freeze({
 		health = 8,
 		damage = 1.5,

@@ -13,6 +13,7 @@ export type Data = {
 		runs: number,
 		wins: number,
 	},
+	collection: { [string]: boolean }, -- Codex discoveries (shared/Codex.luau keys)
 }
 
 local PlayerDataConfig = {
@@ -28,6 +29,7 @@ local PlayerDataConfig = {
 		heroes = table.freeze({}),
 		altar = table.freeze({}),
 		stats = table.freeze({ runs = 0, wins = 0 }),
+		collection = table.freeze({}),
 	}) :: Data,
 
 	-- Seconds between autosaves. This also refreshes the session lock.

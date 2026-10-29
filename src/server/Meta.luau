@@ -17,6 +17,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerData = require(script.Parent.PlayerData)
+local Codex = require(ReplicatedStorage.Shared.Codex)
 local Config = require(ReplicatedStorage.Shared.Config.Meta)
 local MetaStats = require(ReplicatedStorage.Shared.MetaStats)
 local PlayerDataConfig = require(ReplicatedStorage.Shared.Config.PlayerData)
@@ -77,6 +78,30 @@ function Meta.awardRun(player: Player, result: ShardReward.RunResult)
 	player:SetAttribute("ResultShards", if granted then shards else 0)
 end
 
+-- Records a Codex discovery (a shared/Codex key) for the player. Free when it's already known, so
+-- callers can report every sighting.
+function Meta.discover(player: Player, key: string)
+	local data = PlayerData.get(player)
+	if not data or data.collection[key] or not Codex.isKey(key) then
+		return
+	end
+	PlayerData.update(player, function(saved)
+		saved.collection[key] = true
+	end)
+end
+
+-- Studio dev command: discover every Codex entry, or forget them all.
+function Meta.devCodex(player: Player, discoverAll: boolean)
+	PlayerData.update(player, function(data)
+		data.collection = {}
+		if discoverAll then
+			for _, entry in Codex.ENTRIES do
+				data.collection[entry.key] = true
+			end
+		end
+	end)
+end
+
 -- Clears last run's reward, so the results screen never shows a stale one.
 function Meta.clearResult(player: Player)
 	player:SetAttribute("ResultGreed", nil)
@@ -99,6 +124,7 @@ function Meta.devReset(player: Player)
 		data.heroes = {}
 		data.altar = {}
 		data.stats = { runs = 0, wins = 0 }
+		data.collection = {}
 	end)
 end
 

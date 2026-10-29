@@ -1,8 +1,8 @@
 --!strict
 --[[
-	The lobby's Hero stand and Altar: code-built props, each with a ProximityPrompt that opens its
-	menu on the client (client/UI/LobbyMenus.luau). The prompts carry a Menu attribute ("Heroes" or
-	"Altar") so the client knows which menu to open. Nothing is decided here: purchases go through
+	The lobby's Hero stand, Altar, and Codex: code-built props, each with a ProximityPrompt that
+	opens its menu on the client (client/UI/LobbyMenus.luau). The prompts carry a Menu attribute
+	("Heroes", "Altar", or "Codex") so the client knows which menu to open. Nothing is decided here: purchases go through
 	server/Meta's remotes, which check everything again.
 ]]
 
@@ -18,6 +18,9 @@ local HERO_COLORS = {
 local ALTAR_STONE = Color3.fromRGB(95, 95, 110)
 local ALTAR_CRYSTAL = Color3.fromRGB(120, 220, 255)
 local WOOD = Color3.fromRGB(120, 85, 55)
+local BOOK_COVER = Color3.fromRGB(120, 40, 50)
+local BOOK_PAGES = Color3.fromRGB(240, 230, 205)
+local CODEX_GLOW = Color3.fromRGB(255, 215, 120)
 
 local LobbyStands = {}
 
@@ -108,10 +111,32 @@ local function buildAltar(parent: Instance, center: Vector3)
 	altar.Parent = parent
 end
 
--- Builds both stands into the lobby model.
+-- A lectern with a big open book on it: the collection log.
+local function buildCodex(parent: Instance, center: Vector3)
+	local codex = Instance.new("Model")
+	codex.Name = "Codex"
+	makePart(codex, "Step", Vector3.new(5, 1, 5), CFrame.new(center + Vector3.new(0, 0.5, 0)), WOOD)
+	local post = makePart(codex, "Post", Vector3.new(1.2, 3, 1.2), CFrame.new(center + Vector3.new(0, 2.5, 0)), WOOD)
+	local tilt = CFrame.new(center + Vector3.new(0, 4.3, 0)) * CFrame.Angles(math.rad(-25), 0, 0)
+	makePart(codex, "Desk", Vector3.new(3.4, 0.3, 2.4), tilt, WOOD)
+	makePart(codex, "Cover", Vector3.new(3.2, 0.25, 2.2), tilt * CFrame.new(0, 0.25, 0), BOOK_COVER)
+	local pages = makePart(codex, "Pages", Vector3.new(3, 0.2, 2), tilt * CFrame.new(0, 0.45, 0), BOOK_PAGES)
+	pages.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = CODEX_GLOW
+	light.Range = 10
+	light.Brightness = 1.2
+	light.Parent = pages
+	addSign(post, "CODEX", CODEX_GLOW, 6)
+	addPrompt(post, "Codex", "Codex")
+	codex.Parent = parent
+end
+
+-- Builds every stand into the lobby model.
 function LobbyStands.build(lobby: Model)
 	buildHeroStand(lobby, Config.ORIGIN + Config.HERO_STAND_OFFSET)
 	buildAltar(lobby, Config.ORIGIN + Config.ALTAR_OFFSET)
+	buildCodex(lobby, Config.ORIGIN + Config.CODEX_OFFSET)
 end
 
 return LobbyStands

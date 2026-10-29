@@ -207,6 +207,18 @@ function Match.create(slot: number): Match
 	local net = NetBatch.new()
 	local clock = Pause.new(arena)
 	local enemies = EnemyService.new(arena, net)
+	-- Every member sees what the party kills: Codex entries for each enemy kind (and elites).
+	EnemyService.onKilled(enemies, function(enemy)
+		if EnemyService.isProp(enemy) then
+			return
+		end
+		for _, player in members do
+			Meta.discover(player, `E:{enemy.kind}`)
+			if enemy.elite then
+				Meta.discover(player, "E:Elite")
+			end
+		end
+	end)
 	local progression = Progression.new(arena, net, enemies)
 	local party = Upgrades.newParty(clock, members, progression)
 	local projectiles = ProjectileService.new(enemies, net, clock)
