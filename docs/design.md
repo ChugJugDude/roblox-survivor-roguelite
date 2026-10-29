@@ -216,6 +216,8 @@ Roblox's discovery rewards retention over the first 28 days, so retention matter
 - **Choosing:** the **party leader** (the first player on the portal pad) picks with arrows on the pad from worlds *they* have unlocked; friends who haven't unlocked it are carried. Everyone else on the pad sees the choice, and the pad's sign shows the world.
 - **Balance target:** a world should be clearly harder than the last but winnable with the build a player has by then. Benchmark: Spinning Blade + Fireball evolved, Might 3, Haste 3 kills the Ogre in ~49s and the Infernal in ~68s.
 
+- **Map polish (later):** arenas still read as a walled box. Each world should get more shape and scenery (edges, props, landmarks) without blocking movement or hiding enemy shots.
+
 The rest below is still the proposal.
 
 
