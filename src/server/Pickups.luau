@@ -20,6 +20,7 @@ local NetBatch = require(script.Parent.NetBatch)
 local Progression = require(script.Parent.Progression)
 local Upgrades = require(script.Parent.Upgrades)
 local Config = require(ReplicatedStorage.Shared.Config.Pickups)
+local EntityNet = require(ReplicatedStorage.Shared.EntityNet)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 export type Kind = "Chest" | "Meat" | "Bomb" | "Magnet"
@@ -75,7 +76,97 @@ local function makePart(
 	return part
 end
 
--- Placeholder art built from parts. `base` is the floor point under the item.
+local CHEST_WOOD = Color3.fromRGB(105, 64, 34)
+local CHEST_GOLD = Color3.fromRGB(240, 190, 70)
+
+-- A treasure chest: a wood body on a gold base band, a rounded lid (a cylinder whose lower half
+-- sits inside the body) with gold bands over it, and a lock plate. Instead of a tall beam (which
+-- pulled the eye in busy fights) it has a short faint glow column, gold sparkles rising from the
+-- lid, and a soft light, so it's still easy to find.
+local function buildChest(model: Model, base: Vector3)
+	local width, depth, height = 3, 2.1, 1.5
+	local body = makePart(
+		model,
+		Vector3.new(width, height, depth),
+		CFrame.new(base + Vector3.new(0, height / 2, 0)),
+		CHEST_WOOD,
+		Enum.Material.Wood
+	)
+	makePart(
+		model,
+		Vector3.new(width + 0.15, 0.2, depth + 0.15),
+		CFrame.new(base + Vector3.new(0, 0.1, 0)),
+		CHEST_GOLD,
+		Enum.Material.Metal
+	)
+	-- A cylinder's axis is its X size, which already runs along the chest's width.
+	local lidCenter = base + Vector3.new(0, height, 0)
+	makePart(
+		model,
+		Vector3.new(width + 0.05, depth + 0.1, depth + 0.1),
+		CFrame.new(lidCenter),
+		CHEST_WOOD,
+		Enum.Material.Wood,
+		Enum.PartType.Cylinder
+	)
+	for _, x in { -width * 0.32, width * 0.32 } do
+		-- A gold band over the lid and down both sides of the body.
+		makePart(
+			model,
+			Vector3.new(0.25, depth + 0.2, depth + 0.2),
+			CFrame.new(lidCenter + Vector3.new(x, 0, 0)),
+			CHEST_GOLD,
+			Enum.Material.Metal,
+			Enum.PartType.Cylinder
+		)
+		makePart(
+			model,
+			Vector3.new(0.25, height, depth + 0.1),
+			CFrame.new(base + Vector3.new(x, height / 2, 0)),
+			CHEST_GOLD,
+			Enum.Material.Metal
+		)
+	end
+	-- The lock plate on the front.
+	makePart(
+		model,
+		Vector3.new(0.55, 0.65, 0.15),
+		CFrame.new(base + Vector3.new(0, height - 0.15, -depth / 2 - 0.08)),
+		CHEST_GOLD,
+		Enum.Material.Neon
+	)
+
+	local glow = makePart(
+		model,
+		Vector3.new(7, 1.4, 1.4),
+		CFrame.new(base + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		CHEST_GOLD,
+		Enum.Material.Neon,
+		Enum.PartType.Cylinder
+	)
+	glow.Transparency = 0.8
+	glow.CastShadow = false
+
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkles.Color = ColorSequence.new(CHEST_GOLD)
+	sparkles.LightEmission = 1
+	sparkles.Rate = 8
+	sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkles.Speed = NumberRange.new(2, 4)
+	sparkles.SpreadAngle = Vector2.new(25, 25)
+	sparkles.Size = NumberSequence.new(0.6, 0)
+	sparkles.EmissionDirection = Enum.NormalId.Top
+	sparkles.Parent = body
+	local light = Instance.new("PointLight")
+	light.Color = CHEST_GOLD
+	light.Range = 10
+	light.Brightness = 1.5
+	light.Parent = body
+end
+
+-- Placeholder art built from parts (the chest is the polished one). `base` is the floor point under
+-- the item.
 local function buildModel(kind: Kind, base: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = kind
@@ -91,18 +182,7 @@ local function buildModel(kind: Kind, base: Vector3): Model
 	ring.Transparency = 0.4
 
 	if kind == "Chest" then
-		local wood, gold = Color3.fromRGB(140, 90, 45), Color3.fromRGB(255, 200, 60)
-		makePart(model, Vector3.new(3, 1.6, 2.2), CFrame.new(base + Vector3.new(0, 0.8, 0)), wood, Enum.Material.Wood)
-		makePart(
-			model,
-			Vector3.new(3.1, 0.7, 2.3),
-			CFrame.new(base + Vector3.new(0, 1.95, 0)),
-			wood,
-			Enum.Material.Wood
-		)
-		makePart(model, Vector3.new(3.2, 0.3, 2.4), CFrame.new(base + Vector3.new(0, 1.6, 0)), gold, Enum.Material.Neon)
-		-- A tall faint beam so chests are easy to spot from across the arena.
-		makePart(model, Vector3.new(0.6, 30, 0.6), CFrame.new(base + Vector3.new(0, 15, 0)), gold, Enum.Material.Neon)
+		buildChest(model, base)
 	elseif kind == "Meat" then
 		local center = base + Vector3.new(0, 1.2, 0)
 		makePart(
@@ -211,6 +291,9 @@ end
 
 local function use(state: State, item: Item, target: Characters.Target)
 	if item.kind == "Chest" then
+		-- The burst goes out first; the pick then pauses the game with the TREASURE! cards.
+		local opened: EntityNet.ChestOpenEffect = { kind = "ChestOpen", x = item.x, z = item.z }
+		NetBatch.push(state.net, Remotes.WeaponEffects, opened)
 		Upgrades.grantBonusPick(state.party, target.player)
 	elseif item.kind == "Meat" then
 		local humanoid = target.humanoid

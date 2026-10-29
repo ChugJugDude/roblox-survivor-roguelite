@@ -37,6 +37,7 @@ local EXPLOSION_SOUNDS: { [string]: string } = {
 local EFFECT_SOUNDS: { [string]: string } = {
 	Lightning = "Lightning",
 	HolyGround = "Holy",
+	ChestOpen = "Purchase",
 }
 
 local started = false

@@ -52,7 +52,14 @@ export type HolyGroundEffect = {
 	ownerId: number?, -- Sanctuary's first zone follows this player (UserId)
 }
 
-export type EffectInfo = LightningEffect | ChillEffect | HolyGroundEffect
+-- A chest being opened (visual only; the pick itself arrives as UpgradeOffered).
+export type ChestOpenEffect = {
+	kind: "ChestOpen",
+	x: number,
+	z: number,
+}
+
+export type EffectInfo = LightningEffect | ChillEffect | HolyGroundEffect | ChestOpenEffect
 
 -- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer).
 export type TelegraphInfo = {

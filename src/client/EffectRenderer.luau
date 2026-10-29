@@ -28,6 +28,7 @@ local LIGHTNING_TIME = 0.2 -- seconds to fade out
 local ZAP_PARTICLES = 5 -- sparks at each enemy a bolt strikes
 
 local HOLY_COLOR = Color3.fromRGB(255, 205, 80)
+local CHEST_GOLD = Color3.fromRGB(240, 190, 70)
 local SANCTUARY_COLOR = Color3.fromRGB(255, 228, 125)
 local ZONE_HEIGHT = 0.12 -- above the floor, under everything else
 -- The drawing's plate is a bit bigger than the zone so the outer ring's stroke isn't clipped.
@@ -335,6 +336,12 @@ local function onEffects(list: any)
 			drawLightning(info.points, info.evolved == true)
 		elseif info.kind == "HolyGround" then
 			addZone(info)
+		elseif info.kind == "ChestOpen" and typeof(info.x) == "number" and typeof(info.z) == "number" then
+			-- Gold bursting out of the lid, coins of light, and a flash.
+			local lid = Vector3.new(info.x, ArenaConfig.ORIGIN.Y + 2, info.z)
+			Particles.emit("GoldBurst", lid, 30)
+			Particles.emit("Sparkles", lid, 24, CHEST_GOLD)
+			Particles.flash(lid + Vector3.new(0, 2, 0), CHEST_GOLD, 5, 18, 0.5)
 		end
 	end
 end
