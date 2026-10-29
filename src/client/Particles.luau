@@ -5,6 +5,8 @@
 
 local TweenService = game:GetService("TweenService")
 
+local Graphics = require(script.Parent.Graphics)
+
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
 local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
 local FIRE = "rbxasset://textures/particles/fire_main.dds"
@@ -199,6 +201,9 @@ end
 
 -- A brief point of light at `position` that fades out over `duration` seconds.
 function Particles.flash(position: Vector3, color: Color3, brightness: number, range: number, duration: number)
+	if not Graphics.profile().lights then
+		return
+	end
 	local light = lights[nextLight]
 	if not light then
 		local attachment = Instance.new("Attachment")

@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
+local Graphics = require(script.Parent.Graphics)
 local Particles = require(script.Parent.Particles)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local EntityNet = require(ReplicatedStorage.Shared.EntityNet)
@@ -16,6 +17,7 @@ local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local FIRE_TEXTURE = "rbxasset://textures/particles/fire_main.dds"
+local FIRE_RATE = 60 -- flame particles per second (scaled by the graphics quality)
 
 type Piece = {
 	size: Vector3,
@@ -111,6 +113,7 @@ local FROST_RING_POINTS = 14
 type Visual = {
 	parts: { BasePart },
 	fire: ParticleEmitter?,
+	light: PointLight?,
 }
 
 type Active = {
@@ -151,6 +154,7 @@ local function newVisual(kind: string): Visual
 		table.insert(parts, part)
 	end
 	local fire: ParticleEmitter? = nil
+	local fireLight: PointLight? = nil
 	if look.fire then
 		-- Particles stay where they're born, so a moving fireball leaves a trail of flame.
 		local emitter = Instance.new("ParticleEmitter")
@@ -158,7 +162,7 @@ local function newVisual(kind: string): Visual
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 210, 90), Color3.fromRGB(255, 70, 20))
 		emitter.LightEmission = 1
 		emitter.Lifetime = NumberRange.new(0.2, 0.35)
-		emitter.Rate = 60
+		emitter.Rate = FIRE_RATE
 		emitter.Speed = NumberRange.new(0.5, 1.5)
 		emitter.SpreadAngle = Vector2.new(180, 180)
 		emitter.Size = NumberSequence.new(look.fire, 0)
@@ -170,8 +174,9 @@ local function newVisual(kind: string): Visual
 		light.Brightness = 2
 		light.Parent = parts[1]
 		fire = emitter
+		fireLight = light
 	end
-	return { parts = parts, fire = fire }
+	return { parts = parts, fire = fire, light = fireLight }
 end
 
 local function acquire(kind: string): Visual
@@ -182,6 +187,16 @@ local function acquire(kind: string): Visual
 	end
 	for _, part in (visual :: Visual).parts do
 		part.Parent = folder
+	end
+	-- Apply the current graphics quality to the fire trail and light.
+	local profile = Graphics.profile()
+	local fire = (visual :: Visual).fire
+	if fire then
+		fire.Rate = FIRE_RATE * profile.fireScale
+	end
+	local light = (visual :: Visual).light
+	if light then
+		light.Enabled = profile.lights
 	end
 	return visual :: Visual
 end

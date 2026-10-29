@@ -1,13 +1,15 @@
 --!strict
--- The sound settings panel (opened from the gear next to the mute buttons): volume sliders for music,
--- all sound effects, and each kind of effect (Config.Audio.CATEGORIES), so a loud weapon can be
--- turned down on its own. Settings last for this session.
+-- The settings panel (opened from the gear next to the mute buttons): the graphics quality
+-- (client/Graphics) and volume sliders for music, all sound effects, and each kind of effect
+-- (Config.Audio.CATEGORIES), so a loud weapon can be turned down on its own. Settings last for this
+-- session.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local Create = require(script.Parent.Create)
+local Graphics = require(script.Parent.Parent.Graphics)
 local SoundPlayer = require(script.Parent.Parent.SoundPlayer)
 local Theme = require(script.Parent.Theme)
 local Config = require(ReplicatedStorage.Shared.Config.Audio)
@@ -130,7 +132,7 @@ function AudioSettings.toggle()
 end
 
 function AudioSettings.start()
-	local rows = 2 + #Config.CATEGORIES
+	local rows = 3 + #Config.CATEGORIES
 	local newGui = Create("ScreenGui", {
 		Name = "AudioSettings",
 		ResetOnSpawn = false,
@@ -163,7 +165,7 @@ function AudioSettings.start()
 		Size = UDim2.new(1, 0, 0, HEADER_HEIGHT),
 		Font = Theme.FONTS.heading,
 		TextSize = 22,
-		Text = "SOUND",
+		Text = "SETTINGS",
 		Parent = panel,
 	})
 	local close = Theme.button(COLORS.bad, {
@@ -186,6 +188,41 @@ function AudioSettings.start()
 		Parent = panel,
 	})
 	Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+
+	-- Graphics quality: a button that flips between High and Low.
+	local graphicsRow = Create("Frame", {
+		Name = "Graphics",
+		Size = UDim2.new(1, 0, 0, ROW_HEIGHT),
+		LayoutOrder = 0,
+		BackgroundTransparency = 1,
+		Parent = list,
+	})
+	Theme.label({
+		Size = UDim2.new(1, -(TRACK_WIDTH + 70), 1, 0),
+		Position = UDim2.fromOffset(16, 0),
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextStrokeTransparency = 1,
+		Text = "Graphics",
+		Parent = graphicsRow,
+	})
+	local graphicsButton = Theme.button(COLORS.panelLight, {
+		Size = UDim2.fromOffset(TRACK_WIDTH, 28),
+		Position = UDim2.new(1, -(TRACK_WIDTH + 62), 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		TextSize = 13,
+		Parent = graphicsRow,
+	})
+	local function showQuality()
+		local low = Graphics.quality() == "Low"
+		graphicsButton.Text = if low then "LOW (phones)" else "HIGH"
+		graphicsButton.BackgroundColor3 = if low then COLORS.panelLight else COLORS.passive
+	end
+	graphicsButton.Activated:Connect(function()
+		Graphics.setQuality(if Graphics.quality() == "Low" then "High" else "Low")
+	end)
+	Graphics.onChanged(showQuality)
+	showQuality()
 
 	slider(list, 1, "Music", function()
 		return SoundPlayer.getGroupVolume("Music")

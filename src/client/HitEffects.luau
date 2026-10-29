@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local EnemyRenderer = require(script.Parent.EnemyRenderer)
+local Graphics = require(script.Parent.Graphics)
 local Particles = require(script.Parent.Particles)
 local Config = require(ReplicatedStorage.Shared.Config.Effects)
 local EnemiesConfig = require(ReplicatedStorage.Shared.Config.Enemies)
@@ -100,13 +101,17 @@ local function showNumber(id: number, amount: number, position: Vector3, radius:
 			return
 		end
 	end
-	local number = table.remove(freeNumbers)
+	-- The quality's cap counts as the pool being full.
+	local number = if #activeNumbers < Graphics.profile().numberCap then table.remove(freeNumbers) else nil
 	if not number then
 		if amount < Config.NUMBER_STEAL_MIN or #activeNumbers == 0 then
 			return
 		end
 		release(1) -- the oldest
 		number = table.remove(freeNumbers) :: Number
+		while #activeNumbers >= Graphics.profile().numberCap and #activeNumbers > 0 do
+			release(1) -- after switching to Low, more than its cap can still be showing
+		end
 	end
 	number.enemyId = id
 	number.startedAt = now
@@ -134,7 +139,7 @@ local function onHit(list: any)
 		end
 		local kind, elite = EnemyRenderer.getKind(id)
 		local radius = radiusOf(kind, elite)
-		if sparked < Config.SPARK_ENEMIES_PER_BATCH then
+		if sparked < Graphics.profile().sparkEnemiesPerBatch then
 			sparked += 1
 			Particles.emit("Sparks", position + Vector3.new(0, radius + 1, 0), Config.SPARKS_PER_HIT)
 		end
@@ -145,7 +150,7 @@ end
 local puffedThisFrame = 0
 
 local function onRemoved(_id: number, position: Vector3, kind: string, elite: boolean)
-	if puffedThisFrame >= Config.PUFFS_PER_BATCH then
+	if puffedThisFrame >= Graphics.profile().puffsPerBatch then
 		return
 	end
 	puffedThisFrame += 1

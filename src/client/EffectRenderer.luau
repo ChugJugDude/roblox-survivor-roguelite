@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
+local Graphics = require(script.Parent.Graphics)
 local Particles = require(script.Parent.Particles)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local GameClock = require(ReplicatedStorage.Shared.GameClock)
@@ -284,6 +285,7 @@ local function addZone(info: any)
 	light.Color = color
 	light.Range = radius * 1.2
 	light.Brightness = 0
+	light.Enabled = Graphics.profile().lights
 	light.Parent = plate
 
 	local source = newPart("HolyGroundMotes", color)
@@ -302,7 +304,7 @@ local function addZone(info: any)
 	motes.SpreadAngle = Vector2.new(10, 10)
 	motes.Size = NumberSequence.new(0.5, 0)
 	motes.Acceleration = Vector3.new(0, 1.5, 0)
-	motes.Rate = (4 + radius * 1.5) * (if evolved then 1.5 else 1)
+	motes.Rate = (4 + radius * 1.5) * (if evolved then 1.5 else 1) * Graphics.profile().moteScale
 	motes.Parent = source
 
 	local owner = if typeof(info.ownerId) == "number" then Players:GetPlayerByUserId(info.ownerId) else nil

@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
+local Graphics = require(script.Parent.Graphics)
 local Particles = require(script.Parent.Particles)
 local ProjectileRenderer = require(script.Parent.ProjectileRenderer)
 local BladeOrbit = require(ReplicatedStorage.Shared.BladeOrbit)
@@ -129,15 +130,18 @@ local function swordLook(length: number, width: number, evolved: boolean): Look
 			),
 			piece("Grip", Vector3.new(0.35, 0.35, length * 0.1), CFrame.new(0, 0, 0.45 * length), GRIP_COLOR),
 		},
-		trail = {
-			piece = 1,
-			from = Vector3.new(0, 0, -bladeLength / 2),
-			to = Vector3.new(0, 0, 0),
-			color = if evolved then BLADESTORM_COLOR else STEEL_COLOR,
-			lifetime = if evolved then 0.18 else 0.12,
-			-- Eight overlapping Bladestorm ribbons make a solid ring, so each is fainter.
-			transparency = if evolved then 0.7 else 0.45,
-		},
+		-- The Low graphics quality skips swing trails.
+		trail = if not Graphics.profile().swordTrails
+			then nil
+			else {
+				piece = 1,
+				from = Vector3.new(0, 0, -bladeLength / 2),
+				to = Vector3.new(0, 0, 0),
+				color = if evolved then BLADESTORM_COLOR else STEEL_COLOR,
+				lifetime = if evolved then 0.18 else 0.12,
+				-- Eight overlapping Bladestorm ribbons make a solid ring, so each is fainter.
+				transparency = if evolved then 0.7 else 0.45,
+			},
 	}
 end
 

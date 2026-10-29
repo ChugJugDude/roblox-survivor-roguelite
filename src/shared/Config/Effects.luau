@@ -2,17 +2,43 @@
 -- Hit feedback and player feedback visuals (client/HitEffects, client/PlayerFeedback). The caps keep
 -- crowds of 200 enemies from flooding the screen or the frame budget; lower them if phones struggle.
 
+-- What the graphics quality (client/Graphics) changes. High is every effect; Low is for phones.
+export type Profile = {
+	sparkEnemiesPerBatch: number, -- hit enemies per network batch that get a spark burst
+	puffsPerBatch: number, -- removals per batch that get a death puff (a stage clear removes all)
+	numberCap: number, -- damage numbers on screen at once (at most NUMBER_POOL)
+	lights: boolean, -- light flashes, and lights on fireballs and Holy Ground zones
+	moteScale: number, -- Holy Ground's rising motes
+	fireScale: number, -- fireball and meteor flame trails
+	swordTrails: boolean, -- swing trails on Spinning Blade and Bladestorm
+}
+
 return table.freeze({
-	-- Sparks: hit enemies per network batch that get a spark burst, and particles per burst.
-	SPARK_ENEMIES_PER_BATCH = 8,
+	HIGH = table.freeze({
+		sparkEnemiesPerBatch = 8,
+		puffsPerBatch = 10,
+		numberCap = 30,
+		lights = true,
+		moteScale = 1,
+		fireScale = 1,
+		swordTrails = true,
+	}) :: Profile,
+	LOW = table.freeze({
+		sparkEnemiesPerBatch = 3,
+		puffsPerBatch = 4,
+		numberCap = 12,
+		lights = false,
+		moteScale = 0.4,
+		fireScale = 0.5,
+		swordTrails = false,
+	}) :: Profile,
+
 	SPARKS_PER_HIT = 4,
-	-- Death puffs: removals per batch that get a puff (a stage clear removes everything at once).
-	PUFFS_PER_BATCH = 10,
 	PUFF_PARTICLES = 6,
 	ELITE_PUFF_PARTICLES = 16, -- elites and bosses also get a gold burst and a flash of light
 
 	-- Damage numbers.
-	NUMBER_POOL = 30, -- most on screen at once
+	NUMBER_POOL = 30, -- damage numbers made up front (the High profile's cap)
 	NUMBER_LIFETIME = 0.7, -- seconds
 	NUMBER_RISE = 3, -- studs over its lifetime
 	NUMBER_MERGE_TIME = 0.25, -- hits on the same enemy within this many seconds add into one number
