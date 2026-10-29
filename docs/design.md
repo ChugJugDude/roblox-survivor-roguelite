@@ -123,13 +123,13 @@ Skeleton archers face the player they're aiming at.
 - **Permanent upgrades (the "Altar"):** small stat boosts bought with Shards at the Altar in the lobby, cost ×1.5 per level. 8 in v1: Might, Vitality, Swiftness, Magnet, Greed (+Shards), Reroll (+1 per run), Rescue (revive teammates faster), and **Head Start** (free upgrade picks during the run's countdown; replaces "Starting XP", which doesn't fit shared party XP). Maxing everything costs ~4,900 Shards (~20 winning runs).
 - **Hero unlocks:** Pyromancer for 400 Shards.
 - Tuning lives in `Config/Meta.luau` (Shard formula, heroes, Altar costs and effects).
-- **Collection log (moved to M4):** tracks weapons, evolutions, and enemies discovered. Cheap to build and gives completionists a goal.
+- **The Codex (collection log, M4):** a lectern in the lobby. Tabs for weapons and evolutions, passives, and enemies (elites and bosses included), each a dark "?" until discovered in a run, with found counts. Discoveries are saved per player; everyone in a party discovers what the party kills.
 
 Stretch (post-v1): daily quests, a second map, more heroes, harder difficulty tiers, cosmetic unlocks from achievements.
 
 **Backlog ideas (from playtests):**
-- **Chest polish:** chests are still a placeholder box with a tall yellow beam that pulls the eye in busy fights. Give them a proper chest model, a softer beacon, and an opening burst (and maybe a short "rarity" reveal before the TREASURE! cards).
-- **Pause menu with the build:** a pause button (and Escape / gamepad) that shows the player's weapons and passives with levels and evolution pairs; hover or tap one to read what it does (reuse the card text and icons). Solo pauses the game; in co-op it can't freeze the shared world, so it likely opens the build view without pausing.
+- ~~Chest polish~~ and ~~a pause menu with the build~~: built in M4 chunk 4. The pause menu pauses solo runs; in co-op it only shows the build. A "rarity" reveal before chest picks is still an idea.
+- **Graphics quality:** High (every effect) or Low (fewer particles and damage numbers, no extra lights or sword trails), Low by default on phones, switchable in Settings.
 - ~~Warding rings~~: built in M4 as the **Warding** passive (§6).
 
 ## 10. Structure and flow
@@ -176,7 +176,8 @@ Candidates:
 | M2 | Co-op | Lobby + portal, parties of 1–4, instanced arenas, shared XP, downed/revive, scaling | Weeks 4–5 |
 | M3 | Meta progression | Player data saving, Shards, Altar upgrades, hero unlock, results screen | Weeks 6–7 |
 | M4 | Content + polish | All v1 weapons/passives/evolutions, 5 enemies + boss, UI pass, sound, hit VFX | Weeks 8–9 |
-| M5 | Launch prep | Monetization, thumbnail/icon, maturity questionnaire, mobile test, publish | Week 10 |
+| M5 | Progression (proposed, §16) | Worlds with new enemies and bosses, gear, lobby loot chests | TBD |
+| M6 | Launch prep | Monetization, thumbnail/icon, maturity questionnaire, mobile test, publish | TBD |
 
 **Playtest gates:** after M1, play it and ask "is a solo run fun for 10 minutes?" After M2, play with friends. Don't move past a gate until the answer is yes.
 
@@ -199,3 +200,15 @@ Roblox's discovery rewards retention over the first 28 days, so retention matter
 - Does the boss need a separate arena phase, or spawn in the same arena?
 - Should parties be able to queue with strangers (matchmaking) in v1, or friends/portal-only?
 - How strong can Altar upgrades get before new players feel too weak in co-op with veterans?
+
+## 16. Progression loop (proposal, to plan next)
+
+The core run is fun and the Altar and heroes give some meta goals, but there isn't enough to keep players coming back after a few wins. The loop: **finish a world to unlock the next, harder one; bring back loot chests; open them in the lobby for gear that changes how your build plays.**
+
+- **Worlds.** Today's arena becomes World 1 (the Meadow). Each new world has 3 stages and a boss, a new floor, wall, and light palette with a few props, and its own enemy mix. Clearing a world (beating its boss) unlocks the next. Later worlds scale enemy HP and damage and pay more Shards. A world select on the portal pad (the party leader picks). Ideas: Meadow → Frozen Wastes → Haunted Crypt → Volcano.
+- **New enemies, mostly reskins.** Each world swaps models and colors and tweaks stats or behavior on the existing kinds (chase, ranged, swarm, mini-boss), for example ice wolves (fast chasers), frost archers (slowing shots), skeleton knights (tanky), cultists (casters that summon). It's all config: `Config.Enemies` + `EnemyModels`, so a world costs mostly art and tuning.
+- **New bosses.** One per world on `BossBrain`'s attack-pattern system: the existing attacks (rings, summons, charges) in new mixes, plus one signature attack each, e.g. an ice boss that freezes a lane, or a lich that raises the dead.
+- **Gear.** Three slots: **weapon charm** (boosts one weapon, e.g. +1 blade or +20% Fireball blast), **armor** (health, armor, or regen), and **trinket** (utility: pickup range, XP, Shards, cooldowns). Rarity (common / rare / epic / legendary) sets the number and size of bonuses. Gear is equipped in the lobby and applies like Altar bonuses (`build.bonus` via `MetaStats`), so it's server-side and easy to balance. Duplicates can be salvaged for Shards.
+- **Loot chests in the lobby.** Runs drop chest *keys* or sealed chests (more for wins and bosses, better in later worlds). Chests are opened at a lobby stand with a reveal animation. They're earned, never sold; if chests or keys are ever sold for Robux, the odds must be shown (Roblox policy) and the items stay non-pay-to-win.
+- **Daily/weekly goals** (later): small quests ("kill 500 enemies with Fireball") that pay keys, to give a reason to log in.
+- **Data:** new saved fields (unlocked worlds, inventory, equipped gear, keys) go through `PlayerData`'s default-filling, so older saves keep working.
