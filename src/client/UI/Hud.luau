@@ -14,6 +14,7 @@ local Theme = require(script.Parent.Theme)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
 local GameClock = require(ReplicatedStorage.Shared.GameClock)
 local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 
 local COLORS = Theme.COLORS
@@ -373,7 +374,8 @@ function Hud.start()
 		local toNext = arena:GetAttribute("XPToNext") or 1
 		set(xpBar.fill, "Size", UDim2.fromScale(math.clamp((arena:GetAttribute("PartyXP") or 0) / toNext, 0, 1), 1))
 		set(levelLabel, "Text", tostring(arena:GetAttribute("PartyLevel") or 1))
-		set(stageLabel, "Text", `STAGE {stage} / {Config.STAGE_COUNT}`)
+		local world = Worlds.get(arena:GetAttribute("World") :: string?)
+		set(stageLabel, "Text", `{string.upper(world.name)} · STAGE {stage} / {Config.STAGE_COUNT}`)
 		set(killsLabel, "Text", `⚔ {arena:GetAttribute("Kills") or 0}`)
 		if phase == "Overtime" then
 			set(timerLabel, "Text", "OVERTIME")

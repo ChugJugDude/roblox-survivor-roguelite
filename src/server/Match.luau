@@ -38,7 +38,7 @@ local WaveDirector = require(script.Parent.WaveDirector)
 local WeaponService = require(script.Parent.Weapons.WeaponService)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local Config = require(ReplicatedStorage.Shared.Config.Run)
-local WavesConfig = require(ReplicatedStorage.Shared.Config.Waves)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local ShardReward = require(ReplicatedStorage.Shared.ShardReward)
 
@@ -46,6 +46,7 @@ export type Phase = "Countdown" | "Stage" | "Overtime" | "Boss" | "Transition" |
 
 export type Match = {
 	slot: number,
+	world: string, -- Config.Worlds id
 	arena: Arena.Arena,
 	members: { Player },
 	net: NetBatch.Batch,
@@ -155,6 +156,7 @@ local function runView(match: Match, now: number): WaveDirector.RunView
 		overtime = phase == "Overtime",
 		overtimeElapsed = if phase == "Overtime" then sinceStart else 0,
 		partySize = match.partySize,
+		world = Worlds.get(match.world),
 	}
 end
 
@@ -174,7 +176,7 @@ local function stepRun(match: Match, now: number, dt: number, targets: { Charact
 		if phase == "Stage" then
 			if now >= match.phaseEndsAt then
 				local finalBoss = if match.stage >= Config.STAGE_COUNT
-					then WavesConfig.STAGES[match.stage].finalBoss
+					then Worlds.get(match.world).stages[match.stage].finalBoss
 					else nil
 				if finalBoss then
 					setPhase(match, "Boss", now)
@@ -199,10 +201,11 @@ local function stepRun(match: Match, now: number, dt: number, targets: { Charact
 	end
 end
 
--- Creates a match in arena slot `slot` (not started; add members, then start). Slot 0 is the
--- lobby's spot, so use 1 and up.
-function Match.create(slot: number): Match
-	local arena = Arena.build(ArenaConfig.ORIGIN + Vector3.new(slot * SLOT_SPACING, 0, 0), `Arena{slot}`)
+-- Creates a match in arena slot `slot`, set in world `worldId` (not started; add members, then
+-- start). Slot 0 is the lobby's spot, so use 1 and up.
+function Match.create(slot: number, worldId: string): Match
+	local world = Worlds.get(worldId)
+	local arena = Arena.build(ArenaConfig.ORIGIN + Vector3.new(slot * SLOT_SPACING, 0, 0), `Arena{slot}`, world)
 	local members: { Player } = {}
 	local net = NetBatch.new()
 	local clock = Pause.new(arena)
@@ -224,6 +227,7 @@ function Match.create(slot: number): Match
 	local projectiles = ProjectileService.new(enemies, net, clock)
 	local match: Match = {
 		slot = slot,
+		world = world.id,
 		arena = arena,
 		members = members,
 		net = net,

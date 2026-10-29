@@ -1,7 +1,8 @@
 --!strict
--- What spawns when (server/WaveDirector.luau). Each stage is a timeline of segments; the latest
--- segment whose `at` has passed is in effect, and overtime keeps using the last one with
--- Config.Run's overtime ramp on top.
+-- How waves work (server/WaveDirector.luau): the shared tuning here, and the Stage shape each
+-- world's stages use (Config.Worlds). Each stage is a timeline of segments; the latest segment whose
+-- `at` has passed is in effect, and overtime keeps using the last one with Config.Run's overtime
+-- ramp on top.
 
 export type Segment = {
 	at: number, -- seconds into the stage
@@ -25,45 +26,6 @@ export type Stage = {
 }
 
 return table.freeze({
-	STAGES = {
-		{
-			healthMultiplier = 1,
-			damageMultiplier = 1,
-			xpMultiplier = 1,
-			segments = {
-				{ at = 0, interval = 0.8, maxAlive = 25, mix = { Goblin = 1 } },
-				{ at = 45, interval = 0.6, maxAlive = 35, mix = { Goblin = 1, Bat = 0.15 } },
-				{ at = 100, interval = 0.45, maxAlive = 50, mix = { Goblin = 1, Bat = 0.15, SkeletonArcher = 0.25 } },
-			},
-			miniBoss = "GoblinGiant",
-			miniBossAt = 90,
-		},
-		{
-			healthMultiplier = 1.8,
-			damageMultiplier = 1.25,
-			xpMultiplier = 2,
-			segments = {
-				{ at = 0, interval = 0.6, maxAlive = 40, mix = { Goblin = 1, Bat = 0.15, SkeletonArcher = 0.25 } },
-				{ at = 60, interval = 0.45, maxAlive = 60, mix = { Goblin = 1, Bat = 0.2, SkeletonArcher = 0.35 } },
-				{ at = 120, interval = 0.35, maxAlive = 75, mix = { Goblin = 1, Bat = 0.25, SkeletonArcher = 0.4 } },
-			},
-			miniBoss = "GoblinGiant",
-			miniBossAt = 90,
-		},
-		{
-			healthMultiplier = 3,
-			damageMultiplier = 1.5,
-			xpMultiplier = 3,
-			segments = {
-				{ at = 0, interval = 0.45, maxAlive = 60, mix = { Goblin = 1, Bat = 0.25, SkeletonArcher = 0.4 } },
-				{ at = 60, interval = 0.35, maxAlive = 80, mix = { Goblin = 1, Bat = 0.3, SkeletonArcher = 0.5 } },
-				{ at = 120, interval = 0.28, maxAlive = 100, mix = { Goblin = 1, Bat = 0.3, SkeletonArcher = 0.5 } },
-			},
-			miniBoss = "GoblinGiant",
-			miniBossAt = 90,
-			finalBoss = "Ogre",
-		},
-	} :: { Stage },
 
 	-- Never more than this many enemies alive, whatever a stage or overtime asks for.
 	HARD_CAP = 200,
@@ -74,9 +36,8 @@ return table.freeze({
 	} :: { [string]: number },
 
 	-- Elites (Config.Enemies.ELITE): one every ELITE_INTERVAL seconds of a stage, of a random kind
-	-- from ELITE_KINDS (respecting KIND_CAPS), on the enemy spawn ring.
+	-- from the world's eliteKinds (Config.Worlds, respecting KIND_CAPS), on the enemy spawn ring.
 	ELITE_INTERVAL = 45,
-	ELITE_KINDS = { "Goblin", "SkeletonArcher" },
 
 	-- Supply crates: one every CRATE_INTERVAL seconds of a stage, at most CRATE_MAX on the floor,
 	-- placed on a ring around a random living player so they're on or near the screen.

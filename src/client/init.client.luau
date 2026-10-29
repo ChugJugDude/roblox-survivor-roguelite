@@ -27,6 +27,7 @@ local SoundHooks = require(script.SoundHooks)
 local SoundPlayer = require(script.SoundPlayer)
 local TelegraphRenderer = require(script.TelegraphRenderer)
 local UpgradePicker = require(script.UI.UpgradePicker)
+local WorldLook = require(script.WorldLook)
 
 -- There are no tools in this game, and the Backpack hotbar claims the 1-9 keys the level-up
 -- picker uses.
@@ -40,6 +41,7 @@ PlayerDataClient.start()
 SoundPlayer.start()
 
 CameraController.start()
+WorldLook.start()
 EnemyRenderer.start()
 GemRenderer.start()
 ProjectileRenderer.start()

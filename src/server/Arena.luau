@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Arena)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 
 export type Arena = {
 	model: Model,
@@ -39,7 +40,9 @@ local function arenasFolder(): Folder
 	return folder
 end
 
-function Arena.build(origin: Vector3, name: string): Arena
+-- Builds an arena in `world`'s colors at `origin`, named `name`, and tags it with the world's id (the
+-- World attribute) for clients.
+function Arena.build(origin: Vector3, name: string, world: Worlds.World): Arena
 	local size = Config.SIZE
 	local half = size / 2
 	local wallThickness = Config.WALL_THICKNESS
@@ -52,7 +55,7 @@ function Arena.build(origin: Vector3, name: string): Arena
 		"Floor",
 		Vector3.new(outer, Config.FLOOR_THICKNESS, outer),
 		CFrame.new(origin - Vector3.new(0, Config.FLOOR_THICKNESS / 2, 0)),
-		Config.FLOOR_COLOR,
+		world.floorColor,
 		model
 	)
 
@@ -60,12 +63,13 @@ function Arena.build(origin: Vector3, name: string): Arena
 	local wallOffset = half + wallThickness / 2
 	local alongX = Vector3.new(outer, Config.WALL_HEIGHT, wallThickness)
 	local alongZ = Vector3.new(wallThickness, Config.WALL_HEIGHT, size)
-	makePart("WallNorth", alongX, CFrame.new(origin.X, wallY, origin.Z - wallOffset), Config.WALL_COLOR, model)
-	makePart("WallSouth", alongX, CFrame.new(origin.X, wallY, origin.Z + wallOffset), Config.WALL_COLOR, model)
-	makePart("WallWest", alongZ, CFrame.new(origin.X - wallOffset, wallY, origin.Z), Config.WALL_COLOR, model)
-	makePart("WallEast", alongZ, CFrame.new(origin.X + wallOffset, wallY, origin.Z), Config.WALL_COLOR, model)
+	makePart("WallNorth", alongX, CFrame.new(origin.X, wallY, origin.Z - wallOffset), world.wallColor, model)
+	makePart("WallSouth", alongX, CFrame.new(origin.X, wallY, origin.Z + wallOffset), world.wallColor, model)
+	makePart("WallWest", alongZ, CFrame.new(origin.X - wallOffset, wallY, origin.Z), world.wallColor, model)
+	makePart("WallEast", alongZ, CFrame.new(origin.X + wallOffset, wallY, origin.Z), world.wallColor, model)
 
 	-- Debug counters, kept up to date by EnemyService. Handy for playtests and the Studio MCP.
+	model:SetAttribute("World", world.id)
 	model:SetAttribute("EnemiesAlive", 0)
 	model:SetAttribute("Kills", 0)
 

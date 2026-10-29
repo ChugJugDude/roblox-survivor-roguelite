@@ -10,6 +10,5 @@ return table.freeze({
 	-- Taller than a character can jump.
 	WALL_HEIGHT = 10,
 	WALL_THICKNESS = 4,
-	FLOOR_COLOR = Color3.fromRGB(122, 168, 88),
-	WALL_COLOR = Color3.fromRGB(138, 112, 86),
+	-- Floor and wall colors come from the world (Config.Worlds).
 })

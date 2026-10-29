@@ -12,6 +12,7 @@ local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local Config = require(ReplicatedStorage.Shared.Config.Waves)
 local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
 local RunConfig = require(ReplicatedStorage.Shared.Config.Run)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 
 -- What the wave director needs to know about the run this frame (the match fills it in).
 export type RunView = {
@@ -21,6 +22,7 @@ export type RunView = {
 	overtime: boolean,
 	overtimeElapsed: number, -- 0 outside overtime
 	partySize: number,
+	world: Worlds.World, -- whose stages, enemies, and elites
 }
 
 export type State = {
@@ -104,7 +106,7 @@ end
 
 -- Stage and party-size multipliers for anything spawned in this run view.
 local function scalingFor(run: RunView): EnemyService.Scaling
-	local stageDef = Config.STAGES[run.stage]
+	local stageDef = run.world.stages[run.stage]
 	local extraPlayers = math.max(0, run.partySize - 1)
 	return {
 		health = stageDef.healthMultiplier * (1 + PartyConfig.HEALTH_PER_EXTRA_PLAYER * extraPlayers),
@@ -146,7 +148,7 @@ function WaveDirector.step(state: State, now: number, targets: { Characters.Targ
 	local currentArena = state.arena
 	local enemies = state.enemies
 
-	local stageDef = Config.STAGES[run.stage]
+	local stageDef = run.world.stages[run.stage]
 	local segment = currentSegment(stageDef, run.stageElapsed)
 	local interval, maxAlive = segment.interval, segment.maxAlive
 	if run.overtime then
@@ -196,7 +198,7 @@ function WaveDirector.step(state: State, now: number, targets: { Characters.Targ
 	elseif elitesDue > state.elitesSpawned then
 		state.elitesSpawned = elitesDue
 		local eliteMix: { [string]: number } = {}
-		for _, kind in Config.ELITE_KINDS do
+		for _, kind in run.world.eliteKinds do
 			eliteMix[kind] = 1
 		end
 		local kind = pickKind(enemies, eliteMix)

@@ -22,6 +22,7 @@
 		down        down the first player (as if a hit would have killed them)
 		lobby       send every player back to the lobby
 		shards <n>  give the first player n Shards (negative takes them away)
+		world <id>  the world the next `party` launches into, e.g. "world Volcano" (Studio only)
 		codex all|reset   discover every Codex entry, or forget them all (first player; saved data)
 		resetmeta   reset the first player's Shards, heroes, Altar, and stats. With Studio API access
 		            on, this overwrites their real saved data.
@@ -31,6 +32,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Characters = require(script.Parent.Characters)
@@ -41,6 +43,7 @@ local Meta = require(script.Parent.Meta)
 local Pickups = require(script.Parent.Pickups)
 local Progression = require(script.Parent.Progression)
 local Upgrades = require(script.Parent.Upgrades)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 
 local ATTRIBUTE = "Dev_Command"
 
@@ -86,6 +89,11 @@ local function execute(command: string)
 		if first then
 			Meta.devReset(first)
 		end
+		print(`[Dev] {command}`)
+		return
+	elseif name == "world" and Worlds.exists(argument) then
+		-- Used by the next party launch (server/Lobby.luau).
+		workspace:SetAttribute("Dev_World", argument)
 		print(`[Dev] {command}`)
 		return
 	elseif name == "party" then

@@ -25,6 +25,7 @@ local Match = require(script.Parent.Match)
 local Config = require(ReplicatedStorage.Shared.Config.Lobby)
 local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 
 -- Minimum seconds between Start now / Back to lobby requests from one player.
 local REQUEST_COOLDOWN = 1
@@ -214,7 +215,14 @@ local function launch(players: { Player }): boolean
 	if not slot then
 		return false
 	end
-	local match = Match.create(slot)
+	-- The party plays the leader's world (the first player on the pad). In Studio, the `world` dev
+	-- command overrides it.
+	local worldId = Worlds.DEFAULT
+	local override = workspace:GetAttribute("Dev_World")
+	if RunService:IsStudio() and typeof(override) == "string" and Worlds.exists(override) then
+		worldId = override
+	end
+	local match = Match.create(slot, worldId)
 	for _, player in players do
 		player:SetAttribute("OnPad", false)
 		Match.addMember(match, player)
