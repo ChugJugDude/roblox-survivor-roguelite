@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerData = require(script.Parent.PlayerData)
 local Codex = require(ReplicatedStorage.Shared.Codex)
+local Worlds = require(ReplicatedStorage.Shared.Config.Worlds)
 local Config = require(ReplicatedStorage.Shared.Config.Meta)
 local MetaStats = require(ReplicatedStorage.Shared.MetaStats)
 local PlayerDataConfig = require(ReplicatedStorage.Shared.Config.PlayerData)
@@ -67,13 +68,21 @@ function Meta.awardRun(player: Player, result: ShardReward.RunResult)
 	local data = PlayerData.get(player)
 	local greed = if data then totalsFor(data).greed else 0
 	local shards = ShardReward.compute(result, greed)
+	-- Beating a world unlocks the next one.
+	local nextWorld = if result.victory and result.world then Worlds.next(result.world) else nil
+	local unlocked: string? = nil
 	local granted = PlayerData.update(player, function(saved)
 		saved.shards += shards
 		saved.stats.runs += 1
 		if result.victory then
 			saved.stats.wins += 1
 		end
+		if nextWorld and not saved.worlds[nextWorld.id] then
+			saved.worlds[nextWorld.id] = true
+			unlocked = nextWorld.name
+		end
 	end)
+	player:SetAttribute("ResultUnlocked", unlocked)
 	player:SetAttribute("ResultGreed", greed)
 	player:SetAttribute("ResultShards", if granted then shards else 0)
 end
@@ -87,6 +96,26 @@ function Meta.discover(player: Player, key: string)
 	end
 	PlayerData.update(player, function(saved)
 		saved.collection[key] = true
+	end)
+end
+
+-- Whether the player can pick world `id` (the first world is always open).
+function Meta.hasWorld(player: Player, id: string): boolean
+	if id == Worlds.DEFAULT then
+		return true
+	end
+	local data = PlayerData.get(player)
+	return data ~= nil and data.worlds[id] == true
+end
+
+-- Studio dev command: unlock one world (or "all") for the player.
+function Meta.devUnlockWorld(player: Player, id: string)
+	PlayerData.update(player, function(data)
+		for _, world in Worlds.LIST do
+			if id == "all" or world.id == id then
+				data.worlds[world.id] = true
+			end
+		end
 	end)
 end
 
@@ -106,6 +135,7 @@ end
 function Meta.clearResult(player: Player)
 	player:SetAttribute("ResultGreed", nil)
 	player:SetAttribute("ResultShards", nil)
+	player:SetAttribute("ResultUnlocked", nil)
 end
 
 -- Studio dev command: add (or with a negative number, remove) Shards.
@@ -125,7 +155,9 @@ function Meta.devReset(player: Player)
 		data.altar = {}
 		data.stats = { runs = 0, wins = 0 }
 		data.collection = {}
+		data.worlds = {}
 	end)
+	player:SetAttribute("SelectedWorld", nil)
 end
 
 -- Checks the common rules for a menu request: a string id, sent from the lobby (not a run), and
@@ -171,6 +203,15 @@ local function onUnlockHero(player: Player, rawId: unknown)
 	end)
 end
 
+-- The world this player would launch the pad's party into, if they're its leader.
+local function onSelectWorld(player: Player, rawId: unknown)
+	local id = acceptRequest(player, rawId)
+	if not id or not Worlds.exists(id) or not Meta.hasWorld(player, id) then
+		return
+	end
+	player:SetAttribute("SelectedWorld", id)
+end
+
 local function onBuyAltarUpgrade(player: Player, rawId: unknown)
 	local id = acceptRequest(player, rawId)
 	local def = if id then Config.ALTAR[id] else nil
@@ -206,6 +247,7 @@ function Meta.start()
 	Remotes.SelectHero.OnServerEvent:Connect(onSelectHero)
 	Remotes.UnlockHero.OnServerEvent:Connect(onUnlockHero)
 	Remotes.BuyAltarUpgrade.OnServerEvent:Connect(onBuyAltarUpgrade)
+	Remotes.SelectWorld.OnServerEvent:Connect(onSelectWorld)
 	Players.PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil
 	end)

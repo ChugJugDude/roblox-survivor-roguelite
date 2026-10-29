@@ -22,6 +22,7 @@
 		down        down the first player (as if a hit would have killed them)
 		lobby       send every player back to the lobby
 		shards <n>  give the first player n Shards (negative takes them away)
+		unlock <id|all>   unlock a world (or every world) for the first player (saved data)
 		world <id>  the world the next `party` launches into, e.g. "world Volcano" (Studio only)
 		codex all|reset   discover every Codex entry, or forget them all (first player; saved data)
 		resetmeta   reset the first player's Shards, heroes, Altar, and stats. With Studio API access
@@ -88,6 +89,13 @@ local function execute(command: string)
 		local first = Players:GetPlayers()[1]
 		if first then
 			Meta.devReset(first)
+		end
+		print(`[Dev] {command}`)
+		return
+	elseif name == "unlock" and (argument == "all" or Worlds.exists(argument)) then
+		local first = Players:GetPlayers()[1]
+		if first then
+			Meta.devUnlockWorld(first, argument)
 		end
 		print(`[Dev] {command}`)
 		return

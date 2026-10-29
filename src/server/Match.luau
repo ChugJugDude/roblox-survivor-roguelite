@@ -126,6 +126,7 @@ local function endRun(match: Match, result: Phase, now: number)
 		stagesCleared = if victory then Config.STAGE_COUNT else match.stage - 1,
 		bosses = EnemyService.getBossKills(match.enemies),
 		victory = victory,
+		world = match.world,
 	}
 	local arenaModel = model(match)
 	arenaModel:SetAttribute("ResultTime", runResult.time)

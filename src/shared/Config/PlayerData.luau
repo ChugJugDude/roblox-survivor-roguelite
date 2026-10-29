@@ -14,6 +14,7 @@ export type Data = {
 		wins: number,
 	},
 	collection: { [string]: boolean }, -- Codex discoveries (shared/Codex.luau keys)
+	worlds: { [string]: boolean }, -- unlocked worlds (Config.Worlds ids; the first is always open)
 }
 
 local PlayerDataConfig = {
@@ -30,6 +31,7 @@ local PlayerDataConfig = {
 		altar = table.freeze({}),
 		stats = table.freeze({ runs = 0, wins = 0 }),
 		collection = table.freeze({}),
+		worlds = table.freeze({}),
 	}) :: Data,
 
 	-- Seconds between autosaves. This also refreshes the session lock.

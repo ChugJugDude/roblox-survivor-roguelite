@@ -22,6 +22,7 @@ local RunService = game:GetService("RunService")
 local Characters = require(script.Parent.Characters)
 local LobbyStands = require(script.Parent.LobbyStands)
 local Match = require(script.Parent.Match)
+local Meta = require(script.Parent.Meta)
 local Config = require(ReplicatedStorage.Shared.Config.Lobby)
 local PartyConfig = require(ReplicatedStorage.Shared.Config.Party)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -210,19 +211,27 @@ local function freeSlot(): number?
 	return nil
 end
 
+-- The world the pad's party will play: the leader's (the first player on the pad) choice, if they
+-- still have it unlocked. In Studio, the `world` dev command overrides it.
+local function padWorld(players: { Player }): string
+	local override = workspace:GetAttribute("Dev_World")
+	if RunService:IsStudio() and typeof(override) == "string" and Worlds.exists(override) then
+		return override
+	end
+	local leader = players[1]
+	local chosen = leader and leader:GetAttribute("SelectedWorld")
+	if typeof(chosen) == "string" and Worlds.exists(chosen) and Meta.hasWorld(leader, chosen) then
+		return chosen
+	end
+	return Worlds.DEFAULT
+end
+
 local function launch(players: { Player }): boolean
 	local slot = freeSlot()
 	if not slot then
 		return false
 	end
-	-- The party plays the leader's world (the first player on the pad). In Studio, the `world` dev
-	-- command overrides it.
-	local worldId = Worlds.DEFAULT
-	local override = workspace:GetAttribute("Dev_World")
-	if RunService:IsStudio() and typeof(override) == "string" and Worlds.exists(override) then
-		worldId = override
-	end
-	local match = Match.create(slot, worldId)
+	local match = Match.create(slot, padWorld(players))
 	for _, player in players do
 		player:SetAttribute("OnPad", false)
 		Match.addMember(match, player)
@@ -276,11 +285,16 @@ local function stepPad()
 
 	lobby:SetAttribute("PartySize", #padPlayers)
 	lobby:SetAttribute("PartyCountdownEndsAt", countdownEndsAt)
+	-- For the lobby HUD's world picker: who leads, and where they're taking the party.
+	local leader = padPlayers[1]
+	lobby:SetAttribute("PadLeader", if leader then leader.UserId else 0)
+	lobby:SetAttribute("PadWorld", if leader then padWorld(padPlayers) else nil)
 	if #padPlayers == 0 then
 		setPadText("PORTAL\nStep in to start a run")
 	else
 		local seconds = math.max(0, math.ceil(countdownEndsAt - now))
-		setPadText(`PORTAL  {#padPlayers}/{PartyConfig.MAX_PARTY_SIZE}\nStarting in {seconds}`)
+		local world = Worlds.get(padWorld(padPlayers))
+		setPadText(`{string.upper(world.name)}  {#padPlayers}/{PartyConfig.MAX_PARTY_SIZE}\nStarting in {seconds}`)
 	end
 end
 

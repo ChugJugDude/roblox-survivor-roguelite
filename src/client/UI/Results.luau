@@ -22,7 +22,7 @@ local TimeFormat = require(ReplicatedStorage.Shared.TimeFormat)
 
 local COLORS = Theme.COLORS
 local VICTORY_COLOR = Color3.fromRGB(255, 215, 90)
-local PANEL_SIZE = Vector2.new(360, 540)
+local PANEL_SIZE = Vector2.new(360, 564)
 local TILE_HEIGHT = 58
 local LINE_HEIGHT = 24
 -- The Shard lines appear this far apart, and the total counts up over COUNT_TIME.
@@ -173,13 +173,22 @@ function Results.start()
 	})
 	local lines = Create("Frame", {
 		Name = "ShardLines",
-		Size = UDim2.new(1, -40, 0, LINE_HEIGHT * 6),
+		Size = UDim2.new(1, -40, 0, LINE_HEIGHT * 7),
 		Position = UDim2.fromOffset(20, shardsTop + 34),
 		BackgroundTransparency = 1,
 		Parent = panel,
 	})
 	Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = lines })
 
+	local unlocked = Theme.label({
+		Name = "Unlocked",
+		Size = UDim2.new(1, 0, 0, 22),
+		Position = UDim2.new(0, 0, 1, -122),
+		Font = Theme.FONTS.heading,
+		TextSize = 16,
+		TextColor3 = COLORS.evolution,
+		Parent = panel,
+	})
 	local autoReturn = Theme.label({
 		Name = "AutoReturn",
 		Size = UDim2.new(1, 0, 0, 18),
@@ -217,6 +226,7 @@ function Results.start()
 			stagesCleared = arena:GetAttribute("ResultStagesCleared") or 0,
 			bosses = arena:GetAttribute("ResultBosses") or 0,
 			victory = victory,
+			world = arena:GetAttribute("World"),
 		}, player:GetAttribute("ResultGreed") or 0)
 		for index, line in breakdown do
 			local row = Create("Frame", {
@@ -278,6 +288,8 @@ function Results.start()
 		end
 
 		local victory = phase == "Victory"
+		local newWorld = Players.LocalPlayer:GetAttribute("ResultUnlocked")
+		unlocked.Text = if typeof(newWorld) == "string" then `🔓 New world unlocked: {newWorld}!` else ""
 		title.Text = if victory then "🏆 VICTORY!" else "💀 DEFEATED"
 		title.TextColor3 = if victory then VICTORY_COLOR else COLORS.overtime
 		timeTile.value.Text = TimeFormat.minutesSeconds(arena:GetAttribute("ResultTime") or 0)

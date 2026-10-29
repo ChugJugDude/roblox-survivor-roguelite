@@ -137,6 +137,11 @@ return table.freeze({
 	-- rate-limited. The result arrives through DataChanged.
 	UnlockHero = remote("RemoteEvent", "UnlockHero") :: RemoteEvent,
 
+	-- Client -> server. Payload: (worldId: string). The world this player's party will play if
+	-- they're the first on the portal pad. Ignored unless it's a known world the sender has
+	-- unlocked and they're in the lobby; rate-limited.
+	SelectWorld = remote("RemoteEvent", "SelectWorld") :: RemoteEvent,
+
 	-- Client -> server. Payload: (upgradeId: string). Buy the next level of an Altar upgrade.
 	-- Ignored unless it's a known upgrade below max level, the sender can afford it, and they're
 	-- in the lobby; rate-limited. The result arrives through DataChanged.

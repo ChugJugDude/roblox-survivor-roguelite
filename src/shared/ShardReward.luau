@@ -3,6 +3,7 @@
 -- screen shows the same lines, so they always agree.
 
 local Config = require(script.Parent.Config.Meta)
+local Worlds = require(script.Parent.Config.Worlds)
 local TimeFormat = require(script.Parent.TimeFormat)
 
 export type RunResult = {
@@ -11,6 +12,7 @@ export type RunResult = {
 	stagesCleared: number,
 	bosses: number,
 	victory: boolean,
+	world: string?, -- Config.Worlds id; harder worlds pay a bonus
 }
 
 export type Line = {
@@ -51,6 +53,12 @@ function ShardReward.compute(result: RunResult, greed: number): (number, { Line 
 	local subtotal = 0
 	for _, line in lines do
 		subtotal += line.amount
+	end
+	local world = Worlds.get(result.world)
+	if world.shardMultiplier > 1 then
+		local worldBonus = math.floor(subtotal * (world.shardMultiplier - 1))
+		table.insert(lines, { label = `{world.name} x{world.shardMultiplier}`, amount = worldBonus })
+		subtotal += worldBonus
 	end
 	local bonus = math.floor(subtotal * math.max(0, greed))
 	if bonus > 0 then
