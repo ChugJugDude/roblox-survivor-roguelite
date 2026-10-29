@@ -107,6 +107,8 @@ Readability rule: **enemy shots are solid crimson orbs drawn above everything th
 
 Skeleton archers face the player they're aiming at.
 
+**World 2, the Volcano** (§16) reskins the roster with tougher stats (about 1.5x): **fire imps** (goblins, a bit faster), **magma hounds** (packs of 3 fast chasers), **ember archers** (crimson shots like the skeletons, capped at 8), the **Magma Golem** mini-boss, and the **Infernal** boss: rings, fire-imp summons, charges, and its signature **Eruption**, red circles under and around players that fill in and burst after 1.2s.
+
 ## 8. Co-op
 
 - Parties of 1–4. Solo is the same mode with a party of 1.
@@ -176,7 +178,7 @@ Candidates:
 | M2 | Co-op | Lobby + portal, parties of 1–4, instanced arenas, shared XP, downed/revive, scaling | Weeks 4–5 |
 | M3 | Meta progression | Player data saving, Shards, Altar upgrades, hero unlock, results screen | Weeks 6–7 |
 | M4 | Content + polish | All v1 weapons/passives/evolutions, 5 enemies + boss, UI pass, sound, hit VFX | Weeks 8–9 |
-| M5 | Progression (proposed, §16) | Worlds with new enemies and bosses, gear, lobby loot chests | TBD |
+| M5 | Progression (§16) | Worlds with new enemies and bosses (chunk 1: the world system + the Volcano, done), gear, lobby loot chests | TBD |
 | M6 | Launch prep | Monetization, thumbnail/icon, maturity questionnaire, mobile test, publish | TBD |
 
 **Playtest gates:** after M1, play it and ask "is a solo run fun for 10 minutes?" After M2, play with friends. Don't move past a gate until the answer is yes.
@@ -201,7 +203,21 @@ Roblox's discovery rewards retention over the first 28 days, so retention matter
 - Should parties be able to queue with strangers (matchmaking) in v1, or friends/portal-only?
 - How strong can Altar upgrades get before new players feel too weak in co-op with veterans?
 
-## 16. Progression loop (proposal, to plan next)
+## 16. Progression loop
+
+**Built so far (M5 chunk 1): worlds.** Worlds live in `Config.Worlds`: each has 3 stages (spawn mixes and multipliers), its elite kinds, a final boss, floor/wall/accent colors, lighting, and a Shard multiplier.
+
+| World | Enemies | Boss | Stage health / damage | Shards |
+| --- | --- | --- | --- | --- |
+| 1. Green Meadow | goblins, bats, skeleton archers, Goblin Giant | Ogre | x1 / x1.8 / x3 | x1 |
+| 2. Volcano | fire imps, magma hounds, ember archers, Magma Golem | Infernal (Eruption) | x1.6 / x2.8 / x4.6 | x1.5 |
+
+- **Unlocks:** beating a world's boss unlocks the next one for everyone in the party who finished it (saved per player; the Meadow is always open). The results screen announces it.
+- **Choosing:** the **party leader** (the first player on the portal pad) picks with arrows on the pad from worlds *they* have unlocked; friends who haven't unlocked it are carried. Everyone else on the pad sees the choice, and the pad's sign shows the world.
+- **Balance target:** a world should be clearly harder than the last but winnable with the build a player has by then. Benchmark: Spinning Blade + Fireball evolved, Might 3, Haste 3 kills the Ogre in ~49s and the Infernal in ~68s.
+
+The rest below is still the proposal.
+
 
 The core run is fun and the Altar and heroes give some meta goals, but there isn't enough to keep players coming back after a few wins. The loop: **finish a world to unlock the next, harder one; bring back loot chests; open them in the lobby for gear that changes how your build plays.**
 

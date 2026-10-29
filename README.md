@@ -10,7 +10,8 @@ A fantasy survivor-like roguelite for Roblox, played solo or in co-op with up to
 
 ## Features
 
-- **Run loop:** 3 stages of about 3 minutes each. Each stage ends in overtime, where a portal opens and the party has to stand in it to charge it while spawns ramp up. Stage 3 ends with an **Ogre boss** that has telegraphed attacks: shot rings, summons, and a charge down a marked lane. It enrages at low HP.
+- **Run loop:** 3 stages of about 3 minutes each. Each stage ends in overtime, where a portal opens and the party has to stand in it to charge it while spawns ramp up. Stage 3 ends with a boss that has telegraphed attacks: shot rings, summons, and a charge down a marked lane. It enrages at low HP.
+- **Worlds:** beating the **Green Meadow** and its Ogre unlocks the **Volcano**: a lava-cracked arena with its own lighting, tougher enemies (fire imps, magma hound packs, ember archers, a Magma Golem), 1.5x Shards, and the **Infernal**, whose Eruption attack bursts red circles under the players. The party leader picks the world on the portal pad, and friends can be carried.
 - **Build crafting:** 6 weapons (Spinning Blade, Volley Arrows, Fireball, Chain Lightning, Frost Nova, Holy Ground) and 9 passives (Might, Haste, Swiftness, Reach, Vitality, Magnet, Armor, Regen, Warding), each with 5 levels. A maxed weapon plus its paired passive evolves: **Bladestorm**, **Arrow Storm**, **Meteor**, **Thunderstorm**, **Blizzard** (freezes enemies solid) or **Sanctuary** (zones that heal the whole party). Warding's orbiting rings destroy enemy shots.
 - **Enemies:** goblins, bat swarms, skeleton archers that keep their distance and shoot, a Goblin Giant mini-boss, elite variants that drop chests, and breakable supply crates.
 - **Co-op for 1–4 players:** parties form on a lobby portal pad, and each party gets its own arena instance. XP is shared, and level-ups pause the whole party so everyone picks at once. A 15-second limit auto-picks for idle players. Players get downed instead of dying and can be revived by teammates. Difficulty scales with party size.
@@ -32,7 +33,7 @@ The game has to keep **100–200 enemies** alive at once and still run on phones
 - **Shared stat math.** One module turns a build into stats for both server hit logic and client visuals, so they never drift apart (`src/shared/BuildStats.luau`).
 - **Server-side Validation.** Every remote handler validates argument types and ranges and is rate-limited. Purchases check the price and spend inside a single atomic data update.
 - **Safe persistence.** `src/server/PlayerData.luau` handles session locking, retries with exponential backoff, autosave, and saving on `PlayerRemoving` and `BindToClose`.
-- **Data-driven tuning.** Weapons, enemies, waves, scaling and costs all live in `src/shared/Config/`.
+- **Data-driven tuning.** Weapons, enemies, waves, worlds, scaling and costs all live in `src/shared/Config/`. A new world is a config entry (stages, colors, lighting, enemy mix, boss) plus models.
 
 ## Project structure
 

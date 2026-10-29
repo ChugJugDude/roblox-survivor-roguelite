@@ -268,7 +268,8 @@ local Enemies = {
 				icon = "👿",
 				description = "The Volcano's boss. Fires rings of shots, calls fire imps, charges, and makes the ground erupt under you: get out of the red circles.",
 			}),
-			maxHealth = 6000,
+			-- x4.6 on Volcano stage 3. Two evolutions + Might 3 + Haste 3 kill it in ~70s (the Ogre: 49s).
+			maxHealth = 4200,
 			speed = 5.5,
 			radius = 4.5,
 			contactDamage = 24,
