@@ -115,6 +115,11 @@ return table.freeze({
 	-- projectile it's drawing; the server then sends what's in the new world.
 	WorldReset = remote("RemoteEvent", "WorldReset") :: RemoteEvent,
 
+	-- Client -> server. Payload: (paused: boolean). The pause menu pausing or resuming a solo run.
+	-- Ignored unless it's a boolean and the sender's party has one member and a run going;
+	-- rate-limited.
+	RequestPause = remote("RemoteEvent", "RequestPause") :: RemoteEvent,
+
 	-- Client -> server. No arguments. "Start now" for the party forming on the lobby's portal pad.
 	-- Ignored unless the sender is on the pad; rate-limited per player.
 	RequestStartParty = remote("RemoteEvent", "RequestStartParty") :: RemoteEvent,

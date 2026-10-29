@@ -331,9 +331,13 @@ function Hud.start()
 	refreshBuild()
 
 	local picker: ScreenGui? = nil
+	local pauseMenu: ScreenGui? = nil
 	RunService.RenderStepped:Connect(function()
 		if not picker then
 			picker = localPlayer.PlayerGui:FindFirstChild("UpgradePicker") :: ScreenGui?
+		end
+		if not pauseMenu then
+			pauseMenu = localPlayer.PlayerGui:FindFirstChild("PauseMenu") :: ScreenGui?
 		end
 		local arena = CurrentArena.get()
 		gui.Enabled = arena ~= nil
@@ -404,7 +408,11 @@ function Hud.start()
 			set(banner, "Text", tostring(math.max(1, math.ceil(endsAt - now))))
 		elseif phase == "Transition" then
 			set(banner, "Text", `STAGE {stage}`)
-		elseif GameClock.isPaused(arena) and not (picker and picker.Enabled) then
+		elseif
+			GameClock.isPaused(arena)
+			and not (picker and picker.Enabled)
+			and not (pauseMenu and pauseMenu.Enabled)
+		then
 			-- Paused for level-ups, and this player has already chosen.
 			set(banner, "Text", "WAITING FOR OTHERS")
 		else

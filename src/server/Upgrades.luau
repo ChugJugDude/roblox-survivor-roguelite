@@ -51,6 +51,7 @@ export type Party = {
 	active: boolean, -- a run is in progress
 	pauseStartedAt: number, -- os.clock() when the current pause began
 	lastResumedAt: number, -- game time of the last resume
+	manualPause: boolean, -- a solo player paused from the pause menu
 }
 
 type State = {
@@ -61,10 +62,13 @@ type State = {
 	offer: { Option }?,
 	rerolls: number,
 	lastRequest: number,
+	lastPauseRequest: number,
 }
 
 -- Minimum seconds between choose/reroll requests from one player.
 local REQUEST_COOLDOWN = 0.1
+-- Minimum seconds between pause/unpause requests from one player.
+local PAUSE_REQUEST_COOLDOWN = 0.3
 
 local states: { [Player]: State } = {}
 local started = false
@@ -107,6 +111,7 @@ local function newState(party: Party?, loadout: Meta.Loadout): State
 		offer = nil,
 		rerolls = Config.REROLLS_PER_RUN + loadout.bonus.rerolls,
 		lastRequest = 0,
+		lastPauseRequest = 0,
 	}
 end
 
@@ -157,7 +162,6 @@ end
 
 local function passiveOption(id: string, level: number): Option
 	local def = Config.PASSIVES[id]
-	local value = def.values[level]
 	local evolves = BuildStats.weaponEvolvedBy(id)
 	return {
 		id = id,
@@ -165,7 +169,7 @@ local function passiveOption(id: string, level: number): Option
 		level = level,
 		isNew = level == 1,
 		name = def.name,
-		description = string.format(def.description, math.floor((if def.percent then value * 100 else value) + 0.5)),
+		description = BuildStats.passiveText(id, level),
 		hint = if evolves then `Evolves {Config.WEAPONS[evolves].name}` else nil,
 	}
 end
@@ -410,6 +414,30 @@ local function onChoose(player: Player, index: unknown)
 	showNext(player, state)
 end
 
+-- The pause menu: a solo player can pause their run (in co-op the menu only shows the build, since
+-- one player can't freeze the shared world). Picks owed when they unpause still get their pause.
+local function onRequestPause(player: Player, paused: unknown)
+	if typeof(paused) ~= "boolean" then
+		return
+	end
+	local state = states[player]
+	local party = state and state.party
+	if not state or not party or not party.active or #party.members ~= 1 or party.manualPause == paused then
+		return
+	end
+	local clock = os.clock()
+	if clock - state.lastPauseRequest < PAUSE_REQUEST_COOLDOWN then
+		return
+	end
+	state.lastPauseRequest = clock
+	party.manualPause = paused
+	if paused and not Pause.isPaused(party.clock) then
+		Pause.pause(party.clock, party.members)
+		party.pauseStartedAt = clock
+	end
+	-- Unpausing: Upgrades.step resumes once no picks are owed.
+end
+
 local function onReroll(player: Player)
 	local state = acceptRequest(player)
 	if not state or state.rerolls <= 0 then
@@ -469,7 +497,7 @@ function Upgrades.step(party: Party)
 				break
 			end
 		end
-		if not waiting then
+		if not waiting and not party.manualPause then
 			resume(party)
 		elseif #party.members > 1 and os.clock() - party.pauseStartedAt >= Config.PAUSE_TIMEOUT then
 			-- Don't let one idle player hold up the party: choose for whoever is still picking.
@@ -519,6 +547,7 @@ function Upgrades.newParty(clock: Pause.Clock, members: { Player }, progression:
 		active = false,
 		pauseStartedAt = 0,
 		lastResumedAt = -math.huge,
+		manualPause = false,
 	}
 	Progression.onLevelUp(progression, function()
 		if not party.active then
@@ -534,6 +563,7 @@ end
 -- Fresh starting builds for the party's members, for a new run. Call before characters spawn.
 -- Head Start (an Altar upgrade) opens its free picks right away, like chest picks.
 function Upgrades.reset(party: Party)
+	party.manualPause = false
 	Pause.resume(party.clock)
 	party.lastResumedAt = -math.huge
 	for _, player in party.members do
@@ -554,6 +584,7 @@ end
 -- Closes the party's open choices when its run ends. Builds stay as they were.
 function Upgrades.stop(party: Party)
 	party.active = false
+	party.manualPause = false
 	Pause.resume(party.clock)
 	for _, player in party.members do
 		local state = states[player]
@@ -583,6 +614,7 @@ function Upgrades.start()
 	end)
 	Remotes.ChooseUpgrade.OnServerEvent:Connect(onChoose)
 	Remotes.RerollUpgrade.OnServerEvent:Connect(onReroll)
+	Remotes.RequestPause.OnServerEvent:Connect(onRequestPause)
 
 	-- A new hero or Altar upgrade changes a lobby player's starting build right away. Mid-run
 	-- builds keep the loadout they started with.

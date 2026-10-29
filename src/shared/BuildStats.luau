@@ -54,6 +54,14 @@ function BuildStats.weaponName(id: string, level: number): string
 	return if level > Config.MAX_LEVEL then def.evolution.name else def.name
 end
 
+-- What a passive gives at `level`, as shown on upgrade cards and in the pause menu, e.g.
+-- "+40% weapon damage".
+function BuildStats.passiveText(id: string, level: number): string
+	local def = Config.PASSIVES[id]
+	local value = def.values[level] or 0
+	return string.format(def.description, math.floor((if def.percent then value * 100 else value) + 0.5))
+end
+
 local function passiveValue(build: Build, id: string): number
 	local level = build.passives[id]
 	local def = Config.PASSIVES[id]
