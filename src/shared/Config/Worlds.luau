@@ -89,6 +89,63 @@ local WORLDS: { World } = {
 		floorColor = Color3.fromRGB(122, 168, 88),
 		wallColor = Color3.fromRGB(138, 112, 86),
 	},
+	{
+		id = "Volcano",
+		name = "Volcano",
+		order = 2,
+		-- One row per segment; StyLua would wrap the longer ones.
+		-- stylua: ignore
+		stages = {
+			{
+				healthMultiplier = 1.6,
+				damageMultiplier = 1.3,
+				xpMultiplier = 1.2,
+				segments = {
+					{ at = 0, interval = 0.8, maxAlive = 25, mix = { FireImp = 1 } },
+					{ at = 45, interval = 0.6, maxAlive = 35, mix = { FireImp = 1, MagmaHound = 0.2 } },
+					{ at = 100, interval = 0.45, maxAlive = 50, mix = { FireImp = 1, MagmaHound = 0.2, EmberArcher = 0.25 } },
+				},
+				miniBoss = "MagmaGolem",
+				miniBossAt = 90,
+			},
+			{
+				healthMultiplier = 2.8,
+				damageMultiplier = 1.6,
+				xpMultiplier = 2.4,
+				segments = {
+					{ at = 0, interval = 0.6, maxAlive = 40, mix = { FireImp = 1, MagmaHound = 0.2, EmberArcher = 0.25 } },
+					{ at = 60, interval = 0.45, maxAlive = 60, mix = { FireImp = 1, MagmaHound = 0.25, EmberArcher = 0.35 } },
+					{ at = 120, interval = 0.35, maxAlive = 75, mix = { FireImp = 1, MagmaHound = 0.3, EmberArcher = 0.4 } },
+				},
+				miniBoss = "MagmaGolem",
+				miniBossAt = 90,
+			},
+			{
+				healthMultiplier = 4.6,
+				damageMultiplier = 1.9,
+				xpMultiplier = 3.6,
+				segments = {
+					{ at = 0, interval = 0.45, maxAlive = 60, mix = { FireImp = 1, MagmaHound = 0.3, EmberArcher = 0.4 } },
+					{ at = 60, interval = 0.35, maxAlive = 80, mix = { FireImp = 1, MagmaHound = 0.35, EmberArcher = 0.5 } },
+					{ at = 120, interval = 0.28, maxAlive = 100, mix = { FireImp = 1, MagmaHound = 0.35, EmberArcher = 0.5 } },
+				},
+				miniBoss = "MagmaGolem",
+				miniBossAt = 90,
+				finalBoss = "Ogre", -- the Infernal replaces it once it exists
+			},
+		},
+		eliteKinds = { "FireImp", "EmberArcher" },
+		shardMultiplier = 1.5,
+		floorColor = Color3.fromRGB(68, 54, 50),
+		wallColor = Color3.fromRGB(78, 60, 52),
+		accentColor = Color3.fromRGB(255, 110, 30),
+		lighting = {
+			ambient = Color3.fromRGB(95, 50, 40),
+			outdoorAmbient = Color3.fromRGB(120, 70, 50),
+			tint = Color3.fromRGB(255, 228, 210),
+			brightness = 1.6,
+		},
+	},
 }
 
 local byId: { [string]: World } = {}

@@ -33,6 +33,7 @@ return table.freeze({
 	-- player with shooters they can't reach.
 	KIND_CAPS = {
 		SkeletonArcher = 8,
+		EmberArcher = 8,
 	} :: { [string]: number },
 
 	-- Elites (Config.Enemies.ELITE): one every ELITE_INTERVAL seconds of a stage, of a random kind

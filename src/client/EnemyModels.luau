@@ -144,6 +144,90 @@ local builders: { [string]: () -> Visual } = {
 	end,
 }
 
+-- An archer at any colors: a body, a head with glowing eyes, and a bow.
+local function buildArcher(name: string, body: Color3, head: Color3, eye: Color3, bow: Color3): Visual
+	local visual = newVisual(name)
+	addPart(visual, Vector3.new(1.6, 2.2, 1), CFrame.new(0, 1.4, 0), body)
+	addPart(visual, Vector3.new(1.5, 1.4, 1.4), CFrame.new(0, 3.2, 0), head)
+	addPart(visual, Vector3.new(0.35, 0.35, 0.1), CFrame.new(-0.35, 3.3, -0.72), eye, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.35, 0.35, 0.1), CFrame.new(0.35, 3.3, -0.72), eye, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.25, 3, 0.25), CFrame.new(1.1, 2, -0.5), bow, Enum.Material.Wood)
+	return visual
+end
+
+local LAVA = Color3.fromRGB(255, 110, 30)
+local BASALT = Color3.fromRGB(60, 46, 42)
+-- Hounds are lighter rock, so they don't vanish against the Volcano's dark floor.
+local HOUND_ROCK = Color3.fromRGB(120, 78, 60)
+
+-- The Volcano's enemies: reskins of the Meadow's.
+builders.FireImp = function()
+	local visual = buildGoblin("FireImp", 0.95, Color3.fromRGB(150, 40, 30), Color3.fromRGB(210, 75, 45))
+	local horn = Color3.fromRGB(45, 30, 28)
+	addPart(visual, Vector3.new(0.3, 0.8, 0.3), CFrame.new(-0.5, 4, 0) * CFrame.Angles(0, 0, math.rad(15)), horn)
+	addPart(visual, Vector3.new(0.3, 0.8, 0.3), CFrame.new(0.5, 4, 0) * CFrame.Angles(0, 0, math.rad(-15)), horn)
+	return visual
+end
+
+-- A low, four-legged hound of dark rock with a glowing lava stripe down its back.
+builders.MagmaHound = function()
+	local visual = newVisual("MagmaHound")
+	addPart(visual, Vector3.new(1.3, 1.1, 2.6), CFrame.new(0, 1.6, 0), HOUND_ROCK, Enum.Material.Slate)
+	addPart(visual, Vector3.new(1.1, 1, 1.1), CFrame.new(0, 2.1, -1.6), HOUND_ROCK, Enum.Material.Slate)
+	addPart(visual, Vector3.new(0.35, 0.2, 2.4), CFrame.new(0, 2.2, 0.1), LAVA, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.25, 0.25, 0.1), CFrame.new(-0.3, 2.2, -2.18), LAVA, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.25, 0.25, 0.1), CFrame.new(0.3, 2.2, -2.18), LAVA, Enum.Material.Neon)
+	for _, x in { -0.45, 0.45 } do
+		for _, z in { -0.9, 0.9 } do
+			addPart(visual, Vector3.new(0.35, 1.1, 0.35), CFrame.new(x, 0.55, z), HOUND_ROCK, Enum.Material.Slate)
+		end
+	end
+	return visual
+end
+
+builders.EmberArcher = function()
+	return buildArcher(
+		"EmberArcher",
+		Color3.fromRGB(120, 32, 26),
+		Color3.fromRGB(60, 22, 20),
+		Color3.fromRGB(255, 150, 40),
+		Color3.fromRGB(45, 30, 28)
+	)
+end
+
+-- A hulking slab of dark rock with lava glowing through cracks in its chest.
+builders.MagmaGolem = function()
+	local visual = newVisual("MagmaGolem")
+	local scale = 2.1
+	local function at(x: number, y: number, z: number): CFrame
+		return CFrame.new(x * scale, y * scale, z * scale)
+	end
+	addPart(visual, Vector3.new(0.9, 1.4, 0.9) * scale, at(-0.6, 0.7, 0), BASALT, Enum.Material.Slate)
+	addPart(visual, Vector3.new(0.9, 1.4, 0.9) * scale, at(0.6, 0.7, 0), BASALT, Enum.Material.Slate)
+	addPart(visual, Vector3.new(2.6, 2, 1.6) * scale, at(0, 2.3, 0), BASALT, Enum.Material.Slate)
+	addPart(visual, Vector3.new(1.2, 1, 1.1) * scale, at(0, 3.7, -0.1), BASALT, Enum.Material.Slate)
+	addPart(visual, Vector3.new(0.9, 2, 0.9) * scale, at(-1.75, 2.1, 0), BASALT, Enum.Material.Slate)
+	addPart(visual, Vector3.new(0.9, 2, 0.9) * scale, at(1.75, 2.1, 0), BASALT, Enum.Material.Slate)
+	-- Lava cracks across the chest, and glowing eyes.
+	addPart(
+		visual,
+		Vector3.new(1.8, 0.15, 0.1) * scale,
+		at(0, 2.6, -0.82) * CFrame.Angles(0, 0, math.rad(15)),
+		LAVA,
+		Enum.Material.Neon
+	)
+	addPart(
+		visual,
+		Vector3.new(1.2, 0.15, 0.1) * scale,
+		at(0.2, 2, -0.82) * CFrame.Angles(0, 0, math.rad(-20)),
+		LAVA,
+		Enum.Material.Neon
+	)
+	addPart(visual, Vector3.new(0.25, 0.2, 0.1) * scale, at(-0.25, 3.8, -0.67), LAVA, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.25, 0.2, 0.1) * scale, at(0.25, 3.8, -0.67), LAVA, Enum.Material.Neon)
+	return visual
+end
+
 -- The final boss: a huge, hunched grey-olive brute with tusks and a spiked club.
 builders.Ogre = function()
 	local visual = newVisual("Ogre")
