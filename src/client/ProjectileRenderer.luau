@@ -105,6 +105,8 @@ local SHOCKWAVE_COLORS: { [string]: Color3 } = {
 	Bomb = Color3.fromRGB(255, 235, 200),
 	Frost = Color3.fromRGB(140, 215, 255),
 	Blizzard = Color3.fromRGB(205, 240, 255),
+	-- An enemy blast (the Infernal's eruption): red-orange, never a player color.
+	Eruption = Color3.fromRGB(230, 60, 30),
 }
 local FROST_KINDS: { [string]: boolean } = { Frost = true, Blizzard = true }
 -- Ice shards around a frost burst's edge: this many points, each with a few shards.
@@ -325,6 +327,9 @@ local function onExplosions(list: any)
 
 		if FROST_KINDS[info.kind] then
 			frostRing(center, radius)
+		elseif info.kind == "Eruption" then
+			Particles.emit("Embers", center + Vector3.new(0, 1, 0), 10)
+			Particles.emit("Smoke", center + Vector3.new(0, 1, 0), 4)
 		elseif info.kind == "Bomb" then
 			Particles.emit("Smoke", center, 14)
 			Particles.flash(center + Vector3.new(0, 3, 0), Color3.fromRGB(255, 230, 190), 5, radius, 0.5)

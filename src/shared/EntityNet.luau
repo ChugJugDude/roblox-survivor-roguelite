@@ -22,7 +22,7 @@ export type ExplosionInfo = {
 	radius: number,
 	-- A bomb pickup or Frost Nova (Blizzard evolved) draws a flat shockwave instead of a fireball
 	-- blast.
-	kind: ("Bomb" | "Frost" | "Blizzard")?,
+	kind: ("Bomb" | "Frost" | "Blizzard" | "Eruption")?,
 }
 
 -- A visual-only weapon effect (server/Weapons -> client/EffectRenderer).
@@ -61,8 +61,20 @@ export type ChestOpenEffect = {
 
 export type EffectInfo = LightningEffect | ChillEffect | HolyGroundEffect | ChestOpenEffect
 
--- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer).
-export type TelegraphInfo = {
+-- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer):
+-- a lane (a charge) or a circle (an eruption).
+export type TelegraphInfo = LaneTelegraph | CircleTelegraph
+
+export type CircleTelegraph = {
+	shape: "Circle",
+	x: number,
+	z: number,
+	radius: number,
+	duration: number, -- seconds until it bursts
+}
+
+export type LaneTelegraph = {
+	shape: "Lane"?,
 	x: number, -- where the lane starts
 	z: number,
 	dirX: number, -- unit direction

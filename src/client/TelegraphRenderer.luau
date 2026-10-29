@@ -1,6 +1,7 @@
 --!strict
 -- Draws boss attack warnings (EntityNet.TelegraphInfo): a red lane on the ground that fills in over
--- the wind-up, so players see where a charge will go and get out of the way.
+-- the wind-up, so players see where a charge will go and get out of the way, or a red circle whose
+-- inner disc grows to the edge as an eruption is about to burst.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -19,7 +20,63 @@ local started = false
 
 local TelegraphRenderer = {}
 
+local function newPart(): Part
+	local part = Instance.new("Part")
+	part.Name = "Telegraph"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = LANE_COLOR
+	return part
+end
+
+local function remember(part: BasePart, lifetime: number)
+	part.Parent = workspace
+	lanes[part] = true
+	task.delay(lifetime, function()
+		lanes[part] = nil
+		part:Destroy()
+	end)
+end
+
+local function drawCircle(info: any)
+	if
+		typeof(info.x) ~= "number"
+		or typeof(info.z) ~= "number"
+		or typeof(info.radius) ~= "number"
+		or typeof(info.duration) ~= "number"
+	then
+		return
+	end
+	-- A cylinder's axis is its X size; turn it upright so it lies flat as a disc.
+	local flat = CFrame.new(info.x, ArenaConfig.ORIGIN.Y + 0.15, info.z) * CFrame.Angles(0, 0, math.rad(90))
+	local diameter = info.radius * 2
+	local outline = newPart()
+	outline.Shape = Enum.PartType.Cylinder
+	outline.Size = Vector3.new(0.15, diameter, diameter)
+	outline.CFrame = flat
+	outline.Transparency = START_TRANSPARENCY
+	remember(outline, info.duration + 0.2)
+	-- The inner disc grows to the edge as the burst gets closer.
+	local fill = newPart()
+	fill.Shape = Enum.PartType.Cylinder
+	fill.Size = Vector3.new(0.2, 0.5, 0.5)
+	fill.CFrame = flat * CFrame.new(0.03, 0, 0)
+	fill.Transparency = END_TRANSPARENCY
+	remember(fill, info.duration + 0.2)
+	TweenService:Create(fill, TweenInfo.new(info.duration, Enum.EasingStyle.Linear), {
+		Size = Vector3.new(0.2, diameter, diameter),
+	}):Play()
+end
+
 local function draw(info: any)
+	if typeof(info) == "table" and info.shape == "Circle" then
+		drawCircle(info)
+		return
+	end
 	if
 		typeof(info) ~= "table"
 		or typeof(info.x) ~= "number"

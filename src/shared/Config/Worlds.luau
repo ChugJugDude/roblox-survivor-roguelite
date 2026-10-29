@@ -131,7 +131,7 @@ local WORLDS: { World } = {
 				},
 				miniBoss = "MagmaGolem",
 				miniBossAt = 90,
-				finalBoss = "Ogre", -- the Infernal replaces it once it exists
+				finalBoss = "Infernal",
 			},
 		},
 		eliteKinds = { "FireImp", "EmberArcher" },

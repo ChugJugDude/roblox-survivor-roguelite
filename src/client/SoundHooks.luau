@@ -33,6 +33,7 @@ local EXPLOSION_SOUNDS: { [string]: string } = {
 	Bomb = "Bomb",
 	Frost = "Frost",
 	Blizzard = "Frost",
+	Eruption = "Explosion",
 }
 local EFFECT_SOUNDS: { [string]: string } = {
 	Lightning = "Lightning",

@@ -33,7 +33,7 @@ export type CodexEntry = {
 -- in `pattern`. Below enrageAt of its health it attacks every enragedInterval seconds and its
 -- rings come in pairs. Damage values are scaled by the stage like contact damage.
 export type BossDef = {
-	pattern: { "Ring" | "Charge" | "Summon" },
+	pattern: { "Ring" | "Charge" | "Summon" | "Eruption" },
 	firstAttackDelay: number,
 	attackInterval: number,
 	enragedInterval: number,
@@ -52,6 +52,13 @@ export type BossDef = {
 	chargeSpeed: number,
 	chargeDistance: number,
 	chargeDamage: number,
+	-- Eruption (the Infernal's signature): red circles under and around players that burst after
+	-- eruptionWindup seconds, hurting anyone inside. Enraged, it makes half again as many.
+	eruptionCount: number?,
+	eruptionRadius: number?,
+	eruptionWindup: number?,
+	eruptionDamage: number?,
+	eruptionSpread: number?, -- the extra circles land within this many studs of a player
 }
 
 export type RangedDef = {
@@ -251,6 +258,48 @@ local Enemies = {
 			isBoss = true,
 			dropsChest = true,
 			displayName = "Magma Golem",
+		}),
+		-- The Volcano's final boss: a horned demon whose signature attack bursts the ground under
+		-- players.
+		Infernal = table.freeze({
+			codex = table.freeze({
+				order = 10,
+				name = "Infernal",
+				icon = "👿",
+				description = "The Volcano's boss. Fires rings of shots, calls fire imps, charges, and makes the ground erupt under you: get out of the red circles.",
+			}),
+			maxHealth = 6000,
+			speed = 5.5,
+			radius = 4.5,
+			contactDamage = 24,
+			attackCooldown = 1.2,
+			xp = 0,
+			behavior = "boss",
+			isBoss = true,
+			displayName = "Infernal",
+			boss = table.freeze({
+				pattern = { "Ring", "Eruption", "Charge", "Summon", "Eruption", "Ring", "Charge" },
+				firstAttackDelay = 2.5,
+				attackInterval = 3.6,
+				enragedInterval = 2.4,
+				enrageAt = 0.33,
+				ringShots = 18,
+				ringSpeed = 17,
+				ringDamage = 7,
+				ringRange = 60,
+				summonKind = "FireImp",
+				summonCount = 6,
+				summonRadius = 8,
+				chargeWindup = 1,
+				chargeSpeed = 48,
+				chargeDistance = 48,
+				chargeDamage = 26,
+				eruptionCount = 6,
+				eruptionRadius = 5,
+				eruptionWindup = 1.2,
+				eruptionDamage = 20,
+				eruptionSpread = 14,
+			}),
 		}),
 		-- Breakable supply crate. Weapons that touch it break it; it always drops an item.
 		Crate = table.freeze({

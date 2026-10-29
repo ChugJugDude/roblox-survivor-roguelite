@@ -8,6 +8,8 @@
 		Summon  a circle of adds around it
 		Charge  it stops and the client draws a red lane (EnemyTelegraph) for chargeWindup seconds,
 		        then it dashes down that lane, hitting every player it passes once
+		Eruption  red circles (EnemyTelegraph) under and around players burst after eruptionWindup
+		        seconds, hurting anyone inside (the Infernal)
 
 	While charging, the boss is `locked`, so EnemyService.move leaves its position to us. Call step
 	before EnemyService.move so the spatial hash sees the new position the same frame.
@@ -33,10 +35,20 @@ type Charge = {
 	hit: { [Player]: boolean },
 }
 
+-- A pending eruption circle.
+type Eruption = {
+	x: number,
+	z: number,
+	radius: number,
+	damage: number,
+	burstsAt: number, -- game time
+}
+
 type Brain = {
 	nextAttackAt: number,
 	patternIndex: number,
 	charge: Charge?,
+	eruptions: { Eruption },
 }
 
 export type State = {
@@ -135,6 +147,63 @@ local function startCharge(
 	NetBatch.push(state.net, Remotes.EnemyTelegraph, telegraph)
 end
 
+-- Marks circles under and around players that burst after the wind-up.
+local function startEruption(
+	state: State,
+	enemy: EnemyService.Enemy,
+	brain: Brain,
+	boss: Config.BossDef,
+	now: number,
+	targets: { Characters.Target }
+)
+	local count = boss.eruptionCount or 6
+	if isEnraged(enemy, boss) then
+		count = math.ceil(count * 1.5)
+	end
+	local radius = boss.eruptionRadius or 5
+	local windup = boss.eruptionWindup or 1.2
+	local spread = boss.eruptionSpread or 14
+	local damage = (boss.eruptionDamage or 20) * damageScale(enemy)
+	for index = 1, count do
+		-- One circle right under each player first, then the rest scattered around them.
+		local target = targets[(index - 1) % #targets + 1]
+		local x, z = target.x, target.z
+		if index > #targets then
+			local angle = math.random() * 2 * math.pi
+			local distance = math.random() * spread
+			x += math.cos(angle) * distance
+			z += math.sin(angle) * distance
+		end
+		x, z = Arena.clamp(state.arena, x, z, radius)
+		table.insert(brain.eruptions, { x = x, z = z, radius = radius, damage = damage, burstsAt = now + windup })
+		local telegraph: EntityNet.CircleTelegraph =
+			{ shape = "Circle", x = x, z = z, radius = radius, duration = windup }
+		NetBatch.push(state.net, Remotes.EnemyTelegraph, telegraph)
+	end
+end
+
+-- Bursts the eruption circles whose wind-up is over.
+local function stepEruptions(state: State, brain: Brain, now: number, targets: { Characters.Target })
+	local eruptions = brain.eruptions
+	for index = #eruptions, 1, -1 do
+		local eruption = eruptions[index]
+		if now < eruption.burstsAt then
+			continue
+		end
+		table.remove(eruptions, index)
+		local reach = eruption.radius + Config.PLAYER_RADIUS
+		for _, target in targets do
+			local dx, dz = target.x - eruption.x, target.z - eruption.z
+			if dx * dx + dz * dz <= reach * reach then
+				Characters.damage(target, eruption.damage, now)
+			end
+		end
+		local blast: EntityNet.ExplosionInfo =
+			{ x = eruption.x, z = eruption.z, radius = eruption.radius, kind = "Eruption" }
+		NetBatch.push(state.net, Remotes.Explosions, blast)
+	end
+end
+
 -- Moves a charging boss along its lane; true when the charge is over.
 local function stepCharge(
 	enemy: EnemyService.Enemy,
@@ -191,10 +260,11 @@ function BossBrain.step(state: State, now: number, dt: number, targets: { Charac
 		end
 		local brain = state.brains[enemy]
 		if not brain then
-			brain = { nextAttackAt = now + boss.firstAttackDelay, patternIndex = 0, charge = nil }
+			brain = { nextAttackAt = now + boss.firstAttackDelay, patternIndex = 0, charge = nil, eruptions = {} }
 			state.brains[enemy] = brain
 		end
 		local interval = if isEnraged(enemy, boss) then boss.enragedInterval else boss.attackInterval
+		stepEruptions(state, brain, now, targets)
 
 		local charge = brain.charge
 		if charge then
@@ -222,6 +292,9 @@ function BossBrain.step(state: State, now: number, dt: number, targets: { Charac
 			brain.nextAttackAt = now + interval
 		elseif attack == "Summon" then
 			summon(state, enemy, boss)
+			brain.nextAttackAt = now + interval
+		elseif attack == "Eruption" then
+			startEruption(state, enemy, brain, boss, now, targets)
 			brain.nextAttackAt = now + interval
 		else
 			startCharge(state, enemy, brain, boss, now, target)

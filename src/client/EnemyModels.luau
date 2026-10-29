@@ -228,6 +228,54 @@ builders.MagmaGolem = function()
 	return visual
 end
 
+-- The Volcano's boss: a towering red demon with black horns, a lava-cracked chest, and a crown of
+-- fire.
+builders.Infernal = function()
+	local visual = newVisual("Infernal")
+	local skin = Color3.fromRGB(150, 35, 28)
+	local dark = Color3.fromRGB(70, 22, 20)
+	local horn = Color3.fromRGB(35, 25, 25)
+	addPart(visual, Vector3.new(2, 3.2, 2), CFrame.new(-1.6, 1.6, 0), dark)
+	addPart(visual, Vector3.new(2, 3.2, 2), CFrame.new(1.6, 1.6, 0), dark)
+	addPart(visual, Vector3.new(6, 4.6, 4), CFrame.new(0, 5.4, 0), skin)
+	addPart(visual, Vector3.new(7.4, 1.8, 3.4), CFrame.new(0, 7.9, 0.3), skin)
+	addPart(
+		visual,
+		Vector3.new(3.6, 0.3, 0.1),
+		CFrame.new(0, 6, -2.02) * CFrame.Angles(0, 0, math.rad(12)),
+		LAVA,
+		Enum.Material.Neon
+	)
+	addPart(
+		visual,
+		Vector3.new(2.4, 0.3, 0.1),
+		CFrame.new(0.4, 4.9, -2.02) * CFrame.Angles(0, 0, math.rad(-18)),
+		LAVA,
+		Enum.Material.Neon
+	)
+	-- Head, horns, eyes, and a crown of fire.
+	addPart(visual, Vector3.new(2.8, 2.6, 2.6), CFrame.new(0, 10, -0.6), skin)
+	addPart(visual, Vector3.new(0.6, 2.6, 0.6), CFrame.new(-1.6, 11.6, -0.6) * CFrame.Angles(0, 0, math.rad(30)), horn)
+	addPart(visual, Vector3.new(0.6, 2.6, 0.6), CFrame.new(1.6, 11.6, -0.6) * CFrame.Angles(0, 0, math.rad(-30)), horn)
+	addPart(visual, Vector3.new(0.6, 0.45, 0.2), CFrame.new(-0.6, 10.3, -1.95), LAVA, Enum.Material.Neon)
+	addPart(visual, Vector3.new(0.6, 0.45, 0.2), CFrame.new(0.6, 10.3, -1.95), LAVA, Enum.Material.Neon)
+	addPart(visual, Vector3.new(2, 0.8, 2), CFrame.new(0, 11.7, -0.6), Color3.fromRGB(255, 150, 40), Enum.Material.Neon)
+	-- Arms reaching forward.
+	addPart(
+		visual,
+		Vector3.new(1.8, 5.2, 1.8),
+		CFrame.new(-4.4, 6, -1) * CFrame.Angles(math.rad(30), 0, math.rad(-10)),
+		skin
+	)
+	addPart(
+		visual,
+		Vector3.new(1.8, 5.2, 1.8),
+		CFrame.new(4.4, 6, -1) * CFrame.Angles(math.rad(30), 0, math.rad(10)),
+		skin
+	)
+	return visual
+end
+
 -- The final boss: a huge, hunched grey-olive brute with tusks and a spiked club.
 builders.Ogre = function()
 	local visual = newVisual("Ogre")
