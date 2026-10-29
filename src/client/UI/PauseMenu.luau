@@ -386,12 +386,14 @@ function PauseMenu.start()
 	settings.Activated:Connect(AudioSettings.toggle)
 
 	-- The ⏸ button, left of the audio buttons in the top-right row; only during a run.
-	local buttonGui = Create("ScreenGui", {
+	local buttonScreen = Create("ScreenGui", {
 		Name = "PauseButton",
 		ResetOnSpawn = false,
 		DisplayOrder = 2,
 		Parent = player:WaitForChild("PlayerGui"),
 	})
+	-- Scales with the top-right buttons on small screens.
+	local buttonGui = Theme.fitRoot(buttonScreen)
 	local pauseButton = Create("TextButton", {
 		Name = "Pause",
 		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE),

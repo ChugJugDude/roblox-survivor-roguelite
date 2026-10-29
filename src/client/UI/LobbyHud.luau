@@ -18,10 +18,12 @@ local LobbyHud = {}
 
 function LobbyHud.start()
 	local player = Players.LocalPlayer
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "LobbyHud"
-	gui.ResetOnSpawn = false
-	gui.Parent = player:WaitForChild("PlayerGui")
+	local screen = Instance.new("ScreenGui")
+	screen.Name = "LobbyHud"
+	screen.ResetOnSpawn = false
+	screen.Parent = player:WaitForChild("PlayerGui")
+	-- Everything goes in a root that scales down on small screens.
+	local gui = Theme.fitRoot(screen)
 
 	local hintPanel = Theme.panel({
 		Name = "Hint",
@@ -83,7 +85,7 @@ function LobbyHud.start()
 
 	RunService.RenderStepped:Connect(function()
 		local inLobby = CurrentArena.get() == nil
-		gui.Enabled = inLobby
+		screen.Enabled = inLobby
 		if not inLobby then
 			return
 		end

@@ -172,11 +172,13 @@ local function captionedBar(gui: Instance, name: string, width: number, color: C
 end
 
 function Hud.start()
-	local gui = Create("ScreenGui", {
+	local screen = Create("ScreenGui", {
 		Name = "Hud",
 		ResetOnSpawn = false,
 		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
 	})
+	-- Everything goes in a root that scales down on small screens.
+	local gui = Theme.fitRoot(screen)
 
 	-- Party XP across the top of the screen, with the level in a badge at its left end.
 	local xpBar = Theme.bar(gui, UDim2.new(1, -60, 0, 14), UDim2.fromOffset(46, 4), COLORS.xp)
@@ -340,7 +342,7 @@ function Hud.start()
 			pauseMenu = localPlayer.PlayerGui:FindFirstChild("PauseMenu") :: ScreenGui?
 		end
 		local arena = CurrentArena.get()
-		gui.Enabled = arena ~= nil
+		screen.Enabled = arena ~= nil
 		if not arena then
 			return -- the lobby
 		end

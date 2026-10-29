@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 
 local AudioSettings = require(script.Parent.AudioSettings)
 local Create = require(script.Parent.Create)
+local Theme = require(script.Parent.Theme)
 local SoundPlayer = require(script.Parent.Parent.SoundPlayer)
 
 local BUTTON_SIZE = 36
@@ -50,12 +51,14 @@ local function toggle(parent: Instance, order: number, icon: string, group: Soun
 end
 
 function AudioToggles.start()
-	local gui = Create("ScreenGui", {
+	local screen = Create("ScreenGui", {
 		Name = "AudioToggles",
 		ResetOnSpawn = false,
 		DisplayOrder = 2,
 		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
 	})
+	-- Scales down on small screens, like the HUD.
+	local gui = Theme.fitRoot(screen)
 	local row = Create("Frame", {
 		Name = "Row",
 		Size = UDim2.fromOffset(BUTTON_SIZE * 3 + 16, BUTTON_SIZE),

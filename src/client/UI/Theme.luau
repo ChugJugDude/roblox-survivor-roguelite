@@ -138,6 +138,35 @@ function Theme.button(color: Color3, props: { [string]: any }): TextButton
 	return button
 end
 
+-- HUDs are laid out for at least this much screen (in pixels) and scaled down to fit smaller ones,
+-- so on small phones (an iPhone 7 is 667 x 375) everything shrinks instead of overlapping.
+Theme.MIN_SCREEN = Vector2.new(900, 480)
+
+-- A full-screen frame inside `screen` to build a HUD in. On screens smaller than MIN_SCREEN it's
+-- sized up to MIN_SCREEN and scaled down by a UIScale, so the layout is computed at a size it fits
+-- and then shrunk to the real screen.
+function Theme.fitRoot(screen: ScreenGui): Frame
+	local root = Create("Frame", {
+		Name = "Root",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = screen,
+	})
+	local scale = Create("UIScale", { Parent = root })
+	local function fit()
+		local camera = workspace.CurrentCamera
+		local viewport = if camera then camera.ViewportSize else Theme.MIN_SCREEN
+		local factor = math.min(1, viewport.X / Theme.MIN_SCREEN.X, viewport.Y / Theme.MIN_SCREEN.Y)
+		scale.Scale = factor
+		root.Size = UDim2.fromScale(1 / factor, 1 / factor)
+	end
+	fit()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+	end
+	return root
+end
+
 -- The icon for a weapon, passive, or the heal option (Config.Upgrades `icon` fields).
 function Theme.upgradeIcon(config: any, id: string): string
 	local weapon = config.WEAPONS[id]

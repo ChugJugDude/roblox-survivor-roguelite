@@ -20,6 +20,10 @@ export type Target = {
 	z: number,
 }
 
+-- How far below their spawn point a character can fall before being put back, and how often to check.
+local FALL_LIMIT = 40
+local FALL_CHECK_INTERVAL = 1
+
 local Characters = {}
 
 local spawnAt: { [Player]: CFrame } = {} -- where each player's next character appears
@@ -61,6 +65,10 @@ local function onCharacterAdded(character: Model)
 	humanoid.MaxHealth = maxHealth
 	humanoid.Health = maxHealth
 	humanoid.WalkSpeed = walkSpeed
+	-- No jumping: it does nothing in a top-down game and let players hop over the lobby's walls. A
+	-- jump power of 0 also hides the jump button on phones.
+	humanoid.UseJumpPower = true
+	humanoid.JumpPower = 0
 
 	-- Roblox adds a "Health" script that regenerates 1% HP per second. Healing should only come
 	-- from upgrades (the Regen passive), so remove it.
@@ -98,6 +106,21 @@ function Characters.start()
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+	-- A safety net: anyone who falls below the world goes back to their spawn point.
+	task.spawn(function()
+		while true do
+			task.wait(FALL_CHECK_INTERVAL)
+			for player, cframe in spawnAt do
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if character and root and root:IsA("BasePart") and root.Position.Y < cframe.Position.Y - FALL_LIMIT then
+					character:PivotTo(cframe)
+					root.AssemblyLinearVelocity = Vector3.zero
+				end
+			end
+		end
+	end)
 	for _, player in Players:GetPlayers() do
 		task.spawn(onPlayerAdded, player)
 	end
