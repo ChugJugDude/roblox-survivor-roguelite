@@ -8,6 +8,19 @@
 -- flash can restore it. A textured MeshPart ignores Color, so `textures` keeps its texture: looks
 -- like the hit flash take the texture off to show a flat color, then put it back.
 
+-- An archer's bow, built in code and held in the left hand. EnemyRenderer places its parts every
+-- frame: at rest they swing with the arm; while drawing, the bow lerps up in front of the archer and
+-- the string bends back to the nock.
+export type BowRig = {
+	rest: CFrame, -- the bow's frame from the root at rest, before arm animation
+	pieces: { [number]: CFrame }, -- the bow's solid parts (by part index), in the bow's frame
+	strings: { number }, -- the upper and lower string halves' part indices
+	grip: number, -- the grip's part index (its group and joint drive the rest pose)
+	halfHeight: number, -- tip to grip
+	tipBack: number, -- how far the tips curve back toward the archer (+Z in the bow's frame)
+	draw: Vector3, -- where the bow's grip goes while drawing, from the root
+}
+
 export type Visual = {
 	model: Model,
 	parts: { BasePart },
@@ -18,6 +31,7 @@ export type Visual = {
 	-- the joint it swings about, relative to the root.
 	groups: { [number]: string },
 	joints: { [number]: Vector3 },
+	bow: BowRig?, -- archers
 	-- Aura effects (bosses, elites); EnemyRenderer scales them to the graphics quality.
 	emitters: { ParticleEmitter },
 	emitterRates: { number }, -- each emitter's High-quality rate
@@ -44,6 +58,7 @@ local function newVisual(name: string): Visual
 		textures = {},
 		groups = {},
 		joints = {},
+		bow = nil,
 		emitters = {},
 		emitterRates = {},
 		lights = {},
@@ -560,6 +575,71 @@ local function addEffects(visual: Visual, kind: string, elite: boolean)
 	end
 end
 
+local BOW_COLORS: { [string]: Color3 } = {
+	SkeletonArcher = Color3.fromRGB(150, 80, 200),
+	EmberArcher = Color3.fromRGB(45, 30, 28),
+}
+local BOW_STRING_COLOR = Color3.fromRGB(235, 230, 215)
+
+-- Gives an archer (a model with an animated left arm) a bow in its left hand.
+local function addBow(visual: Visual, kind: string, scale: number)
+	local arm: number? = nil
+	for index, group in visual.groups do
+		if group == "ArmL" then
+			arm = index
+		end
+	end
+	if not arm then
+		return
+	end
+	local armOffset, armSize = visual.offsets[arm], visual.parts[arm].Size
+	local shoulder = visual.joints[arm]
+	local halfHeight = 1.25 * scale
+	local tipBack = 0.35 * scale
+	local thickness = 0.14 * scale
+	local limbLength = math.sqrt((halfHeight - 0.25 * scale) ^ 2 + tipBack ^ 2)
+	local limbAngle = math.atan2(tipBack, halfHeight - 0.25 * scale)
+	local color = BOW_COLORS[kind] or BOW_COLORS.SkeletonArcher
+	-- At rest: in the hand, tipped forward like a bow carried low.
+	local hand = armOffset * Vector3.new(0, -armSize.Y / 2 + 0.2 * scale, 0)
+	local rest = CFrame.new(hand + Vector3.new(0, 0, -0.1 * scale)) * CFrame.Angles(math.rad(-65), 0, 0)
+	local pieces: { [number]: CFrame } = {}
+	local function solid(size: Vector3, frame: CFrame)
+		addPart(visual, size, rest * frame, color, Enum.Material.Wood)
+		visual.groups[#visual.parts] = "ArmL"
+		visual.joints[#visual.parts] = shoulder
+		pieces[#visual.parts] = frame
+	end
+	solid(Vector3.new(thickness * 1.3, 0.5 * scale, thickness * 1.3), CFrame.identity)
+	local grip = #visual.parts
+	local limbMid = (halfHeight + 0.25 * scale) / 2
+	solid(
+		Vector3.new(thickness, limbLength, thickness),
+		CFrame.new(0, limbMid, tipBack / 2) * CFrame.Angles(limbAngle, 0, 0)
+	)
+	solid(
+		Vector3.new(thickness, limbLength, thickness),
+		CFrame.new(0, -limbMid, tipBack / 2) * CFrame.Angles(-limbAngle, 0, 0)
+	)
+	local strings = {}
+	for _ = 1, 2 do
+		addPart(visual, Vector3.new(0.05, 0.05, halfHeight), rest, BOW_STRING_COLOR, Enum.Material.SmoothPlastic)
+		visual.groups[#visual.parts] = "ArmL"
+		visual.joints[#visual.parts] = shoulder
+		table.insert(strings, #visual.parts)
+	end
+	visual.bow = {
+		rest = rest,
+		pieces = pieces,
+		strings = strings,
+		grip = grip,
+		halfHeight = halfHeight,
+		tipBack = tipBack,
+		-- Held out at arm's length toward the target, at shoulder height.
+		draw = shoulder + Vector3.new(0.15 * scale, -0.1 * scale, -armSize.Y * 0.95),
+	}
+end
+
 -- Grows a visual about its root and gives it a gold glow, for elites.
 local function makeElite(visual: Visual)
 	local scale = EnemyConfig.ELITE.scale
@@ -596,6 +676,16 @@ function EnemyModels.create(kind: string, elite: boolean?): Visual
 		makeElite(visual)
 	end
 	addEffects(visual, kind, elite == true)
+	if EnemyConfig.TYPES[kind] and EnemyConfig.TYPES[kind].ranged then
+		-- After the elite scaling, so it's sized to the (possibly bigger) arm; joints are set first.
+		for index, group in visual.groups do
+			if group == "ArmL" and not visual.joints[index] then
+				local offset, size = visual.offsets[index], visual.parts[index].Size
+				visual.joints[index] = offset * Vector3.new(0, size.Y / 2, 0)
+			end
+		end
+		addBow(visual, kind, if elite then EnemyConfig.ELITE.scale else 1)
+	end
 	-- Default joints: the top of an arm or leg, the inner edge of a wing.
 	for index, group in visual.groups do
 		if visual.joints[index] then

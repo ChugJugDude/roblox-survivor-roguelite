@@ -141,22 +141,31 @@ local WINDUPS: { [string]: WindUp } = {
 		release = { raise = math.rad(40), spread = math.rad(80), tilt = math.rad(8) },
 		out = 0.45,
 	},
-	-- An archer turns its bow shoulder (the left) toward the target, brings the bow up in front of
-	-- its chest and pulls the string arm well back (EnemyRenderer shows the nocked bolt), then lets
-	-- go: the string arm snaps forward. The bow arm and bow are one rigid mesh, so it only rises a
-	-- little; any higher and the bow tips over the archer's head.
+	-- An archer turns its bow shoulder (the left) a little toward the target and holds its bow arm
+	-- out at it; the string arm comes up short of it, drawing. EnemyRenderer moves the bow itself
+	-- (EnemyModels' bow rig) up in front and bends the string back to the nocked bolt.
 	Draw = {
 		hold = {
-			raise = math.rad(35),
+			raise = math.rad(75),
 			spread = NO_SPREAD,
-			tilt = math.rad(5),
-			pull = math.rad(-80),
-			twist = math.rad(-25),
+			tilt = math.rad(4),
+			pull = math.rad(-45),
+			twist = math.rad(-15),
 		},
-		release = { raise = math.rad(35), spread = NO_SPREAD, tilt = 0, pull = math.rad(-10), twist = math.rad(-25) },
+		release = { raise = math.rad(75), spread = NO_SPREAD, tilt = 0, pull = 0, twist = math.rad(-15) },
 		out = 0.3,
 	},
 }
+
+-- How far into its wind-up pose a telegraph of `shape` shown from `from` to `to` is `now`: easing
+-- in to 1, holding, then easing back out to 0 once the attack lands.
+function EnemyAnimation.windUpAmount(shape: string, from: number, to: number, now: number): number
+	local windUp = WINDUPS[shape]
+	if not windUp or now < from or now > to + windUp.out then
+		return 0
+	end
+	return if now <= to then math.clamp((now - from) / WINDUP_IN, 0, 1) else 1 - (now - to) / windUp.out
+end
 
 -- A wind-up pose `now` for a telegraph of `shape` shown from `from` to `to` (os.clock times): the
 -- extra arm angle, how far the arms spread to the sides, the body tilt, the right arm's pull, and
@@ -171,12 +180,8 @@ function EnemyAnimation.windUp(
 	if not windUp or now < from or now > to + windUp.out then
 		return 0, 0, 0, 0, 0
 	end
-	local pose, amount
-	if now <= to then
-		pose, amount = windUp.hold, math.clamp((now - from) / WINDUP_IN, 0, 1)
-	else
-		pose, amount = windUp.release, 1 - (now - to) / windUp.out
-	end
+	local pose = if now <= to then windUp.hold else windUp.release
+	local amount = EnemyAnimation.windUpAmount(shape, from, to, now)
 	return pose.raise * amount,
 		pose.spread * amount,
 		pose.tilt * amount,

@@ -8,6 +8,10 @@
 	turned toward the editor camera, often by an odd angle), turns it to face -Z using a check you
 	choose, scales it to its in-game height, and puts its pivot on the ground (or `lift` studs
 	below it, for fliers).
+
+	The facing check trusts the generator's part labels, which are sometimes wrong (the Ember
+	Archer's left and right arms were swapped). Always confirm with a front-view screenshot in game
+	(models face -Z: look from -Z toward +Z and every face should show) before exporting.
 ]]
 
 type GroupSpec = { keyword: string, group: string, color: Color3 }

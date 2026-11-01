@@ -55,7 +55,6 @@ type Entry = {
 	windUpShape: string?, -- a boss winding up: its telegraph's shape, shown from windUpFrom to windUpTo
 	windUpFrom: number,
 	windUpTo: number,
-	bowShoulder: Vector3?, -- archers: the bow arm's joint, where the nocked bolt rests
 	bolt: { BasePart }?, -- a nocked bolt, while drawing
 }
 
@@ -169,15 +168,8 @@ local function onSpawned(list: any)
 			windUpShape = nil,
 			windUpFrom = 0,
 			windUpTo = 0,
-			bowShoulder = nil,
 			bolt = nil,
 		}
-		local entry = entries[info.id]
-		for index, group in entry.visual.groups do
-			if group == "ArmL" and entry.facesTarget then
-				entry.bowShoulder = entry.visual.joints[index]
-			end
-		end
 	end
 end
 
@@ -185,7 +177,7 @@ end
 local BOLT_SHAFT_COLOR = Color3.fromRGB(70, 0, 15)
 local BOLT_HEAD_COLOR = Color3.fromRGB(190, 0, 35)
 local BOLT_LENGTH = 1.8
-local BOLT_DRAW = 0.6 -- studs it slides back as the string is drawn
+local STRING_DRAW = 0.9 -- studs the string's middle comes back at full draw
 local freeBolts: { { BasePart } } = {}
 
 local function newBolt(): { BasePart }
@@ -537,36 +529,12 @@ local function render()
 				twist
 			)
 		end
-		-- An archer drawing shows its bolt on the bow, aimed at the target, sliding back as it draws.
-		local shoulder = entry.bowShoulder
-		local drawing = shoulder ~= nil
-			and not frozen
-			and entry.windUpShape == "Draw"
-			and clock >= entry.windUpFrom
-			and clock < entry.windUpTo
-		if drawing and shoulder then
-			local bolt = entry.bolt
-			if not bolt then
-				bolt = table.remove(freeBolts) or newBolt()
-				for _, part in bolt do
-					part.Parent = folder
-				end
-				entry.bolt = bolt
-			end
-			local drawn = math.clamp((clock - entry.windUpFrom) / (entry.windUpTo - entry.windUpFrom) * 1.5, 0, 1)
-			local center = Vector3.new(shoulder.X * 0.4, shoulder.Y - 0.25, -1.5 + BOLT_DRAW * drawn)
-			table.insert(moveParts, bolt[1])
-			table.insert(moveCFrames, root * CFrame.new(center))
-			table.insert(moveParts, bolt[2])
-			table.insert(
-				moveCFrames,
-				root * CFrame.new(center - Vector3.new(0, 0, BOLT_LENGTH / 2)) * CFrame.Angles(0, math.rad(45), 0)
-			)
-		elseif entry.bolt then
-			removeBolt(entry)
-		end
 		local groups, joints, offsets = visual.groups, visual.joints, visual.offsets
+		local bow = visual.bow
 		for i, part in visual.parts do
+			if bow and (bow.pieces[i] or i == bow.strings[1] or i == bow.strings[2]) then
+				continue -- placed below
+			end
 			table.insert(moveParts, part)
 			table.insert(
 				moveCFrames,
@@ -585,6 +553,75 @@ local function render()
 						pull
 					)
 			)
+		end
+		-- The bow: carried at rest (swinging with the arm), raised in front while drawing.
+		local drawing = false
+		if bow then
+			local restBow = root
+				* EnemyAnimation.place(
+					groups,
+					joints,
+					bow.rest,
+					bow.grip,
+					body,
+					swing,
+					flap,
+					strike,
+					raise,
+					spread,
+					pull
+				)
+			local raised, drawn = 0, 0
+			if entry.windUpShape == "Draw" and not frozen then
+				raised = EnemyAnimation.windUpAmount("Draw", entry.windUpFrom, entry.windUpTo, clock)
+				if clock >= entry.windUpFrom and clock < entry.windUpTo then
+					drawing = true
+					drawn = math.clamp((clock - entry.windUpFrom) / (entry.windUpTo - entry.windUpFrom) * 1.3, 0, 1)
+				end
+			end
+			local bowFrame = if raised > 0 then restBow:Lerp(root * CFrame.new(bow.draw), raised) else restBow
+			for index, frame in bow.pieces do
+				table.insert(moveParts, visual.parts[index])
+				table.insert(moveCFrames, bowFrame * frame)
+			end
+			-- The string: tip to nock to tip, the nock pulled back toward the archer as it draws.
+			local upperTip = bowFrame * Vector3.new(0, bow.halfHeight, bow.tipBack)
+			local lowerTip = bowFrame * Vector3.new(0, -bow.halfHeight, bow.tipBack)
+			local nock = bowFrame * Vector3.new(0, 0, bow.tipBack + STRING_DRAW * drawn)
+			for half, tip in { upperTip, lowerTip } do
+				local part = visual.parts[bow.strings[half]]
+				local length = (tip - nock).Magnitude
+				if math.abs(part.Size.Z - length) > 0.01 then
+					part.Size = Vector3.new(part.Size.X, part.Size.Y, length)
+				end
+				table.insert(moveParts, part)
+				table.insert(moveCFrames, CFrame.lookAt((tip + nock) / 2, tip))
+			end
+			-- While drawing, a bolt rests on the string, pointing at the target.
+			if drawing then
+				local bolt = entry.bolt
+				if not bolt then
+					bolt = table.remove(freeBolts) or newBolt()
+					for _, part in bolt do
+						part.Parent = folder
+					end
+					entry.bolt = bolt
+				end
+				local aim = bowFrame.Rotation
+				local center = nock + aim:VectorToWorldSpace(Vector3.new(0, 0, -BOLT_LENGTH / 2))
+				table.insert(moveParts, bolt[1])
+				table.insert(moveCFrames, CFrame.new(center) * aim)
+				table.insert(moveParts, bolt[2])
+				table.insert(
+					moveCFrames,
+					CFrame.new(center + aim:VectorToWorldSpace(Vector3.new(0, 0, -BOLT_LENGTH / 2)))
+						* aim
+						* CFrame.Angles(0, math.rad(45), 0)
+				)
+			end
+		end
+		if not drawing and entry.bolt then
+			removeBolt(entry)
 		end
 	end
 
