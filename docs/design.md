@@ -21,6 +21,7 @@ A fantasy survivor-like roguelite for Roblox. Drop into a cursed arena alone or 
 - **Readability over detail:** enemies, projectiles, and pickups must be identifiable at a glance on a small screen, even with 100+ things on screen.
 - Asset sources: primitive parts, Creator Store low-poly packs (check licenses), and Studio's mesh/material generation for one-offs.
 - **Feel (M4):** every hit sparks and shows a damage number (big hits gold), kills puff, elites and bosses burst in gold. Weapons look like what they are: swords with swing trails, fletched arrows, fireballs trailing flame, lightning that sparks where it strikes, ice that encases frozen enemies, Holy Ground as a consecrated circle cast up rune by rune. Getting hurt flashes the screen edges red and shakes the camera. Sound: licensed Creator Store effects and music (lobby, run, boss), with mute buttons and per-weapon volume sliders.
+- **Models and animation (M5):** enemies and bosses are AI-generated low-poly meshes (Studio's mesh generator), kept as data in `Config/Models` and animated in code: walk cycles scaled to speed, strikes when a hit lands, flapping wings, boss wind-up poses (charge: rear back; eruption: arms overhead, then slam; ring: gather, then fling the arms wide), and an archer's bow draw with the string pulled back to a nocked bolt. Bosses and mini-bosses wear auras (the Infernal's crown of flame, the Golem's embers and smoke); elites sparkle gold. Held and swung weapons are built in code, because the generator made them badly (guards halfway up blades, detached bowstrings): Spinning Blade is a greatsword, Bladestorm the same in glowing gold. Enemy shots are crimson bolts and energy orbs with trails. Each wind-up has its own sound; the warhorn plays only when a boss arrives.
 - **UI:** one shared theme (dark rounded panels, kind colors: weapons orange, passives blue, evolutions gold). Mobile-first placement: build tiles and health top left (the bottom left is the thumbstick), objectives on the right, only the stage panel and boss bar top middle.
 
 ## 3. Core loop
@@ -93,11 +94,11 @@ Design rules:
 | --- | --- | --- |
 | Goblin | Walks straight at nearest player | Filler / XP source |
 | Bat swarm | Fast, low HP, moves in groups | Pressure movement |
-| Skeleton archer | Keeps distance, shoots slow projectiles | Forces dodging |
+| Skeleton archer | Keeps distance, draws its bow (0.5s), then shoots a slow bolt aimed where the player is | Forces dodging |
 | Elite (goblin or archer) | 1.6x size, gold glow, x8 HP, x1.5 damage, x5 XP; one every 45s of a stage | Drops a chest |
 | Supply crate | Doesn't move or attack; breakable | Drops meat, a bomb, or a magnet |
 | **Mini-boss: Goblin Giant** | Slow, tanky, big hitbox; appears mid-stage | Drops a chest |
-| **Boss: Ogre** | Cycles attacks: ring of 16 crimson shots, summons 6 goblins, and a charge down a red ground lane (1.1s warning). Below 33% HP it enrages: faster attacks, double rings | End-of-run climax: replaces stage 3's portal |
+| **Boss: Ogre** | Cycles attacks: ring of 16 crimson shots (after a 0.8s wind-up), summons 6 goblins, and a charge down a red ground lane (1.1s warning). Below 33% HP it enrages: faster attacks, double rings | End-of-run climax: replaces stage 3's portal |
 
 A **wave director** controls spawns over time: which enemy types are allowed, spawn rate, max alive count, and elite/boss timings. All of it lives in config so runs can be tuned without code changes.
 
@@ -178,7 +179,7 @@ Candidates:
 | M2 | Co-op | Lobby + portal, parties of 1–4, instanced arenas, shared XP, downed/revive, scaling | Weeks 4–5 |
 | M3 | Meta progression | Player data saving, Shards, Altar upgrades, hero unlock, results screen | Weeks 6–7 |
 | M4 | Content + polish | All v1 weapons/passives/evolutions, 5 enemies + boss, UI pass, sound, hit VFX | Weeks 8–9 |
-| M5 | Progression (§16) | Worlds with new enemies and bosses (chunk 1: the world system + the Volcano, done), gear, lobby loot chests | TBD |
+| M5 | Progression (§16) | Worlds with new enemies and bosses (chunk 1: the world system + the Volcano, done), a visual upgrade (chunk 2: AI models, animation, wind-ups, done), map polish, gear, lobby loot chests | TBD |
 | M6 | Launch prep | Monetization, thumbnail/icon, maturity questionnaire, mobile test, publish | TBD |
 
 **Playtest gates:** after M1, play it and ask "is a solo run fun for 10 minutes?" After M2, play with friends. Don't move past a gate until the answer is yes.
