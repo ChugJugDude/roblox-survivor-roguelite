@@ -15,6 +15,7 @@ local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local EnemyAnimation = require(script.Parent.EnemyAnimation)
+local Graphics = require(script.Parent.Graphics)
 local EnemyModels = require(script.Parent.EnemyModels)
 local Particles = require(script.Parent.Particles)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
@@ -51,6 +52,9 @@ type Entry = {
 	walk: number, -- walk-cycle angle, advanced by distance moved
 	motion: number, -- 0 standing still to 1 walking, eased
 	attackedAt: number, -- os.clock time its last contact attack landed
+	windUpShape: string?, -- a boss winding up: its telegraph's shape, shown from windUpFrom to windUpTo
+	windUpFrom: number,
+	windUpTo: number,
 }
 
 local MAX_SAMPLES = 10
@@ -95,12 +99,24 @@ function EnemyRenderer.onRemoved(listener: (id: number, position: Vector3, kind:
 	table.insert(removedListeners, listener)
 end
 
+-- Applies the graphics quality to a visual's effects (emitter rates and lights).
+local function applyQuality(visual: EnemyModels.Visual)
+	local profile = Graphics.profile()
+	for index, emitter in visual.emitters do
+		emitter.Rate = visual.emitterRates[index] * profile.fireScale
+	end
+	for _, light in visual.lights do
+		light.Enabled = profile.lights
+	end
+end
+
 local function acquire(poolKey: string, kind: string, elite: boolean): EnemyModels.Visual
 	local pool = pools[poolKey]
 	local visual = if pool then table.remove(pool) else nil
 	if not visual then
 		visual = EnemyModels.create(kind, elite)
 	end
+	applyQuality(visual)
 	visual.model.Parent = folder
 	return visual
 end
@@ -148,6 +164,9 @@ local function onSpawned(list: any)
 			walk = math.random() * 2 * math.pi,
 			motion = 0,
 			attackedAt = -math.huge,
+			windUpShape = nil,
+			windUpFrom = 0,
+			windUpTo = 0,
 		}
 	end
 end
@@ -266,6 +285,26 @@ local function onAttacked(ids: any)
 		local entry = entries[id]
 		if entry then
 			entry.attackedAt = now
+		end
+	end
+end
+
+-- A boss's telegraph: hold a wind-up pose until it lands. An eruption ends in a slam.
+local function onTelegraph(list: any)
+	if typeof(list) ~= "table" then
+		return
+	end
+	local now = os.clock()
+	for _, info in list do
+		local entry = if typeof(info) == "table" then entries[info.id] else nil
+		if entry and typeof(info.duration) == "number" then
+			local shape = if info.shape == "Circle" then "Circle" else "Lane"
+			entry.windUpShape = shape
+			entry.windUpFrom = now
+			entry.windUpTo = now + info.duration
+			if shape == "Circle" then
+				entry.attackedAt = entry.windUpTo
+			end
 		end
 	end
 end
@@ -402,14 +441,20 @@ local function render()
 		local root = CFrame.new(x, GROUND_Y, z) * CFrame.Angles(0, entry.yaw, 0)
 		local visual = entry.visual
 		-- Frozen enemies hold still.
-		local body, swing, flap, strike = CFrame.identity, 0, 0, 0
+		local body, swing, flap, strike, raise = CFrame.identity, 0, 0, 0, 0
 		if not frozen then
+			local tilt = 0
+			local shape = entry.windUpShape
+			if shape then
+				raise, tilt = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
+			end
 			body, swing, flap, strike = EnemyAnimation.pose(
 				entry.animation,
 				entry.walk,
 				entry.motion,
 				clock + entry.phase,
-				clock - entry.attackedAt
+				clock - entry.attackedAt,
+				tilt
 			)
 		end
 		local groups, joints, offsets = visual.groups, visual.joints, visual.offsets
@@ -417,7 +462,7 @@ local function render()
 			table.insert(moveParts, part)
 			table.insert(
 				moveCFrames,
-				root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap, strike)
+				root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap, strike, raise)
 			)
 		end
 	end
@@ -454,6 +499,7 @@ function EnemyRenderer.start()
 	Remotes.EnemySnapshot.OnClientEvent:Connect(onSnapshot)
 	Remotes.EnemiesHit.OnClientEvent:Connect(onHit)
 	Remotes.EnemyAttacked.OnClientEvent:Connect(onAttacked)
+	Remotes.EnemyTelegraph.OnClientEvent:Connect(onTelegraph)
 	Remotes.WeaponEffects.OnClientEvent:Connect(onEffects)
 	RunService.RenderStepped:Connect(render)
 end

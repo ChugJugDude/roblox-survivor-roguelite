@@ -67,6 +67,7 @@ export type TelegraphInfo = LaneTelegraph | CircleTelegraph
 
 export type CircleTelegraph = {
 	shape: "Circle",
+	id: number?, -- the boss winding up (for its pose)
 	x: number,
 	z: number,
 	radius: number,
@@ -75,6 +76,7 @@ export type CircleTelegraph = {
 
 export type LaneTelegraph = {
 	shape: "Lane"?,
+	id: number?, -- the boss winding up (for its pose)
 	x: number, -- where the lane starts
 	z: number,
 	dirX: number, -- unit direction

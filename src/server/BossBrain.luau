@@ -136,6 +136,7 @@ local function startCharge(
 	enemy.locked = true
 	brain.charge = { dashAt = now + boss.chargeWindup, dirX = dirX, dirZ = dirZ, traveled = 0, hit = {} }
 	local telegraph: EntityNet.TelegraphInfo = {
+		id = enemy.id,
 		x = enemy.x,
 		z = enemy.z,
 		dirX = dirX,
@@ -177,7 +178,7 @@ local function startEruption(
 		x, z = Arena.clamp(state.arena, x, z, radius)
 		table.insert(brain.eruptions, { x = x, z = z, radius = radius, damage = damage, burstsAt = now + windup })
 		local telegraph: EntityNet.CircleTelegraph =
-			{ shape = "Circle", x = x, z = z, radius = radius, duration = windup }
+			{ shape = "Circle", id = enemy.id, x = x, z = z, radius = radius, duration = windup }
 		NetBatch.push(state.net, Remotes.EnemyTelegraph, telegraph)
 	end
 end

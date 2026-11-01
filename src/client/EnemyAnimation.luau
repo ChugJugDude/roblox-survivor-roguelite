@@ -9,7 +9,8 @@
 -- (WingL/WingR, which flap all the time). Untagged parts move with the body.
 --
 -- When an enemy's contact attack lands (Remotes.EnemyAttacked), it strikes: its arms whip forward
--- and its body lunges and leans in, then recovers over strikeTime.
+-- and its body lunges and leans in, then recovers over strikeTime. A boss winding up an attack
+-- (a telegraph) holds a pose until it lands: see EnemyAnimation.windUp.
 
 local EnemyAnimation = {}
 
@@ -104,6 +105,27 @@ function EnemyAnimation.profile(kind: string): Profile
 	return PROFILES[kind] or DEFAULT
 end
 
+-- How long a wind-up pose takes to settle in, and to let go once the attack lands (seconds).
+local WINDUP_IN = 0.25
+local WINDUP_OUT = 0.2
+-- The poses: arms (radians, forward is positive) and body tilt (radians, back is positive). A charge
+-- rears back with the arms drawn back; an eruption raises both arms overhead, then slams.
+local WINDUP_POSES = {
+	Lane = { raise = math.rad(-45), tilt = math.rad(10) },
+	Circle = { raise = math.rad(150), tilt = math.rad(8) },
+}
+
+-- A boss's wind-up pose `now` for a telegraph of `shape` shown from `from` to `to` (os.clock times):
+-- the extra arm angle and body tilt.
+function EnemyAnimation.windUp(shape: string, from: number, to: number, now: number): (number, number)
+	local pose = WINDUP_POSES[shape]
+	if not pose or now < from or now > to + WINDUP_OUT then
+		return 0, 0
+	end
+	local amount = if now <= to then math.clamp((now - from) / WINDUP_IN, 0, 1) else 1 - (now - to) / WINDUP_OUT
+	return pose.raise * amount, pose.tilt * amount
+end
+
 -- The pose for this frame: the body's offset from the root, the limb swing, the wing flap, and the
 -- strike angle. `walk` is the walk-cycle angle, `motion` how much it's walking (0 to 1), `time` a
 -- clock with a per-enemy phase so crowds don't move in lockstep, and `sinceAttack` seconds since
@@ -113,7 +135,8 @@ function EnemyAnimation.pose(
 	walk: number,
 	motion: number,
 	time: number,
-	sinceAttack: number
+	sinceAttack: number,
+	tilt: number
 ): (CFrame, number, number, number)
 	local step = math.sin(walk)
 	local rise = math.abs(step) * look.bob * motion + math.sin(time * 2) * look.breathe
@@ -124,7 +147,7 @@ function EnemyAnimation.pose(
 	local progress = sinceAttack / look.strikeTime
 	local attack = if progress >= 0 and progress < 1 then math.sin(math.pi * math.sqrt(progress)) else 0
 	local body = CFrame.new(0, rise, -look.lunge * attack)
-		* CFrame.Angles(-look.lean * attack, 0, step * look.waddle * motion * (1 - attack))
+		* CFrame.Angles(tilt - look.lean * attack, 0, step * look.waddle * motion * (1 - attack))
 	local flap = if look.flap > 0 then math.sin(time * look.flapRate) * look.flap else 0
 	return body, step * look.swing * motion * (1 - attack), flap, look.strike * attack
 end
@@ -138,7 +161,8 @@ function EnemyAnimation.place(
 	body: CFrame,
 	swing: number,
 	flap: number,
-	strike: number
+	strike: number,
+	raise: number
 ): CFrame
 	local group = groups[index]
 	if not group then
@@ -148,9 +172,9 @@ function EnemyAnimation.place(
 	-- the strike.
 	local rotation
 	if group == "ArmL" then
-		rotation = CFrame.Angles(swing + strike * 0.6, 0, 0)
+		rotation = CFrame.Angles(swing + strike * 0.6 + raise, 0, 0)
 	elseif group == "ArmR" then
-		rotation = CFrame.Angles(-swing + strike, 0, 0)
+		rotation = CFrame.Angles(-swing + strike + raise, 0, 0)
 	elseif group == "LegB" then
 		rotation = CFrame.Angles(swing, 0, 0)
 	elseif group == "LegA" then

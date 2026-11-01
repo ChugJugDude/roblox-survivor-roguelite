@@ -5,7 +5,12 @@
 
 	Each template is a Model named after what it's for (an enemy kind like "Goblin", or a weapon
 	piece), normalized first: its pivot on the ground under its center, facing -Z, at its in-game
-	size. Parts may carry a "Group" attribute for animation (ArmL, ArmR, LegA, LegB, WingL, WingR).
+	size. Parts may carry a "Group" attribute for animation (ArmL, ArmR, LegA, LegB, WingL, WingR)
+	and a "Joint" attribute (a world position) for where they swing from.
+
+	Generated models arrive turned toward the editor camera, often by an odd angle: square them up
+	(so the parts' own rotation is zero) and check the facing (the right arm, ArmR, at +X) before
+	exporting.
 ]]
 
 local library = game:GetService("ReplicatedStorage"):FindFirstChild("ModelLibrary")
@@ -35,6 +40,7 @@ local lines = {
 	"export type Part = {",
 	"\tname: string,",
 	"\tgroup: string?, -- for client/EnemyAnimation",
+	"\tjoint: Vector3?, -- where it swings from, if not the top of the part (an arm holding a raised club)",
 	"\tmesh: string?, -- nil for a plain Part",
 	"\ttexture: string?,",
 	"\tmaterial: string,",
@@ -64,6 +70,11 @@ for _, template in templates do
 		local group = part:GetAttribute("Group")
 		if typeof(group) == "string" then
 			table.insert(fields, `group = "{group}"`)
+		end
+		local joint = part:GetAttribute("Joint")
+		if typeof(joint) == "Vector3" then
+			local relative = pivot:PointToObjectSpace(joint)
+			table.insert(fields, `joint = Vector3.new({list({ relative.X, relative.Y, relative.Z })})`)
 		end
 		if part:IsA("MeshPart") then
 			table.insert(fields, `mesh = "{part.MeshId}"`)

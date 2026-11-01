@@ -48,6 +48,9 @@ local function buildPart(data: Models.Part): BasePart?
 	if data.group then
 		part:SetAttribute("Group", data.group)
 	end
+	if data.joint then
+		part:SetAttribute("Joint", data.joint)
+	end
 	return part
 end
 

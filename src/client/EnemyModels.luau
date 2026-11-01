@@ -18,6 +18,10 @@ export type Visual = {
 	-- the joint it swings about, relative to the root.
 	groups: { [number]: string },
 	joints: { [number]: Vector3 },
+	-- Aura effects (bosses, elites); EnemyRenderer scales them to the graphics quality.
+	emitters: { ParticleEmitter },
+	emitterRates: { number }, -- each emitter's High-quality rate
+	lights: { PointLight },
 }
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,7 +36,18 @@ local EnemyModels = {}
 local function newVisual(name: string): Visual
 	local model = Instance.new("Model")
 	model.Name = name
-	return { model = model, parts = {}, offsets = {}, colors = {}, textures = {}, groups = {}, joints = {} }
+	return {
+		model = model,
+		parts = {},
+		offsets = {},
+		colors = {},
+		textures = {},
+		groups = {},
+		joints = {},
+		emitters = {},
+		emitterRates = {},
+		lights = {},
+	}
 end
 
 -- A clone of a library model (pivot on the ground, facing -Z, at its in-game size).
@@ -59,6 +74,10 @@ local function buildFromTemplate(template: Model): Visual
 		local group = descendant:GetAttribute("Group")
 		if typeof(group) == "string" then
 			visual.groups[#visual.parts] = group
+		end
+		local joint = descendant:GetAttribute("Joint")
+		if typeof(joint) == "Vector3" then
+			visual.joints[#visual.parts] = joint
 		end
 	end
 	return visual
@@ -404,6 +423,143 @@ local function buildFallback(kind: string): Visual
 	return visual
 end
 
+local FIRE = "rbxasset://textures/particles/fire_main.dds"
+local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
+local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+
+type Aura = {
+	group: string?, -- the part it rides on: the first with this group (Head, Body), else the first part
+	texture: string,
+	colors: { Color3 },
+	size: { number }, -- start, end
+	lifetime: { number },
+	speed: { number },
+	rate: number,
+	spread: number,
+	lightEmission: number,
+	transparency: number?,
+	offset: Vector3?, -- where on the part (fraction of its size from its center)
+}
+
+type Glow = { group: string?, color: Color3, range: number, brightness: number }
+
+-- Bosses' and mini-bosses' auras. Common enemies get none: that cost would grow with the crowd.
+local AURAS: { [string]: { Aura } } = {
+	-- A crown of flame on the Infernal's head.
+	Infernal = {
+		{
+			group = "Head",
+			texture = FIRE,
+			colors = { Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 80, 20) },
+			size = { 2.6, 0.4 },
+			lifetime = { 0.4, 0.7 },
+			speed = { 3, 6 },
+			rate = 40,
+			spread = 15,
+			lightEmission = 1,
+			offset = Vector3.new(0, 0.4, 0),
+		},
+	},
+	-- Embers rising off the Golem's lava, and a little smoke.
+	MagmaGolem = {
+		{
+			group = "Body",
+			texture = SPARKLE,
+			colors = { Color3.fromRGB(255, 170, 60), Color3.fromRGB(255, 90, 20) },
+			size = { 0.5, 0 },
+			lifetime = { 0.8, 1.4 },
+			speed = { 2, 4 },
+			rate = 14,
+			spread = 40,
+			lightEmission = 1,
+			offset = Vector3.new(0, 0.3, 0),
+		},
+		{
+			group = "Head",
+			texture = SMOKE,
+			colors = { Color3.fromRGB(70, 60, 55), Color3.fromRGB(40, 35, 32) },
+			size = { 1.2, 3 },
+			lifetime = { 1.2, 2 },
+			speed = { 1.5, 3 },
+			rate = 4,
+			spread = 20,
+			lightEmission = 0,
+			transparency = 0.5,
+		},
+	},
+}
+
+local GLOWS: { [string]: Glow } = {
+	Infernal = { group = "Head", color = Color3.fromRGB(255, 140, 60), range = 20, brightness = 2 },
+	MagmaGolem = { group = "Body", color = Color3.fromRGB(255, 120, 40), range = 14, brightness = 1.5 },
+}
+
+local ELITE_SPARKLE: Aura = {
+	texture = SPARKLE,
+	colors = { ELITE_GLOW, Color3.fromRGB(255, 240, 180) },
+	size = { 0.5, 0 },
+	lifetime = { 0.6, 1 },
+	speed = { 1, 2.5 },
+	rate = 8,
+	spread = 180,
+	lightEmission = 1,
+}
+
+local function partFor(visual: Visual, group: string?): BasePart
+	if group then
+		for index, part in visual.parts do
+			if visual.groups[index] == group or part.Name == group then
+				return part
+			end
+		end
+	end
+	return visual.parts[1]
+end
+
+local function addAura(visual: Visual, aura: Aura)
+	local host = partFor(visual, aura.group)
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = aura.texture
+	emitter.Color = ColorSequence.new(aura.colors[1], aura.colors[2])
+	emitter.Size = NumberSequence.new(aura.size[1], aura.size[2])
+	emitter.Lifetime = NumberRange.new(aura.lifetime[1], aura.lifetime[2])
+	emitter.Speed = NumberRange.new(aura.speed[1], aura.speed[2])
+	emitter.SpreadAngle = Vector2.new(aura.spread, aura.spread)
+	emitter.EmissionDirection = Enum.NormalId.Top
+	emitter.LightEmission = aura.lightEmission
+	emitter.Transparency = NumberSequence.new(aura.transparency or 0, 1)
+	emitter.Rate = aura.rate
+	local offset = aura.offset
+	if offset then
+		local attachment = Instance.new("Attachment")
+		attachment.Position = host.Size * offset
+		attachment.Parent = host
+		emitter.Parent = attachment
+	else
+		emitter.Parent = host
+	end
+	table.insert(visual.emitters, emitter)
+	table.insert(visual.emitterRates, aura.rate)
+end
+
+local function addEffects(visual: Visual, kind: string, elite: boolean)
+	for _, aura in AURAS[kind] or {} do
+		addAura(visual, aura)
+	end
+	local glow = GLOWS[kind]
+	if glow then
+		local light = Instance.new("PointLight")
+		light.Color = glow.color
+		light.Range = glow.range
+		light.Brightness = glow.brightness
+		light.Parent = partFor(visual, glow.group)
+		table.insert(visual.lights, light)
+	end
+	if elite then
+		addAura(visual, ELITE_SPARKLE)
+	end
+end
+
 -- Grows a visual about its root and gives it a gold glow, for elites.
 local function makeElite(visual: Visual)
 	local scale = EnemyConfig.ELITE.scale
@@ -439,6 +595,7 @@ function EnemyModels.create(kind: string, elite: boolean?): Visual
 	if elite then
 		makeElite(visual)
 	end
+	addEffects(visual, kind, elite == true)
 	-- Default joints: the top of an arm or leg, the inner edge of a wing.
 	for index, group in visual.groups do
 		if visual.joints[index] then
