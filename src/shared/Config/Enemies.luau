@@ -66,6 +66,7 @@ export type BossDef = {
 export type RangedDef = {
 	preferredMin: number, -- backs away when closer than this
 	preferredMax: number, -- walks closer when farther than this
+	drawTime: number?, -- seconds it draws its bow (a "Draw" telegraph) before the shot flies
 	shotRange: number,
 	shotCooldown: number,
 	shotSpeed: number,

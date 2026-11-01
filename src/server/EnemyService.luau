@@ -40,6 +40,7 @@ export type Enemy = {
 	xp: number, -- after scaling
 	attackReadyAt: number,
 	shotReadyAt: number, -- ranged enemies
+	drawingUntil: number?, -- ranged enemies: drawing a shot that flies at this game time
 	slow: number, -- fraction of move speed taken away until slowUntil
 	slowUntil: number,
 	locked: boolean, -- moved by someone else (a boss mid-attack, see BossBrain); move() leaves it be
@@ -195,6 +196,7 @@ function EnemyService.spawn(state: State, kind: string, x: number, z: number, sc
 		xp = def.xp * scale.xp * (if isElite then Config.ELITE.xp else 1),
 		attackReadyAt = 0,
 		shotReadyAt = 0,
+		drawingUntil = nil,
 		slow = 0,
 		slowUntil = 0,
 		locked = false,

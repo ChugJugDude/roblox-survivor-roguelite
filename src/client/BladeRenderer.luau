@@ -135,7 +135,83 @@ local function meshSwordLook(sword: Model, blade: BasePart, length: number, evol
 	}
 end
 
+-- Smooth, not Metal: metal reflects the sky and turns the steel blue and the gold brown.
+local FULLER_COLOR = Color3.fromRGB(150, 158, 170)
+local GREATSWORD_GOLD = Color3.fromRGB(235, 185, 70)
+
+-- Spinning Blade's greatsword over `length` studs of blade band (the orbiter's CFrame faces outward
+-- along -Z): the pommel and grip at the inner end, a wide crossguard, then a long broad blade with
+-- a fuller down its middle and a pointed tip at the outer end.
+local function greatswordLook(length: number, width: number): Look
+	local inner = length / 2 -- the inner end, toward the player
+	local guardZ = inner - 0.19 * length
+	local bladeStart = inner - 0.2 * length
+	local bladeLength = 0.7 * length
+	local bladeZ = bladeStart - bladeLength / 2
+	local tipSize = width * 0.72
+	-- A diamond whose outer point lands on the outer end.
+	local tipZ = -inner + tipSize * 0.707
+	return {
+		pieces = {
+			piece(
+				"Blade",
+				Vector3.new(width, 0.22, bladeLength),
+				CFrame.new(0, 0, bladeZ),
+				STEEL_COLOR,
+				0,
+				Enum.Material.SmoothPlastic
+			),
+			piece(
+				"Tip",
+				Vector3.new(tipSize, 0.22, tipSize),
+				CFrame.new(0, 0, tipZ) * CFrame.Angles(0, math.rad(45), 0),
+				STEEL_COLOR,
+				0,
+				Enum.Material.SmoothPlastic
+			),
+			piece(
+				"Fuller",
+				Vector3.new(width * 0.22, 0.26, bladeLength * 0.8),
+				CFrame.new(0, 0, bladeZ + bladeLength * 0.05),
+				FULLER_COLOR
+			),
+			piece(
+				"Guard",
+				Vector3.new(width * 2.6, 0.32, 0.36),
+				CFrame.new(0, 0, guardZ),
+				GREATSWORD_GOLD,
+				0,
+				Enum.Material.SmoothPlastic
+			),
+			piece("Grip", Vector3.new(0.34, 0.34, 0.15 * length), CFrame.new(0, 0, inner - 0.11 * length), GRIP_COLOR),
+			piece(
+				"Pommel",
+				Vector3.new(0.55, 0.55, 0.55),
+				CFrame.new(0, 0, inner - 0.02 * length),
+				GREATSWORD_GOLD,
+				0,
+				Enum.Material.SmoothPlastic,
+				Enum.PartType.Ball
+			),
+		},
+		trail = if not Graphics.profile().swordTrails
+			then nil
+			else {
+				piece = 1,
+				from = Vector3.new(0, 0, -bladeLength / 2),
+				to = Vector3.zero,
+				color = STEEL_COLOR,
+				lifetime = 0.12,
+				transparency = 0.45,
+			},
+	}
+end
+
 local function swordLook(length: number, width: number, evolved: boolean): Look
+	if not evolved then
+		return greatswordLook(length, width)
+	end
+	-- Bladestorm: the AI-made sword in glowing gold.
 	local sword = ModelLibrary.get("Sword")
 	local blade = if sword then sword:FindFirstChildWhichIsA("BasePart") else nil
 	if sword and blade then

@@ -318,7 +318,11 @@ local function onTelegraph(list: any)
 	for _, info in list do
 		local entry = if typeof(info) == "table" then entries[info.id] else nil
 		if entry and typeof(info.duration) == "number" then
-			local shape = if info.shape == "Circle" or info.shape == "Ring" then info.shape else "Lane"
+			local shape = if info.shape == "Circle"
+					or info.shape == "Ring"
+					or info.shape == "Draw"
+				then info.shape
+				else "Lane"
 			entry.windUpShape = shape
 			entry.windUpFrom = now
 			entry.windUpTo = now + info.duration
@@ -468,12 +472,12 @@ local function render()
 		local root = CFrame.new(x, GROUND_Y, z) * CFrame.Angles(0, entry.yaw, 0)
 		local visual = entry.visual
 		-- Frozen enemies hold still.
-		local body, swing, flap, strike, raise, spread = CFrame.identity, 0, 0, 0, 0, 0
+		local body, swing, flap, strike, raise, spread, pull = CFrame.identity, 0, 0, 0, 0, 0, 0
 		if not frozen then
 			local tilt = 0
 			local shape = entry.windUpShape
 			if shape then
-				raise, spread, tilt = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
+				raise, spread, tilt, pull = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
 			end
 			body, swing, flap, strike = EnemyAnimation.pose(
 				entry.animation,
@@ -489,7 +493,20 @@ local function render()
 			table.insert(moveParts, part)
 			table.insert(
 				moveCFrames,
-				root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap, strike, raise, spread)
+				root
+					* EnemyAnimation.place(
+						groups,
+						joints,
+						offsets[i],
+						i,
+						body,
+						swing,
+						flap,
+						strike,
+						raise,
+						spread,
+						pull
+					)
 			)
 		end
 	end

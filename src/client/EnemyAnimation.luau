@@ -112,6 +112,7 @@ type Pose = {
 	raise: number, -- arms, radians (forward is positive)
 	spread: number, -- arms out to the sides, radians
 	tilt: number, -- body, radians (back is positive)
+	pull: number?, -- the right arm only, radians (a bowstring drawn back is negative)
 }
 
 type WindUp = {
@@ -139,14 +140,21 @@ local WINDUPS: { [string]: WindUp } = {
 		release = { raise = math.rad(40), spread = math.rad(80), tilt = math.rad(8) },
 		out = 0.45,
 	},
+	-- An archer raises its bow level (the left arm) and draws the string back (the right), then
+	-- lets go: the string arm snaps forward and both arms come down.
+	Draw = {
+		hold = { raise = math.rad(85), spread = NO_SPREAD, tilt = math.rad(4), pull = math.rad(-55) },
+		release = { raise = math.rad(85), spread = NO_SPREAD, tilt = 0, pull = math.rad(10) },
+		out = 0.3,
+	},
 }
 
--- A boss's wind-up pose `now` for a telegraph of `shape` shown from `from` to `to` (os.clock times):
--- the extra arm angle, how far the arms spread to the sides, and the body tilt.
-function EnemyAnimation.windUp(shape: string, from: number, to: number, now: number): (number, number, number)
+-- A wind-up pose `now` for a telegraph of `shape` shown from `from` to `to` (os.clock times): the
+-- extra arm angle, how far the arms spread to the sides, the body tilt, and the right arm's pull.
+function EnemyAnimation.windUp(shape: string, from: number, to: number, now: number): (number, number, number, number)
 	local windUp = WINDUPS[shape]
 	if not windUp or now < from or now > to + windUp.out then
-		return 0, 0, 0
+		return 0, 0, 0, 0
 	end
 	local pose, amount
 	if now <= to then
@@ -154,7 +162,7 @@ function EnemyAnimation.windUp(shape: string, from: number, to: number, now: num
 	else
 		pose, amount = windUp.release, 1 - (now - to) / windUp.out
 	end
-	return pose.raise * amount, pose.spread * amount, pose.tilt * amount
+	return pose.raise * amount, pose.spread * amount, pose.tilt * amount, (pose.pull or 0) * amount
 end
 
 -- The pose for this frame: the body's offset from the root, the limb swing, the wing flap, and the
@@ -194,7 +202,8 @@ function EnemyAnimation.place(
 	flap: number,
 	strike: number,
 	raise: number,
-	spread: number
+	spread: number,
+	pull: number
 ): CFrame
 	local group = groups[index]
 	if not group then
@@ -206,7 +215,7 @@ function EnemyAnimation.place(
 	if group == "ArmL" then
 		rotation = CFrame.Angles(swing + strike * 0.6 + raise, 0, -spread)
 	elseif group == "ArmR" then
-		rotation = CFrame.Angles(-swing + strike + raise, 0, spread)
+		rotation = CFrame.Angles(-swing + strike + raise + pull, 0, spread)
 	elseif group == "LegB" then
 		rotation = CFrame.Angles(swing, 0, 0)
 	elseif group == "LegA" then

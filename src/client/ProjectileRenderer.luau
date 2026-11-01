@@ -26,24 +26,37 @@ type Piece = {
 	color: Color3,
 	shape: Enum.PartType?, -- default Block
 	material: Enum.Material?, -- default Neon
+	transparency: number?,
 	offset: CFrame?, -- from the projectile's CFrame, which faces along -Z
+	spins: boolean?, -- turns with the look's `spin` (a model's parts always do)
+}
+
+-- A ribbon left behind the first piece, flat so the top-down camera sees it.
+type TrailSpec = {
+	color: Color3,
+	width: number,
+	lifetime: number,
+	at: number, -- where on the first piece it starts (studs along +Z, toward the tail)
 }
 
 type Look = {
 	pieces: { Piece }, -- the primitive look (and the fallback while `model` loads)
 	model: string?, -- a ModelLibrary model (centered, pointing -Z) to use instead
-	spin: number?, -- tumbles forward this fast (radians per second)
+	spin: Vector3?, -- spinning parts turn this fast about each axis (radians per second)
 	height: number, -- above the floor
 	fire: number?, -- a fire trail and light on the first piece, this big
+	trail: TrailSpec?,
 }
 
 local ARROW_SHAFT = Color3.fromRGB(170, 120, 70)
 local ARROW_HEAD = Color3.fromRGB(225, 230, 240)
 local ARROW_FLETCH = Color3.fromRGB(255, 245, 225)
--- Enemy shots must read at a glance over anything the player has: a solid crimson orb (not neon,
--- whose glow washes red toward orange next to gold) flying above the blades, so the top-down camera
--- always draws it on top.
+-- Enemy shots must read at a glance over anything the player has: solid crimson (not neon, whose
+-- glow washes red toward orange next to gold, except in small cores), flying above the blades so
+-- the top-down camera always draws them on top, each with a crimson trail.
 local ENEMY_SHOT_COLOR = Color3.fromRGB(190, 0, 35)
+local ENEMY_SHOT_DARK = Color3.fromRGB(70, 0, 15)
+local ENEMY_SHOT_TRAIL = Color3.fromRGB(220, 20, 50)
 
 local LOOKS: { [string]: Look } = {
 	Arrow = {
@@ -74,32 +87,78 @@ local LOOKS: { [string]: Look } = {
 			{ size = Vector3.new(3.4, 3.4, 3.4), color = Color3.fromRGB(255, 90, 30), shape = Enum.PartType.Ball },
 		},
 		model = "Meteor",
-		spin = 5,
+		spin = Vector3.new(-5, 0, 0),
 		height = 4,
 		fire = 3.2,
 	},
+	-- An archer's bolt: a dark shaft with a big crimson head in a crimson haze, and dark fletching.
 	EnemyArrow = {
 		pieces = {
+			{ size = Vector3.new(0.3, 0.3, 2.6), color = ENEMY_SHOT_DARK, material = Enum.Material.SmoothPlastic },
 			{
-				size = Vector3.new(1.9, 1.9, 1.9),
+				size = Vector3.new(0.95, 0.35, 0.95),
+				color = ENEMY_SHOT_COLOR,
+				material = Enum.Material.SmoothPlastic,
+				offset = CFrame.new(0, 0, -1.35) * CFrame.Angles(0, math.rad(45), 0),
+			},
+			{ size = Vector3.new(0.3, 0.3, 0.5), color = ENEMY_SHOT_TRAIL, offset = CFrame.new(0, 0, -1.35) },
+			{
+				size = Vector3.new(1.7, 1.7, 1.7),
 				color = ENEMY_SHOT_COLOR,
 				shape = Enum.PartType.Ball,
 				material = Enum.Material.SmoothPlastic,
+				transparency = 0.6,
+				offset = CFrame.new(0, 0, -1.2),
+			},
+			{
+				size = Vector3.new(0.8, 0.06, 0.6),
+				color = ENEMY_SHOT_COLOR,
+				material = Enum.Material.SmoothPlastic,
+				offset = CFrame.new(0, 0, 1.1),
+			},
+			{
+				size = Vector3.new(0.06, 0.8, 0.6),
+				color = ENEMY_SHOT_COLOR,
+				material = Enum.Material.SmoothPlastic,
+				offset = CFrame.new(0, 0, 1.1),
 			},
 		},
 		height = 4.5,
+		trail = { color = ENEMY_SHOT_TRAIL, width = 0.7, lifetime = 0.22, at = 1.3 },
 	},
-	-- A boss's ring shot: the same crimson orb, bigger.
+	-- A boss's ring shot: a bright crimson core in a crimson shell, circled by two spinning rings.
 	BossOrb = {
 		pieces = {
+			{ size = Vector3.new(1.3, 1.3, 1.3), color = ENEMY_SHOT_TRAIL, shape = Enum.PartType.Ball },
 			{
-				size = Vector3.new(2.6, 2.6, 2.6),
+				size = Vector3.new(2.4, 2.4, 2.4),
 				color = ENEMY_SHOT_COLOR,
 				shape = Enum.PartType.Ball,
 				material = Enum.Material.SmoothPlastic,
+				transparency = 0.3,
+			},
+			{
+				size = Vector3.new(0.14, 3.3, 3.3),
+				color = ENEMY_SHOT_DARK,
+				shape = Enum.PartType.Cylinder,
+				material = Enum.Material.SmoothPlastic,
+				transparency = 0.25,
+				offset = CFrame.Angles(0, 0, math.rad(60)),
+				spins = true,
+			},
+			{
+				size = Vector3.new(0.14, 3.3, 3.3),
+				color = ENEMY_SHOT_DARK,
+				shape = Enum.PartType.Cylinder,
+				material = Enum.Material.SmoothPlastic,
+				transparency = 0.25,
+				offset = CFrame.Angles(0, 0, math.rad(-60)),
+				spins = true,
 			},
 		},
 		height = 4.5,
+		spin = Vector3.new(0, 7, 0),
+		trail = { color = ENEMY_SHOT_TRAIL, width = 1.6, lifetime = 0.25, at = 0 },
 	},
 }
 local ENEMY_SHOTS: { [string]: boolean } = { EnemyArrow = true, BossOrb = true }
@@ -122,8 +181,10 @@ local FROST_RING_POINTS = 14
 type Visual = {
 	parts: { BasePart },
 	offsets: { CFrame }, -- each part's, from the projectile's CFrame
+	spins: { boolean }, -- each part's: turns with the look's spin
 	fire: ParticleEmitter?,
 	light: PointLight?,
+	trail: Trail?,
 }
 
 type Active = {
@@ -150,6 +211,7 @@ local function newVisual(kind: string): Visual
 	local look = LOOKS[kind] or LOOKS.Arrow
 	local parts = {}
 	local offsets = {}
+	local spins = {}
 	local template = if look.model then ModelLibrary.get(look.model) else nil
 	if template then
 		local pivot = template:GetPivot()
@@ -157,6 +219,7 @@ local function newVisual(kind: string): Visual
 			if source:IsA("BasePart") then
 				table.insert(parts, source:Clone())
 				table.insert(offsets, pivot:ToObjectSpace(source.CFrame))
+				table.insert(spins, true)
 			end
 		end
 	end
@@ -172,8 +235,32 @@ local function newVisual(kind: string): Visual
 		part.CanQuery = false
 		part.CanTouch = false
 		part.CastShadow = false
+		part.Transparency = spec.transparency or 0
 		table.insert(parts, part)
 		table.insert(offsets, spec.offset or CFrame.identity)
+		table.insert(spins, spec.spins == true)
+	end
+	local ribbon: Trail? = nil
+	local trailSpec = look.trail
+	if trailSpec then
+		local carrier = parts[1]
+		local left = Instance.new("Attachment")
+		left.Position = Vector3.new(-trailSpec.width / 2, 0, trailSpec.at)
+		left.Parent = carrier
+		local right = Instance.new("Attachment")
+		right.Position = Vector3.new(trailSpec.width / 2, 0, trailSpec.at)
+		right.Parent = carrier
+		local newTrail = Instance.new("Trail")
+		newTrail.Attachment0 = left
+		newTrail.Attachment1 = right
+		newTrail.Color = ColorSequence.new(trailSpec.color)
+		newTrail.Transparency = NumberSequence.new(0.25, 1)
+		newTrail.Lifetime = trailSpec.lifetime
+		newTrail.LightEmission = 0.4
+		newTrail.MinLength = 0
+		newTrail.Enabled = false
+		newTrail.Parent = carrier
+		ribbon = newTrail
 	end
 	local fire: ParticleEmitter? = nil
 	local fireLight: PointLight? = nil
@@ -198,7 +285,7 @@ local function newVisual(kind: string): Visual
 		fire = emitter
 		fireLight = light
 	end
-	return { parts = parts, offsets = offsets, fire = fire, light = fireLight }
+	return { parts = parts, offsets = offsets, spins = spins, fire = fire, light = fireLight, trail = ribbon }
 end
 
 local function acquire(kind: string): Visual
@@ -231,6 +318,10 @@ local function release(entry: Active)
 	if visual.fire then
 		visual.fire.Enabled = false
 		visual.fire:Clear()
+	end
+	if visual.trail then
+		visual.trail.Enabled = false
+		visual.trail:Clear()
 	end
 	local pool = pools[entry.kind]
 	if not pool then
@@ -381,17 +472,24 @@ local function render()
 		end
 		local base = CFrame.new(positionOf(entry, now)) * entry.facing
 		local spin = LOOKS[entry.kind].spin
+		local spun = base
 		if spin then
-			base *= CFrame.Angles(-(now - info.startedAt) * spin, 0, 0)
+			local age = now - info.startedAt
+			spun = base * CFrame.Angles(age * spin.X, age * spin.Y, age * spin.Z)
 		end
-		local offsets = entry.visual.offsets
-		for index, part in entry.visual.parts do
+		local visual = entry.visual
+		for index, part in visual.parts do
 			table.insert(moveParts, part)
-			table.insert(moveCFrames, base * offsets[index])
+			table.insert(moveCFrames, (if visual.spins[index] then spun else base) * visual.offsets[index])
 		end
-		local fire = entry.visual.fire
+		-- Effects start after the first placement, so nothing is left at the origin.
+		local fire = visual.fire
 		if fire and not fire.Enabled then
-			fire.Enabled = true -- after its first placement, so no flames are left at the origin
+			fire.Enabled = true
+		end
+		local trail = visual.trail
+		if trail and not trail.Enabled then
+			trail.Enabled = true
 		end
 	end
 
