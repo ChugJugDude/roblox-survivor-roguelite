@@ -100,7 +100,10 @@ local function normalize(settings: Settings): string
 	local report = {}
 	for _, part in model:GetChildren() do
 		if part:IsA("BasePart") then
-			table.insert(report, string.format("%s(%.1f,%.1f,%.1f)", part.Name, part.Position.X, part.Position.Y, part.Position.Z))
+			table.insert(
+				report,
+				string.format("%s(%.1f,%.1f,%.1f)", part.Name, part.Position.X, part.Position.Y, part.Position.Z)
+			)
 		end
 	end
 	return string.format(

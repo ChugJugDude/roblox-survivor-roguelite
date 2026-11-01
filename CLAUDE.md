@@ -84,9 +84,9 @@ File naming (Rojo conventions):
 
 1. **Code changes go in `src/` only.** Never edit script source through the Studio MCP tools (`multi_edit` etc.) — Rojo will overwrite it on the next sync and the change will be lost. If a script exists only in Studio, move it into `src/` first.
 2. Every Luau file starts with `--!strict`. Fix type errors rather than downgrading to `--!nonstrict`.
-3. Before finishing a task, run:
-   - `stylua src` (format)
-   - `selene src` (lint) — resolve warnings, don't suppress them without a comment explaining why
+3. Before finishing a task, run what CI runs (`.github/workflows/lint.yml`), on the whole repo so `tools/` is covered too:
+   - `stylua .` (format; CI runs `stylua --check .`)
+   - `selene .` (lint) — resolve warnings, don't suppress them without a comment explaining why
 4. Keep modules small and single-purpose. Prefer a ModuleScript in `shared/` or `server/` over a large script.
 5. Don't add a dependency (Wally package) without asking first.
 6. Make small, reviewable changes and commit at logical points with clear messages. Never commit secrets, API keys, or Open Cloud tokens.
@@ -134,7 +134,7 @@ If something can't be verified (e.g. MCP not connected), say so explicitly inste
 rokit install          # install pinned tools
 rojo serve             # start syncing src/ into Studio (then click Connect in the Rojo plugin)
 rojo build -o build.rbxl   # build a place file from the project
-stylua src             # format
-selene src             # lint
+stylua .               # format (CI checks the whole repo)
+selene .               # lint
 wally install          # install packages (only if Wally is in use)
 ```
