@@ -50,6 +50,7 @@ type Entry = {
 	phase: number, -- offsets its idle motion from other enemies'
 	walk: number, -- walk-cycle angle, advanced by distance moved
 	motion: number, -- 0 standing still to 1 walking, eased
+	attackedAt: number, -- os.clock time its last contact attack landed
 }
 
 local MAX_SAMPLES = 10
@@ -146,6 +147,7 @@ local function onSpawned(list: any)
 			phase = math.random() * 2 * math.pi,
 			walk = math.random() * 2 * math.pi,
 			motion = 0,
+			attackedAt = -math.huge,
 		}
 	end
 end
@@ -251,6 +253,19 @@ local function onHit(ids: any)
 		local entry = entries[ids[index]]
 		if entry then
 			entry.flashUntil = flashUntil
+		end
+	end
+end
+
+local function onAttacked(ids: any)
+	if typeof(ids) ~= "table" then
+		return
+	end
+	local now = os.clock()
+	for _, id in ids do
+		local entry = entries[id]
+		if entry then
+			entry.attackedAt = now
 		end
 	end
 end
@@ -387,14 +402,23 @@ local function render()
 		local root = CFrame.new(x, GROUND_Y, z) * CFrame.Angles(0, entry.yaw, 0)
 		local visual = entry.visual
 		-- Frozen enemies hold still.
-		local body, swing, flap = CFrame.identity, 0, 0
+		local body, swing, flap, strike = CFrame.identity, 0, 0, 0
 		if not frozen then
-			body, swing, flap = EnemyAnimation.pose(entry.animation, entry.walk, entry.motion, clock + entry.phase)
+			body, swing, flap, strike = EnemyAnimation.pose(
+				entry.animation,
+				entry.walk,
+				entry.motion,
+				clock + entry.phase,
+				clock - entry.attackedAt
+			)
 		end
 		local groups, joints, offsets = visual.groups, visual.joints, visual.offsets
 		for i, part in visual.parts do
 			table.insert(moveParts, part)
-			table.insert(moveCFrames, root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap))
+			table.insert(
+				moveCFrames,
+				root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap, strike)
+			)
 		end
 	end
 
@@ -429,6 +453,7 @@ function EnemyRenderer.start()
 	Remotes.EnemyDespawned.OnClientEvent:Connect(onDespawned)
 	Remotes.EnemySnapshot.OnClientEvent:Connect(onSnapshot)
 	Remotes.EnemiesHit.OnClientEvent:Connect(onHit)
+	Remotes.EnemyAttacked.OnClientEvent:Connect(onAttacked)
 	Remotes.WeaponEffects.OnClientEvent:Connect(onEffects)
 	RunService.RenderStepped:Connect(render)
 end

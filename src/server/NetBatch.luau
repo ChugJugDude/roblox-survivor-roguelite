@@ -16,6 +16,7 @@ export type Batch = {
 local ORDER: { RemoteEvent } = {
 	Remotes.EnemySpawned,
 	Remotes.EnemiesHit,
+	Remotes.EnemyAttacked,
 	Remotes.EnemyDespawned,
 	Remotes.GemsSpawned,
 	Remotes.GemsCollected,

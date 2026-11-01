@@ -77,6 +77,10 @@ return table.freeze({
 	-- EnemyDespawned, so a killing hit can still find the enemy.
 	EnemiesHit = remote("RemoteEvent", "EnemiesHit") :: RemoteEvent,
 
+	-- Server -> client. Payload: { number } of enemy ids whose contact attack hit a player this
+	-- frame. Visual only (client/EnemyAnimation plays the strike).
+	EnemyAttacked = remote("RemoteEvent", "EnemyAttacked") :: RemoteEvent,
+
 	-- Server -> client. Payload: { EntityNet.ProjectileInfo }, batched per frame. Projectiles fly in
 	-- straight lines, so clients work out positions themselves from this.
 	ProjectilesSpawned = remote("RemoteEvent", "ProjectilesSpawned") :: RemoteEvent,

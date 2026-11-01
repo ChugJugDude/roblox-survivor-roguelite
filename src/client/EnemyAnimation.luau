@@ -7,6 +7,9 @@
 -- and stop when it stops. Every step the whole body bobs and rolls side to side; parts tagged with a
 -- group swing about their joint: arms and legs (ArmL/ArmR, LegA/LegB, opposite pairs) and wings
 -- (WingL/WingR, which flap all the time). Untagged parts move with the body.
+--
+-- When an enemy's contact attack lands (Remotes.EnemyAttacked), it strikes: its arms whip forward
+-- and its body lunges and leans in, then recovers over strikeTime.
 
 local EnemyAnimation = {}
 
@@ -19,6 +22,10 @@ export type Profile = {
 	flap: number, -- radians wings flap
 	flapRate: number, -- radians per second
 	hover: number, -- studs fliers drift up and down
+	strike: number, -- radians the arms whip forward when it attacks
+	lunge: number, -- studs the body lunges forward when it attacks
+	lean: number, -- radians the body leans in when it attacks
+	strikeTime: number, -- seconds an attack takes, out and back
 }
 
 local function profile(overrides: { [string]: number }): Profile
@@ -31,6 +38,10 @@ local function profile(overrides: { [string]: number }): Profile
 		flap = 0,
 		flapRate = 0,
 		hover = 0,
+		strike = math.rad(80),
+		lunge = 0.5,
+		lean = math.rad(12),
+		strikeTime = 0.35,
 	}
 	for key, value in overrides do
 		(result :: any)[key] = value
@@ -39,38 +50,83 @@ local function profile(overrides: { [string]: number }): Profile
 end
 
 local DEFAULT = profile({})
-local ARCHER = profile({ stride = 0.9, bob = 0.15, waddle = math.rad(6), swing = math.rad(30) })
-local BRUTE = profile({ stride = 0.6, bob = 0.3, waddle = math.rad(6), swing = math.rad(25), breathe = 0.06 })
-local BOSS = profile({ stride = 0.5, bob = 0.4, waddle = math.rad(5), swing = math.rad(25), breathe = 0.1 })
+local ARCHER = profile({ stride = 0.9, bob = 0.15, waddle = math.rad(6), swing = math.rad(30), strike = math.rad(50) })
+local BRUTE = profile({
+	stride = 0.6,
+	bob = 0.3,
+	waddle = math.rad(6),
+	swing = math.rad(25),
+	breathe = 0.06,
+	strike = math.rad(70),
+	lunge = 0.8,
+	strikeTime = 0.5,
+})
+local BOSS = profile({
+	stride = 0.5,
+	bob = 0.4,
+	waddle = math.rad(5),
+	swing = math.rad(25),
+	breathe = 0.1,
+	strike = math.rad(70),
+	lunge = 1.2,
+	strikeTime = 0.6,
+})
 
 local PROFILES: { [string]: Profile } = {
-	Bat = profile({ stride = 0, breathe = 0, flap = math.rad(40), flapRate = 18, hover = 0.3 }),
-	MagmaHound = profile({ stride = 0.9, bob = 0.12, waddle = math.rad(3), swing = math.rad(45) }),
+	-- Bats dive and hounds pounce: no arms, all lunge.
+	Bat = profile({
+		stride = 0,
+		breathe = 0,
+		flap = math.rad(40),
+		flapRate = 18,
+		hover = 0.3,
+		lunge = 0.9,
+		lean = math.rad(25),
+	}),
+	MagmaHound = profile({
+		stride = 0.9,
+		bob = 0.12,
+		waddle = math.rad(3),
+		swing = math.rad(45),
+		lunge = 0.9,
+		lean = math.rad(15),
+	}),
 	SkeletonArcher = ARCHER,
 	EmberArcher = ARCHER,
 	GoblinGiant = BRUTE,
 	MagmaGolem = BRUTE,
 	Ogre = BOSS,
 	Infernal = BOSS,
-	Crate = profile({ stride = 0, bob = 0, waddle = 0, swing = 0, breathe = 0 }),
+	Crate = profile({ stride = 0, bob = 0, waddle = 0, swing = 0, breathe = 0, strike = 0, lunge = 0, lean = 0 }),
 }
 
 function EnemyAnimation.profile(kind: string): Profile
 	return PROFILES[kind] or DEFAULT
 end
 
--- The pose for this frame: the body's offset from the root, and the limb and wing angles.
--- `walk` is the walk-cycle angle, `motion` how much it's walking (0 to 1), `time` a clock with a
--- per-enemy phase so crowds don't move in lockstep.
-function EnemyAnimation.pose(look: Profile, walk: number, motion: number, time: number): (CFrame, number, number)
+-- The pose for this frame: the body's offset from the root, the limb swing, the wing flap, and the
+-- strike angle. `walk` is the walk-cycle angle, `motion` how much it's walking (0 to 1), `time` a
+-- clock with a per-enemy phase so crowds don't move in lockstep, and `sinceAttack` seconds since
+-- its last attack landed.
+function EnemyAnimation.pose(
+	look: Profile,
+	walk: number,
+	motion: number,
+	time: number,
+	sinceAttack: number
+): (CFrame, number, number, number)
 	local step = math.sin(walk)
 	local rise = math.abs(step) * look.bob * motion + math.sin(time * 2) * look.breathe
 	if look.hover > 0 then
 		rise += math.sin(time * 3) * look.hover
 	end
-	local body = CFrame.new(0, rise, 0) * CFrame.Angles(0, 0, step * look.waddle * motion)
+	-- Out and back: fast to full reach, then a slower recovery.
+	local progress = sinceAttack / look.strikeTime
+	local attack = if progress >= 0 and progress < 1 then math.sin(math.pi * math.sqrt(progress)) else 0
+	local body = CFrame.new(0, rise, -look.lunge * attack)
+		* CFrame.Angles(-look.lean * attack, 0, step * look.waddle * motion * (1 - attack))
 	local flap = if look.flap > 0 then math.sin(time * look.flapRate) * look.flap else 0
-	return body, step * look.swing * motion, flap
+	return body, step * look.swing * motion * (1 - attack), flap, look.strike * attack
 end
 
 -- Where part `index` goes relative to the enemy's root this frame.
@@ -81,16 +137,23 @@ function EnemyAnimation.place(
 	index: number,
 	body: CFrame,
 	swing: number,
-	flap: number
+	flap: number,
+	strike: number
 ): CFrame
 	local group = groups[index]
 	if not group then
 		return body * offset
 	end
+	-- A positive angle about X swings a hanging limb forward. The right arm (the weapon hand) leads
+	-- the strike.
 	local rotation
-	if group == "ArmL" or group == "LegB" then
+	if group == "ArmL" then
+		rotation = CFrame.Angles(swing + strike * 0.6, 0, 0)
+	elseif group == "ArmR" then
+		rotation = CFrame.Angles(-swing + strike, 0, 0)
+	elseif group == "LegB" then
 		rotation = CFrame.Angles(swing, 0, 0)
-	elseif group == "ArmR" or group == "LegA" then
+	elseif group == "LegA" then
 		rotation = CFrame.Angles(-swing, 0, 0)
 	elseif group == "WingL" then
 		rotation = CFrame.Angles(0, 0, -flap)

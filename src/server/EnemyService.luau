@@ -488,6 +488,7 @@ function EnemyService.attack(state: State, now: number, targets: { Target })
 			if dx * dx + dz * dz <= reach * reach and target.humanoid.Health > 0 then
 				Characters.damage(target, enemy.contactDamage, now)
 				enemy.attackReadyAt = now + def.attackCooldown
+				NetBatch.push(state.net, Remotes.EnemyAttacked, enemy.id)
 				break
 			end
 		end
