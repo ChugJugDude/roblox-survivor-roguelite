@@ -1,20 +1,28 @@
 --!strict
--- Builds client-side enemy visuals from primitive parts. Placeholder art: swap these for real
--- low-poly models later without touching the renderer.
+-- Builds client-side enemy visuals. A kind with an AI-made model (client/ModelLibrary, from
+-- Config.Models) is cloned from it; every other kind is built here from primitive parts, which is
+-- also the fallback while the models load.
 --
 -- Every part is anchored and moved directly by EnemyRenderer. `offsets` holds each part's CFrame
 -- relative to the enemy's root (on the ground, facing -Z), and `colors` its normal color so a hit
--- flash can restore it.
+-- flash can restore it. A textured MeshPart ignores Color, so `textures` keeps its texture: looks
+-- like the hit flash take the texture off to show a flat color, then put it back.
 
 export type Visual = {
 	model: Model,
 	parts: { BasePart },
 	offsets: { CFrame },
 	colors: { Color3 },
+	textures: { [number]: string }, -- part index -> its texture, for textured MeshParts only
+	-- Animated parts (client/EnemyAnimation): part index -> its group (ArmL, LegA, WingR, ...) and
+	-- the joint it swings about, relative to the root.
+	groups: { [number]: string },
+	joints: { [number]: Vector3 },
 }
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ModelLibrary = require(script.Parent.ModelLibrary)
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 
 local ELITE_GLOW = Color3.fromRGB(255, 200, 60)
@@ -24,7 +32,36 @@ local EnemyModels = {}
 local function newVisual(name: string): Visual
 	local model = Instance.new("Model")
 	model.Name = name
-	return { model = model, parts = {}, offsets = {}, colors = {} }
+	return { model = model, parts = {}, offsets = {}, colors = {}, textures = {}, groups = {}, joints = {} }
+end
+
+-- A clone of a library model (pivot on the ground, facing -Z, at its in-game size).
+local function buildFromTemplate(template: Model): Visual
+	local model = template:Clone()
+	local visual = newVisual(template.Name)
+	visual.model = model
+	local pivot = model:GetPivot()
+	for _, descendant in model:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		descendant.Anchored = true
+		descendant.CanCollide = false
+		descendant.CanQuery = false
+		descendant.CanTouch = false
+		descendant.CastShadow = false
+		table.insert(visual.parts, descendant)
+		table.insert(visual.offsets, pivot:ToObjectSpace(descendant.CFrame))
+		table.insert(visual.colors, descendant.Color)
+		if descendant:IsA("MeshPart") and descendant.TextureID ~= "" then
+			visual.textures[#visual.parts] = descendant.TextureID
+		end
+		local group = descendant:GetAttribute("Group")
+		if typeof(group) == "string" then
+			visual.groups[#visual.parts] = group
+		end
+	end
+	return visual
 end
 
 local function addPart(
@@ -51,6 +88,16 @@ local function addPart(
 	table.insert(visual.parts, part)
 	table.insert(visual.offsets, offset)
 	table.insert(visual.colors, color)
+end
+
+-- Tags the part just added for animation. `joint` (relative to the root) defaults to the top of
+-- an arm or leg, or the inner edge of a wing; parts that swing together (an arm and its club) share
+-- one.
+local function tag(visual: Visual, group: string, joint: Vector3?)
+	visual.groups[#visual.parts] = group
+	if joint then
+		visual.joints[#visual.parts] = joint
+	end
 end
 
 -- A goblin at any scale. The Goblin Giant is a big, darker one with a club.
@@ -95,7 +142,9 @@ local builders: { [string]: () -> Visual } = {
 		local wing = Color3.fromRGB(110, 70, 140)
 		addPart(visual, Vector3.new(1.2, 1, 1.2), CFrame.new(0, 3.5, 0), fur, nil, Enum.PartType.Ball)
 		addPart(visual, Vector3.new(1.6, 0.15, 1), CFrame.new(-1.3, 3.7, 0) * CFrame.Angles(0, 0, math.rad(15)), wing)
+		tag(visual, "WingL")
 		addPart(visual, Vector3.new(1.6, 0.15, 1), CFrame.new(1.3, 3.7, 0) * CFrame.Angles(0, 0, math.rad(-15)), wing)
+		tag(visual, "WingR")
 		addPart(
 			visual,
 			Vector3.new(0.25, 0.25, 0.1),
@@ -180,6 +229,7 @@ builders.MagmaHound = function()
 	for _, x in { -0.45, 0.45 } do
 		for _, z in { -0.9, 0.9 } do
 			addPart(visual, Vector3.new(0.35, 1.1, 0.35), CFrame.new(x, 0.55, z), HOUND_ROCK, Enum.Material.Slate)
+			tag(visual, if (x < 0) == (z < 0) then "LegA" else "LegB")
 		end
 	end
 	return visual
@@ -203,11 +253,15 @@ builders.MagmaGolem = function()
 		return CFrame.new(x * scale, y * scale, z * scale)
 	end
 	addPart(visual, Vector3.new(0.9, 1.4, 0.9) * scale, at(-0.6, 0.7, 0), BASALT, Enum.Material.Slate)
+	tag(visual, "LegA")
 	addPart(visual, Vector3.new(0.9, 1.4, 0.9) * scale, at(0.6, 0.7, 0), BASALT, Enum.Material.Slate)
+	tag(visual, "LegB")
 	addPart(visual, Vector3.new(2.6, 2, 1.6) * scale, at(0, 2.3, 0), BASALT, Enum.Material.Slate)
 	addPart(visual, Vector3.new(1.2, 1, 1.1) * scale, at(0, 3.7, -0.1), BASALT, Enum.Material.Slate)
 	addPart(visual, Vector3.new(0.9, 2, 0.9) * scale, at(-1.75, 2.1, 0), BASALT, Enum.Material.Slate)
+	tag(visual, "ArmL")
 	addPart(visual, Vector3.new(0.9, 2, 0.9) * scale, at(1.75, 2.1, 0), BASALT, Enum.Material.Slate)
+	tag(visual, "ArmR")
 	-- Lava cracks across the chest, and glowing eyes.
 	addPart(
 		visual,
@@ -236,7 +290,9 @@ builders.Infernal = function()
 	local dark = Color3.fromRGB(70, 22, 20)
 	local horn = Color3.fromRGB(35, 25, 25)
 	addPart(visual, Vector3.new(2, 3.2, 2), CFrame.new(-1.6, 1.6, 0), dark)
+	tag(visual, "LegA")
 	addPart(visual, Vector3.new(2, 3.2, 2), CFrame.new(1.6, 1.6, 0), dark)
+	tag(visual, "LegB")
 	addPart(visual, Vector3.new(6, 4.6, 4), CFrame.new(0, 5.4, 0), skin)
 	addPart(visual, Vector3.new(7.4, 1.8, 3.4), CFrame.new(0, 7.9, 0.3), skin)
 	addPart(
@@ -267,12 +323,14 @@ builders.Infernal = function()
 		CFrame.new(-4.4, 6, -1) * CFrame.Angles(math.rad(30), 0, math.rad(-10)),
 		skin
 	)
+	tag(visual, "ArmL")
 	addPart(
 		visual,
 		Vector3.new(1.8, 5.2, 1.8),
 		CFrame.new(4.4, 6, -1) * CFrame.Angles(math.rad(30), 0, math.rad(10)),
 		skin
 	)
+	tag(visual, "ArmR")
 	return visual
 end
 
@@ -287,7 +345,9 @@ builders.Ogre = function()
 	local eye = Color3.fromRGB(255, 60, 40)
 	-- Legs, loincloth, belly, shoulders.
 	addPart(visual, Vector3.new(2, 3, 2), CFrame.new(-1.6, 1.5, 0), dark)
+	tag(visual, "LegA")
 	addPart(visual, Vector3.new(2, 3, 2), CFrame.new(1.6, 1.5, 0), dark)
+	tag(visual, "LegB")
 	addPart(visual, Vector3.new(5.4, 1.6, 3.6), CFrame.new(0, 3.4, 0), cloth)
 	addPart(visual, Vector3.new(6, 4.2, 4.4), CFrame.new(0, 6, 0.2), skin)
 	addPart(visual, Vector3.new(7.2, 2, 3.6), CFrame.new(0, 8.4, 0.6) * CFrame.Angles(math.rad(-10), 0, 0), skin)
@@ -299,12 +359,15 @@ builders.Ogre = function()
 	addPart(visual, Vector3.new(0.4, 1, 0.4), CFrame.new(0.8, 7.9, -2.9) * CFrame.Angles(math.rad(-20), 0, 0), tusk)
 	-- Arms: the left hangs, the right holds the club forward.
 	addPart(visual, Vector3.new(1.8, 5, 1.8), CFrame.new(-4.2, 5.6, 0) * CFrame.Angles(0, 0, math.rad(-8)), skin)
+	tag(visual, "ArmL")
+	local rightShoulder = Vector3.new(4.2, 7.9, 0.2)
 	addPart(
 		visual,
 		Vector3.new(1.8, 5, 1.8),
 		CFrame.new(4.2, 5.8, -1) * CFrame.Angles(math.rad(35), 0, math.rad(8)),
 		skin
 	)
+	tag(visual, "ArmR", rightShoulder)
 	addPart(
 		visual,
 		Vector3.new(1, 6, 1),
@@ -312,6 +375,7 @@ builders.Ogre = function()
 		wood,
 		Enum.Material.Wood
 	)
+	tag(visual, "ArmR", rightShoulder)
 	addPart(
 		visual,
 		Vector3.new(2.2, 3, 2.2),
@@ -319,6 +383,7 @@ builders.Ogre = function()
 		wood,
 		Enum.Material.Wood
 	)
+	tag(visual, "ArmR", rightShoulder)
 	return visual
 end
 
@@ -347,6 +412,9 @@ local function makeElite(visual: Visual)
 		local offset = visual.offsets[i]
 		visual.offsets[i] = offset - offset.Position + offset.Position * scale
 	end
+	for index, joint in visual.joints do
+		visual.joints[index] = joint * scale
+	end
 	local glow = Instance.new("Highlight")
 	glow.FillTransparency = 0.75
 	glow.FillColor = ELITE_GLOW
@@ -358,8 +426,11 @@ end
 -- A new visual for `kind`; elites come out bigger and glowing.
 function EnemyModels.create(kind: string, elite: boolean?): Visual
 	local build = builders[kind]
+	local fromLibrary = ModelLibrary.get(kind)
 	local visual
-	if build then
+	if fromLibrary then
+		visual = buildFromTemplate(fromLibrary)
+	elseif build then
 		visual = build()
 	else
 		warn(`[EnemyModels] No model for enemy kind "{kind}"; using a placeholder block.`)
@@ -367,6 +438,19 @@ function EnemyModels.create(kind: string, elite: boolean?): Visual
 	end
 	if elite then
 		makeElite(visual)
+	end
+	-- Default joints: the top of an arm or leg, the inner edge of a wing.
+	for index, group in visual.groups do
+		if visual.joints[index] then
+			continue
+		end
+		local offset, size = visual.offsets[index], visual.parts[index].Size
+		if string.sub(group, 1, 4) == "Wing" then
+			local inward = if offset.Position.X < 0 then 1 else -1
+			visual.joints[index] = offset * Vector3.new(inward * size.X / 2, 0, 0)
+		else
+			visual.joints[index] = offset * Vector3.new(0, size.Y / 2, 0)
+		end
 	end
 	return visual
 end

@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
+local EnemyAnimation = require(script.Parent.EnemyAnimation)
 local EnemyModels = require(script.Parent.EnemyModels)
 local Particles = require(script.Parent.Particles)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
@@ -45,9 +46,17 @@ type Entry = {
 	frozenUntil: number, -- os.clock time; frozen by Blizzard
 	ice: BasePart?, -- an ice block around it while frozen
 	look: Look, -- the colors the model has now
+	animation: EnemyAnimation.Profile,
+	phase: number, -- offsets its idle motion from other enemies'
+	walk: number, -- walk-cycle angle, advanced by distance moved
+	motion: number, -- 0 standing still to 1 walking, eased
 }
 
 local MAX_SAMPLES = 10
+-- Moving this fast (studs/s) or faster counts as fully walking.
+local FULL_WALK_SPEED = 5
+-- How quickly the walk eases in and out (per second).
+local WALK_EASE = 8
 local GROUND_Y = ArenaConfig.ORIGIN.Y
 
 local entries: { [number]: Entry } = {}
@@ -61,6 +70,7 @@ local moveCFrames: { CFrame } = {}
 -- Ground positions of the players in the current arena, refreshed every frame.
 local playerXs: { number } = {}
 local playerZs: { number } = {}
+local lastRender = os.clock()
 
 -- Called when an enemy dies or is removed (not when the whole world resets), with where it was
 -- last drawn. HitEffects uses this for death puffs.
@@ -132,6 +142,10 @@ local function onSpawned(list: any)
 			frozenUntil = 0,
 			ice = nil,
 			look = "Normal",
+			animation = EnemyAnimation.profile(info.kind),
+			phase = math.random() * 2 * math.pi,
+			walk = math.random() * 2 * math.pi,
+			motion = 0,
 		}
 	end
 end
@@ -193,6 +207,11 @@ local function setLook(entry: Entry, look: Look)
 	entry.look = look
 	local visual = entry.visual
 	for i, part in visual.parts do
+		local texture = visual.textures[i]
+		if texture then
+			-- Textured meshes ignore Color: show the flat color by taking the texture off.
+			(part :: MeshPart).TextureID = if look == "Normal" then texture else ""
+		end
 		part.Color = if look == "Flash"
 			then FLASH_COLOR
 			elseif look == "Chill" then visual.colors[i]:Lerp(CHILL_COLOR, CHILL_TINT)
@@ -320,6 +339,8 @@ local function render()
 	end
 
 	local clock = os.clock()
+	local dt = math.clamp(clock - lastRender, 0, 0.1)
+	lastRender = clock
 	for _, entry in entries do
 		local look: Look = if clock < entry.flashUntil
 			then "Flash"
@@ -330,7 +351,12 @@ local function render()
 			setLook(entry, look)
 		end
 		local x, z, dirX, dirZ = samplePosition(entry, renderTime)
+		-- A long jump (a respawned pool visual) isn't a walk.
+		local moved = math.min(2, math.sqrt((x - entry.x) ^ 2 + (z - entry.z) ^ 2))
 		entry.x, entry.z = x, z
+		entry.walk += moved * entry.animation.stride
+		local walking = if dt > 0 then math.clamp(moved / dt / FULL_WALK_SPEED, 0, 1) else entry.motion
+		entry.motion += (walking - entry.motion) * math.min(1, dt * WALK_EASE)
 		-- The ice block follows the freeze itself, not the colors (a hit flash shouldn't melt it).
 		local frozen = clock < entry.frozenUntil
 		if frozen and not entry.ice then
@@ -360,9 +386,15 @@ local function render()
 		end
 		local root = CFrame.new(x, GROUND_Y, z) * CFrame.Angles(0, entry.yaw, 0)
 		local visual = entry.visual
+		-- Frozen enemies hold still.
+		local body, swing, flap = CFrame.identity, 0, 0
+		if not frozen then
+			body, swing, flap = EnemyAnimation.pose(entry.animation, entry.walk, entry.motion, clock + entry.phase)
+		end
+		local groups, joints, offsets = visual.groups, visual.joints, visual.offsets
 		for i, part in visual.parts do
 			table.insert(moveParts, part)
-			table.insert(moveCFrames, root * visual.offsets[i])
+			table.insert(moveCFrames, root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap))
 		end
 	end
 
