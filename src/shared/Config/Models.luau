@@ -57,6 +57,50 @@ local MODELS: { [string]: { Part } } = {
 		{ name = "LegA", group = "LegA", mesh = "rbxassetid://107687154654161", texture = "rbxassetid://99713355804914", material = "Plastic", size = Vector3.new(2.4761, 2.869, 3.0668), cframe = CFrame.new(-2.3821, 1.4406, -0.0894, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(95, 100, 70) },
 		{ name = "LegB", group = "LegB", mesh = "rbxassetid://114499028325954", texture = "rbxassetid://139544236663344", material = "Plastic", size = Vector3.new(2.5148, 2.9151, 3.0601), cframe = CFrame.new(1.223, 1.4576, -0.0899, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(95, 100, 70) },
 	},
+	Bat = {
+		{ name = "Body", group = "Body", mesh = "rbxassetid://133652560408579", texture = "rbxassetid://91088871428832", material = "Plastic", size = Vector3.new(1.7393, 2.64, 2.4275), cframe = CFrame.new(-0.0092, 3.5, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(70, 45, 90) },
+		{ name = "WingL", group = "WingL", mesh = "rbxassetid://94264491604638", texture = "rbxassetid://93037874734046", material = "Plastic", size = Vector3.new(1.6632, 1.573, 0.6853), cframe = CFrame.new(-1.1684, 3.8737, -0.5634, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(110, 70, 140) },
+		{ name = "WingR", group = "WingR", mesh = "rbxassetid://112490017134720", texture = "rbxassetid://71535241561098", material = "Plastic", size = Vector3.new(1.6689, 1.5777, 0.6968), cframe = CFrame.new(1.1656, 3.8758, -0.567, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(110, 70, 140) },
+	},
+	EmberArcher = {
+		{ name = "Body", group = "Body", mesh = "rbxassetid://118070272051897", texture = "rbxassetid://130240651234075", material = "Plastic", size = Vector3.new(1.8869, 2.2919, 1.614), cframe = CFrame.new(-0.0231, 1.4798, 0.1765, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 32, 26) },
+		{ name = "Head", group = "Head", mesh = "rbxassetid://133726992789808", texture = "rbxassetid://90525944268091", material = "Plastic", size = Vector3.new(1.8745, 1.857, 1.7027), cframe = CFrame.new(-0.0189, 3.0715, 0.0151, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(60, 22, 20) },
+		{ name = "ArmL", group = "ArmL", joint = Vector3.new(-0.7198, 2.3257, 0.1765), mesh = "rbxassetid://103974176891482", texture = "rbxassetid://119166378504125", material = "Plastic", size = Vector3.new(1.1011, 3.6589, 1.4613), cframe = CFrame.new(-0.94, 1.8514, -0.2528, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 32, 26) },
+		{ name = "ArmR", group = "ArmR", mesh = "rbxassetid://129349691390748", texture = "rbxassetid://114384946832246", material = "Plastic", size = Vector3.new(1.1496, 1.3259, 1.187), cframe = CFrame.new(0.9158, 1.6826, -0.1073, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 32, 26) },
+		{ name = "Legs", group = "Legs", mesh = "rbxassetid://96594063653195", texture = "rbxassetid://126195156801787", material = "Plastic", size = Vector3.new(1.5951, 0.6331, 0.7647), cframe = CFrame.new(-0.0157, 0.3165, -0.0143, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 32, 26) },
+	},
+	FireImp = {
+		{ name = "Body", group = "Body", mesh = "rbxassetid://82552410433046", texture = "rbxassetid://95543230056657", material = "Plastic", size = Vector3.new(1.4338, 1.7944, 1.9393), cframe = CFrame.new(-0.2109, 1.054, 0.0803, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(150, 40, 30) },
+		{ name = "Head", group = "Head", mesh = "rbxassetid://127149373984602", texture = "rbxassetid://89828811094519", material = "Plastic", size = Vector3.new(2.1181, 1.9335, 1.219), cframe = CFrame.new(0, 2.8332, -0.4404, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(210, 75, 45) },
+		{ name = "ArmL", group = "ArmL", mesh = "rbxassetid://77744028913321", texture = "rbxassetid://98765055322710", material = "Plastic", size = Vector3.new(0.7429, 1.1338, 0.5813), cframe = CFrame.new(-0.5329, 1.1816, -0.5743, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(210, 75, 45) },
+		{ name = "ArmR", group = "ArmR", mesh = "rbxassetid://72875895786344", texture = "rbxassetid://91598361111140", material = "Plastic", size = Vector3.new(0.7193, 1.1379, 0.5916), cframe = CFrame.new(0.5415, 1.1713, -0.5727, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(210, 75, 45) },
+		{ name = "Legs", group = "Legs", mesh = "rbxassetid://119290130967037", texture = "rbxassetid://120625580237352", material = "Plastic", size = Vector3.new(1.4372, 1.024, 0.611), cframe = CFrame.new(0, 0.512, -0.5132, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(150, 40, 30) },
+	},
+	MagmaHound = {
+		{ name = "Body", group = "Body", mesh = "rbxassetid://97857851215312", texture = "rbxassetid://75618133543073", material = "Plastic", size = Vector3.new(1.7602, 1.6728, 2.6034), cframe = CFrame.new(-0.0008, 1.5425, 0.5142, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 78, 60) },
+		{ name = "Head", group = "Head", mesh = "rbxassetid://72015368814360", texture = "rbxassetid://84058464747584", material = "Plastic", size = Vector3.new(1.6551, 1.6666, 1.5618), cframe = CFrame.new(0.0022, 1.7667, -1.035, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 78, 60) },
+		{ name = "LegFL", group = "LegA", mesh = "rbxassetid://99669676129905", texture = "rbxassetid://109593993032257", material = "Plastic", size = Vector3.new(0.62, 2.0579, 1.0396), cframe = CFrame.new(-0.6043, 1.0289, -0.3995, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 78, 60) },
+		{ name = "LegFR", group = "LegB", mesh = "rbxassetid://81027147518797", texture = "rbxassetid://103554721478303", material = "Plastic", size = Vector3.new(0.6312, 2.0436, 1.036), cframe = CFrame.new(0.5987, 1.0228, -0.4002, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 78, 60) },
+		{ name = "LegBL", group = "LegB", mesh = "rbxassetid://119630537357229", texture = "rbxassetid://136297238722155", material = "Plastic", size = Vector3.new(0.6106, 0.9906, 0.8675), cframe = CFrame.new(-0.5806, 0.4963, 1.0236, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 78, 60) },
+		{ name = "LegBR", group = "LegA", mesh = "rbxassetid://138613724865959", texture = "rbxassetid://119372332938928", material = "Plastic", size = Vector3.new(0.6085, 0.9915, 0.8631), cframe = CFrame.new(0.5781, 0.497, 1.0225, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(120, 78, 60) },
+	},
+	SkeletonArcher = {
+		{ name = "Body", group = "Body", mesh = "rbxassetid://74823285133990", texture = "rbxassetid://86638403382131", material = "Plastic", size = Vector3.new(1.825, 2.2831, 1.4671), cframe = CFrame.new(0.113, 1.7311, 0.393, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(150, 90, 190) },
+		{ name = "Head", group = "Head", mesh = "rbxassetid://136507953482620", texture = "rbxassetid://108637041392387", material = "Plastic", size = Vector3.new(1.1499, 1.2778, 1.34), cframe = CFrame.new(0.1478, 3.1315, 0.0409, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(225, 220, 200) },
+		{ name = "ArmL", group = "ArmL", joint = Vector3.new(-0.5545, 2.5726, 0.393), mesh = "rbxassetid://111258928764580", texture = "rbxassetid://81577560850747", material = "Plastic", size = Vector3.new(1.0892, 4, 1.5343), cframe = CFrame.new(-0.7723, 2, -0.3595, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(225, 220, 200) },
+		{ name = "ArmR", group = "ArmR", mesh = "rbxassetid://88079612070467", texture = "rbxassetid://99543337897264", material = "Plastic", size = Vector3.new(0.7875, 1.2588, 0.7614), cframe = CFrame.new(0.9231, 1.8154, -0.246, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(225, 220, 200) },
+		{ name = "Legs", group = "Legs", mesh = "rbxassetid://99124439389102", texture = "rbxassetid://86147408680403", material = "Plastic", size = Vector3.new(1.4968, 1.4322, 0.6603), cframe = CFrame.new(0.1902, 0.723, 0.0228, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(225, 220, 200) },
+	},
+	-- Weapons and projectiles: centered pivots, pointing -Z.
+	Arrow = {
+		{ name = "Arrow", mesh = "rbxassetid://132266105831569", texture = "rbxassetid://99736383135903", material = "Plastic", size = Vector3.new(0.2948, 0.3238, 2.8), cframe = CFrame.new(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(200, 170, 120) },
+	},
+	Meteor = {
+		{ name = "Rock", mesh = "rbxassetid://92779308310585", texture = "rbxassetid://134233252102059", material = "Plastic", size = Vector3.new(3.3539, 3.4001, 3.3527), cframe = CFrame.new(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(255, 110, 40) },
+	},
+	Sword = {
+		{ name = "Blade", mesh = "rbxassetid://123681047607218", texture = "rbxassetid://122684863699354", material = "Plastic", size = Vector3.new(0.901, 2.4656, 0.4), cframe = CFrame.new(0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0), color = Color3.fromRGB(215, 225, 240) },
+	},
 }
 
 return table.freeze(MODELS)

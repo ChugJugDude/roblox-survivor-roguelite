@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local Graphics = require(script.Parent.Graphics)
+local ModelLibrary = require(script.Parent.ModelLibrary)
 local Particles = require(script.Parent.Particles)
 local ProjectileRenderer = require(script.Parent.ProjectileRenderer)
 local BladeOrbit = require(ReplicatedStorage.Shared.BladeOrbit)
@@ -39,6 +40,8 @@ type Piece = {
 	transparency: number,
 	shape: Enum.PartType,
 	material: Enum.Material,
+	template: BasePart?, -- a ModelLibrary mesh to clone instead of a plain part
+	untextured: boolean?, -- with `template`: take the texture off to show `color`
 }
 
 type TrailLook = {
@@ -97,7 +100,47 @@ end
 
 -- A sword from `length` studs of blade band: the grip at the inner end (near the player), then the
 -- guard, the blade, and a narrower tip at the outer end.
+-- The AI-made sword (ModelLibrary "Sword": centered, tip toward -Z) at `length` studs. Bladestorm
+-- is the same sword turned to glowing gold.
+local function meshSwordLook(sword: Model, blade: BasePart, length: number, evolved: boolean): Look
+	local scale = length / sword:GetExtentsSize().Z
+	local offset = sword:GetPivot():ToObjectSpace(blade.CFrame)
+	local size = blade.Size * scale
+	-- The blade's long axis, in its own space, points outward (toward the tip).
+	local outward = offset.Rotation:VectorToObjectSpace(Vector3.new(0, 0, -1))
+	return {
+		pieces = {
+			{
+				name = "Blade",
+				size = size,
+				offset = offset.Rotation + offset.Position * scale,
+				color = if evolved then BLADESTORM_COLOR else blade.Color,
+				transparency = if evolved then BLADESTORM_TRANSPARENCY else 0,
+				shape = Enum.PartType.Block,
+				material = if evolved then Enum.Material.Neon else blade.Material,
+				template = blade,
+				untextured = evolved,
+			},
+		},
+		trail = if not Graphics.profile().swordTrails
+			then nil
+			else {
+				piece = 1,
+				from = outward * length * 0.45,
+				to = Vector3.zero,
+				color = if evolved then BLADESTORM_COLOR else STEEL_COLOR,
+				lifetime = if evolved then 0.18 else 0.12,
+				transparency = if evolved then 0.7 else 0.45,
+			},
+	}
+end
+
 local function swordLook(length: number, width: number, evolved: boolean): Look
+	local sword = ModelLibrary.get("Sword")
+	local blade = if sword then sword:FindFirstChildWhichIsA("BasePart") else nil
+	if sword and blade then
+		return meshSwordLook(sword, blade, length, evolved)
+	end
 	local bladeColor = if evolved then BLADESTORM_COLOR else STEEL_COLOR
 	local bladeMaterial = if evolved then Enum.Material.Neon else Enum.Material.Metal
 	local bladeTransparency = if evolved then BLADESTORM_TRANSPARENCY else 0
@@ -192,9 +235,19 @@ local function createOrbiters(count: number, look: Look, shape: string): Orbiter
 	for _ = 1, count do
 		local parts = {}
 		for _, spec in look.pieces do
-			local part = Instance.new("Part")
+			local part: BasePart
+			local template = spec.template
+			if template then
+				part = template:Clone()
+				if spec.untextured and part:IsA("MeshPart") then
+					part.TextureID = ""
+				end
+			else
+				local plain = Instance.new("Part")
+				plain.Shape = spec.shape
+				part = plain
+			end
 			part.Name = spec.name
-			part.Shape = spec.shape
 			part.Size = spec.size
 			part.Color = spec.color
 			part.Transparency = spec.transparency

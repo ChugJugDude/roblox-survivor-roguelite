@@ -2,7 +2,8 @@
 -- Draws projectiles and explosions. Projectiles fly in straight lines, so each one is placed from its
 -- spawn event and the shared server clock until it reaches max distance or the server removes it.
 -- A projectile is a few parts (pieces) placed at offsets from one moving CFrame, pooled by kind;
--- fireballs carry a fire trail and a light.
+-- fireballs carry a fire trail and a light. A look can name an AI-made model (client/ModelLibrary)
+-- to use instead of its pieces once it's loaded.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local Graphics = require(script.Parent.Graphics)
+local ModelLibrary = require(script.Parent.ModelLibrary)
 local Particles = require(script.Parent.Particles)
 local ArenaConfig = require(ReplicatedStorage.Shared.Config.Arena)
 local EntityNet = require(ReplicatedStorage.Shared.EntityNet)
@@ -28,7 +30,9 @@ type Piece = {
 }
 
 type Look = {
-	pieces: { Piece },
+	pieces: { Piece }, -- the primitive look (and the fallback while `model` loads)
+	model: string?, -- a ModelLibrary model (centered, pointing -Z) to use instead
+	spin: number?, -- tumbles forward this fast (radians per second)
 	height: number, -- above the floor
 	fire: number?, -- a fire trail and light on the first piece, this big
 }
@@ -55,6 +59,7 @@ local LOOKS: { [string]: Look } = {
 			{ size = Vector3.new(0.6, 0.04, 0.45), color = ARROW_FLETCH, offset = CFrame.new(0, 0, 1.0) },
 			{ size = Vector3.new(0.04, 0.6, 0.45), color = ARROW_FLETCH, offset = CFrame.new(0, 0, 1.0) },
 		},
+		model = "Arrow",
 		height = 2.5,
 	},
 	Fireball = {
@@ -68,6 +73,8 @@ local LOOKS: { [string]: Look } = {
 		pieces = {
 			{ size = Vector3.new(3.4, 3.4, 3.4), color = Color3.fromRGB(255, 90, 30), shape = Enum.PartType.Ball },
 		},
+		model = "Meteor",
+		spin = 5,
 		height = 4,
 		fire = 3.2,
 	},
@@ -114,6 +121,7 @@ local FROST_RING_POINTS = 14
 
 type Visual = {
 	parts: { BasePart },
+	offsets: { CFrame }, -- each part's, from the projectile's CFrame
 	fire: ParticleEmitter?,
 	light: PointLight?,
 }
@@ -141,7 +149,18 @@ local ProjectileRenderer = {}
 local function newVisual(kind: string): Visual
 	local look = LOOKS[kind] or LOOKS.Arrow
 	local parts = {}
-	for _, spec in look.pieces do
+	local offsets = {}
+	local template = if look.model then ModelLibrary.get(look.model) else nil
+	if template then
+		local pivot = template:GetPivot()
+		for _, source in template:GetDescendants() do
+			if source:IsA("BasePart") then
+				table.insert(parts, source:Clone())
+				table.insert(offsets, pivot:ToObjectSpace(source.CFrame))
+			end
+		end
+	end
+	for _, spec in if template then {} else look.pieces do
 		local part = Instance.new("Part")
 		part.Name = kind
 		part.Shape = spec.shape or Enum.PartType.Block
@@ -154,6 +173,7 @@ local function newVisual(kind: string): Visual
 		part.CanTouch = false
 		part.CastShadow = false
 		table.insert(parts, part)
+		table.insert(offsets, spec.offset or CFrame.identity)
 	end
 	local fire: ParticleEmitter? = nil
 	local fireLight: PointLight? = nil
@@ -178,7 +198,7 @@ local function newVisual(kind: string): Visual
 		fire = emitter
 		fireLight = light
 	end
-	return { parts = parts, fire = fire, light = fireLight }
+	return { parts = parts, offsets = offsets, fire = fire, light = fireLight }
 end
 
 local function acquire(kind: string): Visual
@@ -360,11 +380,14 @@ local function render()
 			continue
 		end
 		local base = CFrame.new(positionOf(entry, now)) * entry.facing
-		local look = LOOKS[entry.kind]
+		local spin = LOOKS[entry.kind].spin
+		if spin then
+			base *= CFrame.Angles(-(now - info.startedAt) * spin, 0, 0)
+		end
+		local offsets = entry.visual.offsets
 		for index, part in entry.visual.parts do
-			local offset = look.pieces[index].offset
 			table.insert(moveParts, part)
-			table.insert(moveCFrames, if offset then base * offset else base)
+			table.insert(moveCFrames, base * offsets[index])
 		end
 		local fire = entry.visual.fire
 		if fire and not fire.Enabled then
