@@ -35,12 +35,12 @@ local EXPLOSION_SOUNDS: { [string]: string } = {
 	Blizzard = "Frost",
 	Eruption = "Explosion",
 }
--- Wind-ups by telegraph shape (a lane is a charge).
-local TELEGRAPH_SOUNDS: { [string]: string } = {
-	Lane = "BossCharge",
-	Circle = "BossEruption",
-	Ring = "BossRing",
-	Draw = "BowDraw",
+-- Wind-ups by telegraph shape (a lane is a charge), each one or more sounds played together.
+local TELEGRAPH_SOUNDS: { [string]: { string } } = {
+	Lane = { "BossCharge", "BossChargeRoar" },
+	Circle = { "BossEruption" },
+	Ring = { "BossRing" },
+	Draw = { "BowDraw" },
 }
 local EFFECT_SOUNDS: { [string]: string } = {
 	Lightning = "Lightning",
@@ -96,8 +96,8 @@ local function hookRemotes()
 		end
 		for _, info in list do
 			local shape = if typeof(info) == "table" then info.shape or "Lane" else nil
-			local name = if typeof(shape) == "string" then TELEGRAPH_SOUNDS[shape] else nil
-			if name then
+			local names = if typeof(shape) == "string" then TELEGRAPH_SOUNDS[shape] else nil
+			for _, name in names or {} do
 				SoundPlayer.play(name)
 			end
 		end

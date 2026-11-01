@@ -76,9 +76,12 @@ return table.freeze({
 		BowDraw = sound("Enemies", 9125405993, 0.35, 0.3, 1.3, 0.1, 0.5),
 		-- Picked for being loud from the start (PlaybackLoudness over the first second): wind-ups are
 		-- short, so a sound that swells late is cut off before it's heard.
-		BossCharge = sound("Enemies", 9113980319, 0.7, 1, 1, 0.05, 1.5),
+		-- A charge is two layered: a giant's guttural voice, and a lion's roar slowed into a bellow.
+		BossCharge = sound("Enemies", 9114628321, 0.9, 1, 0.9, 0.05, 1.6),
+		BossChargeRoar = sound("Enemies", 9116295753, 0.6, 1, 0.7, 0.05, 1.8),
 		BossEruption = sound("Enemies", 9125879007, 0.55, 1, 0.9, 0.05, 1.6),
-		BossRing = sound("Enemies", 9126073001, 0.7, 1, 0.8, 0.05, 1),
+		-- A rising charge-up whine through the ring's wind-up.
+		BossRing = sound("Enemies", 115891857308043, 0.6, 1, 1, 0.05, 1.1),
 		-- The player
 		Hurt = sound("Game", 84636875169658, 0.45, 0.25, 0.8, 0.08),
 		Downed = sound("Game", 84636875169658, 0.7, 1, 0.5),
