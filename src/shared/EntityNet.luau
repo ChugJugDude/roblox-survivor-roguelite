@@ -63,7 +63,14 @@ export type EffectInfo = LightningEffect | ChillEffect | HolyGroundEffect | Ches
 
 -- A warning drawn on the ground before a boss attack (server/BossBrain -> client/TelegraphRenderer):
 -- a lane (a charge) or a circle (an eruption).
-export type TelegraphInfo = LaneTelegraph | CircleTelegraph
+export type TelegraphInfo = LaneTelegraph | CircleTelegraph | RingTelegraph
+
+-- A boss gathering a ring of shots: nothing on the ground, just its pose.
+export type RingTelegraph = {
+	shape: "Ring",
+	id: number,
+	duration: number, -- seconds until the shots fly
+}
 
 export type CircleTelegraph = {
 	shape: "Circle",

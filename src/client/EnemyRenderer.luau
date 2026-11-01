@@ -289,7 +289,27 @@ local function onAttacked(ids: any)
 	end
 end
 
--- A boss's telegraph: hold a wind-up pose until it lands. An eruption ends in a slam.
+-- Crimson like the shots themselves.
+local RING_BURST_COLOR = Color3.fromRGB(230, 40, 50)
+
+-- The burst from a boss's chest as its ring of shots flies.
+local function ringBurst(entry: Entry)
+	local parts = entry.visual.parts
+	local chest = parts[1]
+	for index, part in parts do
+		if entry.visual.groups[index] == "Body" or part.Name == "Body" then
+			chest = part
+			break
+		end
+	end
+	if chest then
+		Particles.emit("Sparks", chest.Position, 24, RING_BURST_COLOR)
+		Particles.emit("Puff", chest.Position, 8)
+	end
+end
+
+-- A boss's telegraph: hold a wind-up pose until it lands. An eruption ends in a slam; a ring ends
+-- with a burst as the arms fling out.
 local function onTelegraph(list: any)
 	if typeof(list) ~= "table" then
 		return
@@ -298,12 +318,19 @@ local function onTelegraph(list: any)
 	for _, info in list do
 		local entry = if typeof(info) == "table" then entries[info.id] else nil
 		if entry and typeof(info.duration) == "number" then
-			local shape = if info.shape == "Circle" then "Circle" else "Lane"
+			local shape = if info.shape == "Circle" or info.shape == "Ring" then info.shape else "Lane"
 			entry.windUpShape = shape
 			entry.windUpFrom = now
 			entry.windUpTo = now + info.duration
 			if shape == "Circle" then
 				entry.attackedAt = entry.windUpTo
+			elseif shape == "Ring" then
+				local id = info.id
+				task.delay(info.duration, function()
+					if entries[id] == entry then
+						ringBurst(entry)
+					end
+				end)
 			end
 		end
 	end
@@ -441,12 +468,12 @@ local function render()
 		local root = CFrame.new(x, GROUND_Y, z) * CFrame.Angles(0, entry.yaw, 0)
 		local visual = entry.visual
 		-- Frozen enemies hold still.
-		local body, swing, flap, strike, raise = CFrame.identity, 0, 0, 0, 0
+		local body, swing, flap, strike, raise, spread = CFrame.identity, 0, 0, 0, 0, 0
 		if not frozen then
 			local tilt = 0
 			local shape = entry.windUpShape
 			if shape then
-				raise, tilt = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
+				raise, spread, tilt = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
 			end
 			body, swing, flap, strike = EnemyAnimation.pose(
 				entry.animation,
@@ -462,7 +489,7 @@ local function render()
 			table.insert(moveParts, part)
 			table.insert(
 				moveCFrames,
-				root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap, strike, raise)
+				root * EnemyAnimation.place(groups, joints, offsets[i], i, body, swing, flap, strike, raise, spread)
 			)
 		end
 	end

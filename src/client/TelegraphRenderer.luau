@@ -76,6 +76,8 @@ local function draw(info: any)
 	if typeof(info) == "table" and info.shape == "Circle" then
 		drawCircle(info)
 		return
+	elseif typeof(info) == "table" and info.shape == "Ring" then
+		return -- only a pose (EnemyRenderer), nothing on the ground
 	end
 	if
 		typeof(info) ~= "table"

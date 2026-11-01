@@ -38,7 +38,9 @@ export type BossDef = {
 	attackInterval: number,
 	enragedInterval: number,
 	enrageAt: number, -- health fraction
-	-- Ring: shots in every direction at once.
+	-- Ring: shots in every direction at once, after ringWindup seconds of gathering (a "Ring"
+	-- telegraph, so clients can pose the boss).
+	ringWindup: number?,
 	ringShots: number,
 	ringSpeed: number,
 	ringDamage: number,

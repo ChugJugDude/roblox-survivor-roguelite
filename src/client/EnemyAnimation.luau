@@ -105,25 +105,56 @@ function EnemyAnimation.profile(kind: string): Profile
 	return PROFILES[kind] or DEFAULT
 end
 
--- How long a wind-up pose takes to settle in, and to let go once the attack lands (seconds).
+-- How long a wind-up pose takes to settle in (seconds).
 local WINDUP_IN = 0.25
-local WINDUP_OUT = 0.2
--- The poses: arms (radians, forward is positive) and body tilt (radians, back is positive). A charge
--- rears back with the arms drawn back; an eruption raises both arms overhead, then slams.
-local WINDUP_POSES = {
-	Lane = { raise = math.rad(-45), tilt = math.rad(10) },
-	Circle = { raise = math.rad(150), tilt = math.rad(8) },
+
+type Pose = {
+	raise: number, -- arms, radians (forward is positive)
+	spread: number, -- arms out to the sides, radians
+	tilt: number, -- body, radians (back is positive)
+}
+
+type WindUp = {
+	hold: Pose, -- held until the attack lands
+	release: Pose, -- snapped to when it lands, then eased out over `out` seconds
+	out: number,
+}
+
+local NO_SPREAD = 0
+-- A charge rears back with the arms drawn back. An eruption raises both arms overhead, then slams.
+-- A ring gathers its arms in front with a hunch, then flings them out wide as the shots fly.
+local WINDUPS: { [string]: WindUp } = {
+	Lane = {
+		hold = { raise = math.rad(-45), spread = NO_SPREAD, tilt = math.rad(10) },
+		release = { raise = math.rad(-45), spread = NO_SPREAD, tilt = math.rad(10) },
+		out = 0.2,
+	},
+	Circle = {
+		hold = { raise = math.rad(150), spread = NO_SPREAD, tilt = math.rad(8) },
+		release = { raise = math.rad(150), spread = NO_SPREAD, tilt = math.rad(8) },
+		out = 0.2,
+	},
+	Ring = {
+		hold = { raise = math.rad(70), spread = math.rad(-10), tilt = math.rad(-10) },
+		release = { raise = math.rad(40), spread = math.rad(80), tilt = math.rad(8) },
+		out = 0.45,
+	},
 }
 
 -- A boss's wind-up pose `now` for a telegraph of `shape` shown from `from` to `to` (os.clock times):
--- the extra arm angle and body tilt.
-function EnemyAnimation.windUp(shape: string, from: number, to: number, now: number): (number, number)
-	local pose = WINDUP_POSES[shape]
-	if not pose or now < from or now > to + WINDUP_OUT then
-		return 0, 0
+-- the extra arm angle, how far the arms spread to the sides, and the body tilt.
+function EnemyAnimation.windUp(shape: string, from: number, to: number, now: number): (number, number, number)
+	local windUp = WINDUPS[shape]
+	if not windUp or now < from or now > to + windUp.out then
+		return 0, 0, 0
 	end
-	local amount = if now <= to then math.clamp((now - from) / WINDUP_IN, 0, 1) else 1 - (now - to) / WINDUP_OUT
-	return pose.raise * amount, pose.tilt * amount
+	local pose, amount
+	if now <= to then
+		pose, amount = windUp.hold, math.clamp((now - from) / WINDUP_IN, 0, 1)
+	else
+		pose, amount = windUp.release, 1 - (now - to) / windUp.out
+	end
+	return pose.raise * amount, pose.spread * amount, pose.tilt * amount
 end
 
 -- The pose for this frame: the body's offset from the root, the limb swing, the wing flap, and the
@@ -162,7 +193,8 @@ function EnemyAnimation.place(
 	swing: number,
 	flap: number,
 	strike: number,
-	raise: number
+	raise: number,
+	spread: number
 ): CFrame
 	local group = groups[index]
 	if not group then
@@ -172,9 +204,9 @@ function EnemyAnimation.place(
 	-- the strike.
 	local rotation
 	if group == "ArmL" then
-		rotation = CFrame.Angles(swing + strike * 0.6 + raise, 0, 0)
+		rotation = CFrame.Angles(swing + strike * 0.6 + raise, 0, -spread)
 	elseif group == "ArmR" then
-		rotation = CFrame.Angles(-swing + strike + raise, 0, 0)
+		rotation = CFrame.Angles(-swing + strike + raise, 0, spread)
 	elseif group == "LegB" then
 		rotation = CFrame.Angles(swing, 0, 0)
 	elseif group == "LegA" then

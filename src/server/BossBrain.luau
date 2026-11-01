@@ -4,7 +4,8 @@
 	attacks a boss chases like any enemy (EnemyService.move). Every attackInterval it does the next
 	attack in its pattern:
 
-		Ring    a circle of crimson shots in every direction (two rings when enraged)
+		Ring    after a short wind-up (a "Ring" telegraph), a circle of crimson shots in every
+		        direction (two rings when enraged)
 		Summon  a circle of adds around it
 		Charge  it stops and the client draws a red lane (EnemyTelegraph) for chargeWindup seconds,
 		        then it dashes down that lane, hitting every player it passes once
@@ -44,11 +45,18 @@ type Eruption = {
 	burstsAt: number, -- game time
 }
 
+-- A ring of shots being gathered.
+type PendingRing = {
+	firesAt: number, -- game time
+	offset: number, -- angle of the first shot
+}
+
 type Brain = {
 	nextAttackAt: number,
 	patternIndex: number,
 	charge: Charge?,
 	eruptions: { Eruption },
+	ring: PendingRing?,
 }
 
 export type State = {
@@ -261,11 +269,26 @@ function BossBrain.step(state: State, now: number, dt: number, targets: { Charac
 		end
 		local brain = state.brains[enemy]
 		if not brain then
-			brain = { nextAttackAt = now + boss.firstAttackDelay, patternIndex = 0, charge = nil, eruptions = {} }
+			brain = {
+				nextAttackAt = now + boss.firstAttackDelay,
+				patternIndex = 0,
+				charge = nil,
+				eruptions = {},
+				ring = nil,
+			}
 			state.brains[enemy] = brain
 		end
 		local interval = if isEnraged(enemy, boss) then boss.enragedInterval else boss.attackInterval
 		stepEruptions(state, brain, now, targets)
+		local pendingRing = brain.ring
+		if pendingRing and now >= pendingRing.firesAt then
+			brain.ring = nil
+			ring(state, enemy, boss, pendingRing.offset, boss.ringSpeed)
+			if isEnraged(enemy, boss) then
+				-- A second, slower ring aimed into the first one's gaps.
+				ring(state, enemy, boss, pendingRing.offset + math.pi / boss.ringShots, boss.ringSpeed * 0.65)
+			end
+		end
 
 		local charge = brain.charge
 		if charge then
@@ -284,12 +307,10 @@ function BossBrain.step(state: State, now: number, dt: number, targets: { Charac
 		brain.patternIndex = brain.patternIndex % #boss.pattern + 1
 		local attack = boss.pattern[brain.patternIndex]
 		if attack == "Ring" then
-			local offset = math.random() * math.pi
-			ring(state, enemy, boss, offset, boss.ringSpeed)
-			if isEnraged(enemy, boss) then
-				-- A second, slower ring aimed into the first one's gaps.
-				ring(state, enemy, boss, offset + math.pi / boss.ringShots, boss.ringSpeed * 0.65)
-			end
+			local windup = boss.ringWindup or 0.5
+			brain.ring = { firesAt = now + windup, offset = math.random() * math.pi }
+			local telegraph: EntityNet.RingTelegraph = { shape = "Ring", id = enemy.id, duration = windup }
+			NetBatch.push(state.net, Remotes.EnemyTelegraph, telegraph)
 			brain.nextAttackAt = now + interval
 		elseif attack == "Summon" then
 			summon(state, enemy, boss)
