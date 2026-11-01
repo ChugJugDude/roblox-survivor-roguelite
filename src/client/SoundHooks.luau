@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local CurrentArena = require(script.Parent.CurrentArena)
 local SoundPlayer = require(script.Parent.SoundPlayer)
 local Config = require(ReplicatedStorage.Shared.Config.Audio)
+local EnemiesConfig = require(ReplicatedStorage.Shared.Config.Enemies)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local UpgradesConfig = require(ReplicatedStorage.Shared.Config.Upgrades)
 
@@ -18,7 +19,6 @@ local PHASE_SOUNDS: { [string]: string } = {
 	Stage = "StageStart",
 	Overtime = "PortalOpen",
 	Transition = "StageClear",
-	Boss = "BossWarning",
 	Victory = "Victory",
 	Defeat = "Defeat",
 }
@@ -34,6 +34,13 @@ local EXPLOSION_SOUNDS: { [string]: string } = {
 	Frost = "Frost",
 	Blizzard = "Frost",
 	Eruption = "Explosion",
+}
+-- Wind-ups by telegraph shape (a lane is a charge).
+local TELEGRAPH_SOUNDS: { [string]: string } = {
+	Lane = "BossCharge",
+	Circle = "BossEruption",
+	Ring = "BossRing",
+	Draw = "BowDraw",
 }
 local EFFECT_SOUNDS: { [string]: string } = {
 	Lightning = "Lightning",
@@ -84,8 +91,28 @@ local function hookRemotes()
 		playKinds(list, EFFECT_SOUNDS)
 	end)
 	Remotes.EnemyTelegraph.OnClientEvent:Connect(function(list)
-		if isList(list) then
-			SoundPlayer.play("BossWarning")
+		if typeof(list) ~= "table" then
+			return
+		end
+		for _, info in list do
+			local shape = if typeof(info) == "table" then info.shape or "Lane" else nil
+			local name = if typeof(shape) == "string" then TELEGRAPH_SOUNDS[shape] else nil
+			if name then
+				SoundPlayer.play(name)
+			end
+		end
+	end)
+	-- The warhorn: a boss or mini-boss arrives.
+	Remotes.EnemySpawned.OnClientEvent:Connect(function(list)
+		if typeof(list) ~= "table" then
+			return
+		end
+		for _, info in list do
+			local def = if typeof(info) == "table" then EnemiesConfig.TYPES[info.kind] else nil
+			if def and def.isBoss then
+				SoundPlayer.play("BossWarning")
+				return
+			end
 		end
 	end)
 

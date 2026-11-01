@@ -55,6 +55,8 @@ type Entry = {
 	windUpShape: string?, -- a boss winding up: its telegraph's shape, shown from windUpFrom to windUpTo
 	windUpFrom: number,
 	windUpTo: number,
+	bowShoulder: Vector3?, -- archers: the bow arm's joint, where the nocked bolt rests
+	bolt: { BasePart }?, -- a nocked bolt, while drawing
 }
 
 local MAX_SAMPLES = 10
@@ -167,7 +169,52 @@ local function onSpawned(list: any)
 			windUpShape = nil,
 			windUpFrom = 0,
 			windUpTo = 0,
+			bowShoulder = nil,
+			bolt = nil,
 		}
+		local entry = entries[info.id]
+		for index, group in entry.visual.groups do
+			if group == "ArmL" and entry.facesTarget then
+				entry.bowShoulder = entry.visual.joints[index]
+			end
+		end
+	end
+end
+
+-- The bolt an archer nocks while drawing (like the crimson shot it's about to fire).
+local BOLT_SHAFT_COLOR = Color3.fromRGB(70, 0, 15)
+local BOLT_HEAD_COLOR = Color3.fromRGB(190, 0, 35)
+local BOLT_LENGTH = 1.8
+local BOLT_DRAW = 0.6 -- studs it slides back as the string is drawn
+local freeBolts: { { BasePart } } = {}
+
+local function newBolt(): { BasePart }
+	local shaft = Instance.new("Part")
+	shaft.Size = Vector3.new(0.16, 0.16, BOLT_LENGTH)
+	shaft.Color = BOLT_SHAFT_COLOR
+	local head = Instance.new("Part")
+	head.Size = Vector3.new(0.5, 0.16, 0.5)
+	head.Color = BOLT_HEAD_COLOR
+	for _, part in { shaft, head } do
+		part.Name = "NockedBolt"
+		part.Material = Enum.Material.SmoothPlastic
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+	end
+	return { shaft, head }
+end
+
+local function removeBolt(entry: Entry)
+	local bolt = entry.bolt
+	if bolt then
+		entry.bolt = nil
+		for _, part in bolt do
+			part.Parent = nil
+		end
+		table.insert(freeBolts, bolt)
 	end
 end
 
@@ -257,6 +304,7 @@ local function onDespawned(ids: any)
 				listener(id, position, entry.kind, entry.elite)
 			end
 			removeIce(entry)
+			removeBolt(entry)
 			release(entry.poolKey, entry.visual)
 		end
 	end
@@ -474,10 +522,10 @@ local function render()
 		-- Frozen enemies hold still.
 		local body, swing, flap, strike, raise, spread, pull = CFrame.identity, 0, 0, 0, 0, 0, 0
 		if not frozen then
-			local tilt = 0
+			local tilt, twist = 0, 0
 			local shape = entry.windUpShape
 			if shape then
-				raise, spread, tilt, pull = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
+				raise, spread, tilt, pull, twist = EnemyAnimation.windUp(shape, entry.windUpFrom, entry.windUpTo, clock)
 			end
 			body, swing, flap, strike = EnemyAnimation.pose(
 				entry.animation,
@@ -485,8 +533,37 @@ local function render()
 				entry.motion,
 				clock + entry.phase,
 				clock - entry.attackedAt,
-				tilt
+				tilt,
+				twist
 			)
+		end
+		-- An archer drawing shows its bolt on the bow, aimed at the target, sliding back as it draws.
+		local shoulder = entry.bowShoulder
+		local drawing = shoulder ~= nil
+			and not frozen
+			and entry.windUpShape == "Draw"
+			and clock >= entry.windUpFrom
+			and clock < entry.windUpTo
+		if drawing and shoulder then
+			local bolt = entry.bolt
+			if not bolt then
+				bolt = table.remove(freeBolts) or newBolt()
+				for _, part in bolt do
+					part.Parent = folder
+				end
+				entry.bolt = bolt
+			end
+			local drawn = math.clamp((clock - entry.windUpFrom) / (entry.windUpTo - entry.windUpFrom) * 1.5, 0, 1)
+			local center = Vector3.new(shoulder.X * 0.4, shoulder.Y - 0.25, -1.5 + BOLT_DRAW * drawn)
+			table.insert(moveParts, bolt[1])
+			table.insert(moveCFrames, root * CFrame.new(center))
+			table.insert(moveParts, bolt[2])
+			table.insert(
+				moveCFrames,
+				root * CFrame.new(center - Vector3.new(0, 0, BOLT_LENGTH / 2)) * CFrame.Angles(0, math.rad(45), 0)
+			)
+		elseif entry.bolt then
+			removeBolt(entry)
 		end
 		local groups, joints, offsets = visual.groups, visual.joints, visual.offsets
 		for i, part in visual.parts do
@@ -523,6 +600,7 @@ local function reset()
 			setLook(entry, "Normal")
 		end
 		removeIce(entry)
+		removeBolt(entry)
 		release(entry.poolKey, entry.visual)
 		entries[id] = nil
 	end

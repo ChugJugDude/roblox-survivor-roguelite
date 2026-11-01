@@ -98,9 +98,6 @@ local MODELS: { [string]: { Part } } = {
 	Meteor = {
 		{ name = "Rock", mesh = "rbxassetid://92779308310585", texture = "rbxassetid://134233252102059", material = "Plastic", size = Vector3.new(3.3539, 3.4001, 3.3527), cframe = CFrame.new(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1), color = Color3.fromRGB(255, 110, 40) },
 	},
-	Sword = {
-		{ name = "Blade", mesh = "rbxassetid://123681047607218", texture = "rbxassetid://122684863699354", material = "Plastic", size = Vector3.new(0.901, 2.4656, 0.4), cframe = CFrame.new(0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0), color = Color3.fromRGB(215, 225, 240) },
-	},
 }
 
 return table.freeze(MODELS)

@@ -70,7 +70,13 @@ return table.freeze({
 		Lightning = sound("Lightning", 9114277757, 0.3, 0.15, 1, 0.1),
 		Holy = sound("Holy", 9126073001, 0.2, 0.3, 0.8, 0.05),
 		EnemyShot = sound("Enemies", 138890894929151, 0.15, 0.2, 1.3, 0.1),
+		-- Only when a boss or mini-boss arrives.
 		BossWarning = sound("Enemies", 6875748361, 0.6, 1),
+		-- Wind-ups (Remotes.EnemyTelegraph). Crowds of archers share one creak.
+		BowDraw = sound("Enemies", 9125405993, 0.35, 0.3, 1.3, 0.1, 0.5),
+		BossCharge = sound("Enemies", 9113980644, 0.5, 1, 1, 0.05, 1.2),
+		BossEruption = sound("Enemies", 9125881620, 0.55, 1, 0.8, 0.05, 1.3),
+		BossRing = sound("Enemies", 9126073001, 0.35, 1, 0.6, 0.05, 0.8),
 		-- The player
 		Hurt = sound("Game", 84636875169658, 0.45, 0.25, 0.8, 0.08),
 		Downed = sound("Game", 84636875169658, 0.7, 1, 0.5),

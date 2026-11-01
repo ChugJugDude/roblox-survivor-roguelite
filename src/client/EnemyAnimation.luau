@@ -113,6 +113,7 @@ type Pose = {
 	spread: number, -- arms out to the sides, radians
 	tilt: number, -- body, radians (back is positive)
 	pull: number?, -- the right arm only, radians (a bowstring drawn back is negative)
+	twist: number?, -- the body about its vertical axis, radians (negative turns the left side forward)
 }
 
 type WindUp = {
@@ -140,21 +141,35 @@ local WINDUPS: { [string]: WindUp } = {
 		release = { raise = math.rad(40), spread = math.rad(80), tilt = math.rad(8) },
 		out = 0.45,
 	},
-	-- An archer raises its bow level (the left arm) and draws the string back (the right), then
-	-- lets go: the string arm snaps forward and both arms come down.
+	-- An archer turns its bow shoulder (the left) toward the target, brings the bow up in front of
+	-- its chest and pulls the string arm well back (EnemyRenderer shows the nocked bolt), then lets
+	-- go: the string arm snaps forward. The bow arm and bow are one rigid mesh, so it only rises a
+	-- little; any higher and the bow tips over the archer's head.
 	Draw = {
-		hold = { raise = math.rad(85), spread = NO_SPREAD, tilt = math.rad(4), pull = math.rad(-55) },
-		release = { raise = math.rad(85), spread = NO_SPREAD, tilt = 0, pull = math.rad(10) },
+		hold = {
+			raise = math.rad(35),
+			spread = NO_SPREAD,
+			tilt = math.rad(5),
+			pull = math.rad(-80),
+			twist = math.rad(-25),
+		},
+		release = { raise = math.rad(35), spread = NO_SPREAD, tilt = 0, pull = math.rad(-10), twist = math.rad(-25) },
 		out = 0.3,
 	},
 }
 
 -- A wind-up pose `now` for a telegraph of `shape` shown from `from` to `to` (os.clock times): the
--- extra arm angle, how far the arms spread to the sides, the body tilt, and the right arm's pull.
-function EnemyAnimation.windUp(shape: string, from: number, to: number, now: number): (number, number, number, number)
+-- extra arm angle, how far the arms spread to the sides, the body tilt, the right arm's pull, and
+-- the body's twist.
+function EnemyAnimation.windUp(
+	shape: string,
+	from: number,
+	to: number,
+	now: number
+): (number, number, number, number, number)
 	local windUp = WINDUPS[shape]
 	if not windUp or now < from or now > to + windUp.out then
-		return 0, 0, 0, 0
+		return 0, 0, 0, 0, 0
 	end
 	local pose, amount
 	if now <= to then
@@ -162,7 +177,11 @@ function EnemyAnimation.windUp(shape: string, from: number, to: number, now: num
 	else
 		pose, amount = windUp.release, 1 - (now - to) / windUp.out
 	end
-	return pose.raise * amount, pose.spread * amount, pose.tilt * amount, (pose.pull or 0) * amount
+	return pose.raise * amount,
+		pose.spread * amount,
+		pose.tilt * amount,
+		(pose.pull or 0) * amount,
+		(pose.twist or 0) * amount
 end
 
 -- The pose for this frame: the body's offset from the root, the limb swing, the wing flap, and the
@@ -175,7 +194,8 @@ function EnemyAnimation.pose(
 	motion: number,
 	time: number,
 	sinceAttack: number,
-	tilt: number
+	tilt: number,
+	twist: number
 ): (CFrame, number, number, number)
 	local step = math.sin(walk)
 	local rise = math.abs(step) * look.bob * motion + math.sin(time * 2) * look.breathe
@@ -186,7 +206,7 @@ function EnemyAnimation.pose(
 	local progress = sinceAttack / look.strikeTime
 	local attack = if progress >= 0 and progress < 1 then math.sin(math.pi * math.sqrt(progress)) else 0
 	local body = CFrame.new(0, rise, -look.lunge * attack)
-		* CFrame.Angles(tilt - look.lean * attack, 0, step * look.waddle * motion * (1 - attack))
+		* CFrame.Angles(tilt - look.lean * attack, twist, step * look.waddle * motion * (1 - attack))
 	local flap = if look.flap > 0 then math.sin(time * look.flapRate) * look.flap else 0
 	return body, step * look.swing * motion * (1 - attack), flap, look.strike * attack
 end

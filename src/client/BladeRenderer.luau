@@ -10,7 +10,6 @@ local RunService = game:GetService("RunService")
 
 local CurrentArena = require(script.Parent.CurrentArena)
 local Graphics = require(script.Parent.Graphics)
-local ModelLibrary = require(script.Parent.ModelLibrary)
 local Particles = require(script.Parent.Particles)
 local ProjectileRenderer = require(script.Parent.ProjectileRenderer)
 local BladeOrbit = require(ReplicatedStorage.Shared.BladeOrbit)
@@ -20,7 +19,6 @@ local GameClock = require(ReplicatedStorage.Shared.GameClock)
 -- How far below the character's root part the blades spin (roughly waist height).
 local HEIGHT_OFFSET = -1
 local STEEL_COLOR = Color3.fromRGB(215, 225, 240)
-local GUARD_COLOR = Color3.fromRGB(210, 170, 70)
 local GRIP_COLOR = Color3.fromRGB(110, 70, 40)
 local BLADESTORM_COLOR = Color3.fromRGB(255, 210, 70)
 local BLADESTORM_GUARD_COLOR = Color3.fromRGB(150, 100, 30)
@@ -40,8 +38,6 @@ type Piece = {
 	transparency: number,
 	shape: Enum.PartType,
 	material: Enum.Material,
-	template: BasePart?, -- a ModelLibrary mesh to clone instead of a plain part
-	untextured: boolean?, -- with `template`: take the texture off to show `color`
 }
 
 type TrailLook = {
@@ -100,49 +96,20 @@ end
 
 -- A sword from `length` studs of blade band: the grip at the inner end (near the player), then the
 -- guard, the blade, and a narrower tip at the outer end.
--- The AI-made sword (ModelLibrary "Sword": centered, tip toward -Z) at `length` studs. Bladestorm
--- is the same sword turned to glowing gold.
-local function meshSwordLook(sword: Model, blade: BasePart, length: number, evolved: boolean): Look
-	local scale = length / sword:GetExtentsSize().Z
-	local offset = sword:GetPivot():ToObjectSpace(blade.CFrame)
-	local size = blade.Size * scale
-	-- The blade's long axis, in its own space, points outward (toward the tip).
-	local outward = offset.Rotation:VectorToObjectSpace(Vector3.new(0, 0, -1))
-	return {
-		pieces = {
-			{
-				name = "Blade",
-				size = size,
-				offset = offset.Rotation + offset.Position * scale,
-				color = if evolved then BLADESTORM_COLOR else blade.Color,
-				transparency = if evolved then BLADESTORM_TRANSPARENCY else 0,
-				shape = Enum.PartType.Block,
-				material = if evolved then Enum.Material.Neon else blade.Material,
-				template = blade,
-				untextured = evolved,
-			},
-		},
-		trail = if not Graphics.profile().swordTrails
-			then nil
-			else {
-				piece = 1,
-				from = outward * length * 0.45,
-				to = Vector3.zero,
-				color = if evolved then BLADESTORM_COLOR else STEEL_COLOR,
-				lifetime = if evolved then 0.18 else 0.12,
-				transparency = if evolved then 0.7 else 0.45,
-			},
-	}
-end
-
 -- Smooth, not Metal: metal reflects the sky and turns the steel blue and the gold brown.
 local FULLER_COLOR = Color3.fromRGB(150, 158, 170)
 local GREATSWORD_GOLD = Color3.fromRGB(235, 185, 70)
 
 -- Spinning Blade's greatsword over `length` studs of blade band (the orbiter's CFrame faces outward
 -- along -Z): the pommel and grip at the inner end, a wide crossguard, then a long broad blade with
--- a fuller down its middle and a pointed tip at the outer end.
-local function greatswordLook(length: number, width: number): Look
+-- a fuller down its middle and a pointed tip at the outer end. Bladestorm is the same greatsword in
+-- glowing, see-through gold, so the evolution reads as an upgrade of the same weapon.
+local function swordLook(length: number, width: number, evolved: boolean): Look
+	local steel = if evolved then BLADESTORM_COLOR else STEEL_COLOR
+	local fuller = if evolved then BLADESTORM_GUARD_COLOR else FULLER_COLOR
+	local gold = if evolved then BLADESTORM_GUARD_COLOR else GREATSWORD_GOLD
+	local bladeMaterial = if evolved then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	local bladeTransparency = if evolved then BLADESTORM_TRANSPARENCY else 0
 	local inner = length / 2 -- the inner end, toward the player
 	local guardZ = inner - 0.19 * length
 	local bladeStart = inner - 0.2 * length
@@ -157,97 +124,36 @@ local function greatswordLook(length: number, width: number): Look
 				"Blade",
 				Vector3.new(width, 0.22, bladeLength),
 				CFrame.new(0, 0, bladeZ),
-				STEEL_COLOR,
-				0,
-				Enum.Material.SmoothPlastic
+				steel,
+				bladeTransparency,
+				bladeMaterial
 			),
 			piece(
 				"Tip",
 				Vector3.new(tipSize, 0.22, tipSize),
 				CFrame.new(0, 0, tipZ) * CFrame.Angles(0, math.rad(45), 0),
-				STEEL_COLOR,
-				0,
-				Enum.Material.SmoothPlastic
+				steel,
+				bladeTransparency,
+				bladeMaterial
 			),
 			piece(
 				"Fuller",
 				Vector3.new(width * 0.22, 0.26, bladeLength * 0.8),
 				CFrame.new(0, 0, bladeZ + bladeLength * 0.05),
-				FULLER_COLOR
+				fuller,
+				bladeTransparency
 			),
-			piece(
-				"Guard",
-				Vector3.new(width * 2.6, 0.32, 0.36),
-				CFrame.new(0, 0, guardZ),
-				GREATSWORD_GOLD,
-				0,
-				Enum.Material.SmoothPlastic
-			),
+			piece("Guard", Vector3.new(width * 2.6, 0.32, 0.36), CFrame.new(0, 0, guardZ), gold),
 			piece("Grip", Vector3.new(0.34, 0.34, 0.15 * length), CFrame.new(0, 0, inner - 0.11 * length), GRIP_COLOR),
 			piece(
 				"Pommel",
 				Vector3.new(0.55, 0.55, 0.55),
 				CFrame.new(0, 0, inner - 0.02 * length),
-				GREATSWORD_GOLD,
+				gold,
 				0,
-				Enum.Material.SmoothPlastic,
+				nil,
 				Enum.PartType.Ball
 			),
-		},
-		trail = if not Graphics.profile().swordTrails
-			then nil
-			else {
-				piece = 1,
-				from = Vector3.new(0, 0, -bladeLength / 2),
-				to = Vector3.zero,
-				color = STEEL_COLOR,
-				lifetime = 0.12,
-				transparency = 0.45,
-			},
-	}
-end
-
-local function swordLook(length: number, width: number, evolved: boolean): Look
-	if not evolved then
-		return greatswordLook(length, width)
-	end
-	-- Bladestorm: the AI-made sword in glowing gold.
-	local sword = ModelLibrary.get("Sword")
-	local blade = if sword then sword:FindFirstChildWhichIsA("BasePart") else nil
-	if sword and blade then
-		return meshSwordLook(sword, blade, length, evolved)
-	end
-	local bladeColor = if evolved then BLADESTORM_COLOR else STEEL_COLOR
-	local bladeMaterial = if evolved then Enum.Material.Neon else Enum.Material.Metal
-	local bladeTransparency = if evolved then BLADESTORM_TRANSPARENCY else 0
-	local bladeLength = length * 0.82
-	return {
-		pieces = {
-			piece(
-				"Blade",
-				Vector3.new(width, 0.2, bladeLength),
-				CFrame.new(0, 0, -0.01 * length),
-				bladeColor,
-				bladeTransparency,
-				bladeMaterial
-			),
-			piece(
-				"Tip",
-				Vector3.new(width * 0.5, 0.2, length * 0.08),
-				CFrame.new(0, 0, -0.46 * length),
-				bladeColor,
-				bladeTransparency,
-				bladeMaterial
-			),
-			piece(
-				"Guard",
-				Vector3.new(width * 2.4, 0.35, 0.35),
-				CFrame.new(0, 0, 0.4 * length),
-				if evolved then BLADESTORM_GUARD_COLOR else GUARD_COLOR,
-				0,
-				Enum.Material.Metal
-			),
-			piece("Grip", Vector3.new(0.35, 0.35, length * 0.1), CFrame.new(0, 0, 0.45 * length), GRIP_COLOR),
 		},
 		-- The Low graphics quality skips swing trails.
 		trail = if not Graphics.profile().swordTrails
@@ -255,8 +161,8 @@ local function swordLook(length: number, width: number, evolved: boolean): Look
 			else {
 				piece = 1,
 				from = Vector3.new(0, 0, -bladeLength / 2),
-				to = Vector3.new(0, 0, 0),
-				color = if evolved then BLADESTORM_COLOR else STEEL_COLOR,
+				to = Vector3.zero,
+				color = steel,
 				lifetime = if evolved then 0.18 else 0.12,
 				-- Eight overlapping Bladestorm ribbons make a solid ring, so each is fainter.
 				transparency = if evolved then 0.7 else 0.45,
@@ -311,18 +217,8 @@ local function createOrbiters(count: number, look: Look, shape: string): Orbiter
 	for _ = 1, count do
 		local parts = {}
 		for _, spec in look.pieces do
-			local part: BasePart
-			local template = spec.template
-			if template then
-				part = template:Clone()
-				if spec.untextured and part:IsA("MeshPart") then
-					part.TextureID = ""
-				end
-			else
-				local plain = Instance.new("Part")
-				plain.Shape = spec.shape
-				part = plain
-			end
+			local part = Instance.new("Part")
+			part.Shape = spec.shape
 			part.Name = spec.name
 			part.Size = spec.size
 			part.Color = spec.color
